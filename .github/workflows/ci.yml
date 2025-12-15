@@ -60,7 +60,7 @@ jobs:
         verbose: true
 
     - name: Upload coverage reports
-      uses: actions/upload-artifact@v4
+      uses: actions/upload-artifact@v6
       with:
         name: coverage-report-go${{ matrix.go-version }}
         path: |
@@ -113,7 +113,7 @@ jobs:
         CGO_ENABLED=0 go build -ldflags="-w -s" -o build/${BINARY_NAME}-${GOOS}-${GOARCH} ./cmd/devbox
 
     - name: Upload artifacts
-      uses: actions/upload-artifact@v4
+      uses: actions/upload-artifact@v6
       with:
         name: devbox-${{ matrix.goos }}-${{ matrix.goarch }}
         path: build/devbox*
