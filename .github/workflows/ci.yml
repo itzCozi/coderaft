@@ -109,12 +109,12 @@ jobs:
         GOARCH: ${{ matrix.goarch }}
       run: |
         mkdir -p build
-        BINARY_NAME=devbox
-        CGO_ENABLED=0 go build -ldflags="-w -s" -o build/${BINARY_NAME}-${GOOS}-${GOARCH} ./cmd/devbox
+        BINARY_NAME=coderaft
+        CGO_ENABLED=0 go build -ldflags="-w -s" -o build/${BINARY_NAME}-${GOOS}-${GOARCH} ./cmd/coderaft
 
     - name: Upload artifacts
       uses: actions/upload-artifact@v4
       with:
-        name: devbox-${{ matrix.goos }}-${{ matrix.goarch }}
-        path: build/devbox*
+        name: coderaft-${{ matrix.goos }}-${{ matrix.goarch }}
+        path: build/coderaft*
         retention-days: 7

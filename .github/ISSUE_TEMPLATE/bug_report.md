@@ -17,7 +17,7 @@ Steps to reproduce the behavior:
 
 ### Environment
 - OS: 
-- devbox version: 
+- coderaft version: 
 - Docker version: 
 
 ### Additional context

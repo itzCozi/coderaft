@@ -11,7 +11,7 @@ import (
 	"sort"
 	"strings"
 
-	"devbox/internal/ui"
+	"coderaft/internal/ui"
 )
 
 type ImageCache struct {
@@ -160,7 +160,7 @@ func (ic *ImageCache) GenerateDockerfile(cfg *BuildImageConfig) string {
 
 func (ic *ImageCache) BuildCachedImage(cfg *BuildImageConfig) (string, error) {
 	fingerprint := cfg.Fingerprint()
-	imageTag := fmt.Sprintf("devbox-cache/%s:%s", cfg.ProjectName, fingerprint)
+	imageTag := fmt.Sprintf("coderaft-cache/%s:%s", cfg.ProjectName, fingerprint)
 
 	if ic.imageExistsFunc != nil {
 		if ic.imageExistsFunc(imageTag) {
@@ -176,7 +176,7 @@ func (ic *ImageCache) BuildCachedImage(cfg *BuildImageConfig) (string, error) {
 		}
 	}
 
-	tmpDir, err := os.MkdirTemp("", "devbox-build-*")
+	tmpDir, err := os.MkdirTemp("", "coderaft-build-*")
 	if err != nil {
 		return "", fmt.Errorf("failed to create build directory: %w", err)
 	}
@@ -209,7 +209,7 @@ func (ic *ImageCache) BuildCachedImage(cfg *BuildImageConfig) (string, error) {
 }
 
 func (ic *ImageCache) CleanupImageCache(projectName string) error {
-	prefix := fmt.Sprintf("devbox-cache/%s", projectName)
+	prefix := fmt.Sprintf("coderaft-cache/%s", projectName)
 	cmd := exec.Command(dockerCmd(), "images", "--format", "{{.Repository}}:{{.Tag}}", prefix)
 	output, err := cmd.Output()
 	if err != nil {

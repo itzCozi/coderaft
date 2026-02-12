@@ -5,7 +5,7 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"devbox/internal/ui"
+	"coderaft/internal/ui"
 )
 
 var stopCmd = &cobra.Command{
@@ -27,7 +27,7 @@ var stopCmd = &cobra.Command{
 
 		project, exists := cfg.GetProject(projectName)
 		if !exists {
-			return fmt.Errorf("project '%s' not found. Run 'devbox init %s' first", projectName, projectName)
+			return fmt.Errorf("project '%s' not found. Run 'coderaft init %s' first", projectName, projectName)
 		}
 
 		exists, err = dockerClient.BoxExists(project.BoxName)

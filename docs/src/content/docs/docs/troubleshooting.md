@@ -1,6 +1,6 @@
 ---
 title: Troubleshooting
-description: Common issues and solutions for devbox
+description: Common issues and solutions for coderaft
 ---
 
 Common issues and quick fixes.
@@ -8,14 +8,14 @@ Common issues and quick fixes.
 ## Installation Issues
 ---
 
-##### "Command not found: devbox"
+##### "Command not found: coderaft"
 
-**Problem**: After installation, `devbox` command is not recognized.
+**Problem**: After installation, `coderaft` command is not recognized.
 
 **Solutions**:
 ```bash
-# Check if devbox is in PATH
-which devbox
+# Check if coderaft is in PATH
+which coderaft
 
 # Add to PATH if needed
 export PATH="/usr/local/bin:$PATH"
@@ -25,12 +25,12 @@ echo 'export PATH="/usr/local/bin:$PATH"' >> ~/.bashrc
 source ~/.bashrc
 
 # Verify installation
-devbox --help
+coderaft --help
 ```
 
 ##### "Docker is not installed or not running"
 
-**Problem**: Devbox can't connect to Docker daemon.
+**Problem**: Coderaft can't connect to Docker daemon.
 
 **Solutions**:
 ```bash
@@ -64,7 +64,7 @@ sudo usermod -aG docker $USER
 # Restart terminal session or logout/login
 
 # Alternatively, run with sudo (not recommended)
-sudo devbox init myproject
+sudo coderaft init myproject
 ```
 
 ## Box Issues
@@ -77,17 +77,17 @@ sudo devbox init myproject
 **Solutions**:
 ```bash
 # Check what boxes exist
-docker ps -a --filter "name=devbox_"
+docker ps -a --filter "name=coderaft_"
 
-# List devbox projects
-devbox list
+# List coderaft projects
+coderaft list
 
 # Recreate missing box
-devbox destroy myproject  # Clean up tracking
-devbox init myproject     # Recreate
+coderaft destroy myproject  # Clean up tracking
+coderaft init myproject     # Recreate
 
 # Or force recreate
-devbox init myproject --force
+coderaft init myproject --force
 ```
 
 ##### "Box won't start"
@@ -97,23 +97,23 @@ devbox init myproject --force
 **Diagnosis**:
 ```bash
 # Check box status
-docker ps -a --filter "name=devbox_myproject"
+docker ps -a --filter "name=coderaft_myproject"
 
 # Check box logs
-docker logs devbox_myproject
+docker logs coderaft_myproject
 
 # Inspect box configuration
-docker inspect devbox_myproject
+docker inspect coderaft_myproject
 ```
 
 **Solutions**:
 ```bash
 # Try restarting box
-docker start devbox_myproject
+docker start coderaft_myproject
 
 # If still fails, recreate box
-devbox destroy myproject
-devbox init myproject
+coderaft destroy myproject
+coderaft init myproject
 
 # Check Docker daemon
 sudo systemctl restart docker
@@ -126,12 +126,12 @@ sudo systemctl restart docker
 **Solutions**:
 ```bash
 # Check what command box is running
-docker inspect devbox_myproject | grep -A 5 '"Cmd"'
+docker inspect coderaft_myproject | grep -A 5 '"Cmd"'
 
 # Box should run 'sleep infinity'
 # If not, recreate:
-devbox destroy myproject
-devbox init myproject
+coderaft destroy myproject
+coderaft init myproject
 
 # Check for resource constraints
 docker stats --no-stream
@@ -147,23 +147,23 @@ docker stats --no-stream
 **Diagnosis**:
 ```bash
 # Check mount point
-docker inspect devbox_myproject | grep -A 10 '"Mounts"'
+docker inspect coderaft_myproject | grep -A 10 '"Mounts"'
 
-# Should show: ~/devbox/myproject -> /workspace
+# Should show: ~/coderaft/myproject -> /workspace
 ```
 
 **Solutions**:
 ```bash
 # Verify workspace directory exists
-ls -la ~/devbox/myproject/
+ls -la ~/coderaft/myproject/
 
 # Create file on host and check in box
-echo "test" > ~/devbox/myproject/test.txt
-devbox run myproject cat /workspace/test.txt
+echo "test" > ~/coderaft/myproject/test.txt
+coderaft run myproject cat /workspace/test.txt
 
 # If mount is wrong, recreate box
-devbox destroy myproject
-devbox init myproject
+coderaft destroy myproject
+coderaft init myproject
 ```
 
 ##### "Permission denied accessing files"
@@ -173,17 +173,17 @@ devbox init myproject
 **Solutions**:
 ```bash
 # Check file permissions
-ls -la ~/devbox/myproject/
+ls -la ~/coderaft/myproject/
 
 # Fix ownership if needed
-sudo chown -R $USER:$USER ~/devbox/myproject/
+sudo chown -R $USER:$USER ~/coderaft/myproject/
 
 # Check box user
-devbox run myproject whoami
-devbox run myproject id
+coderaft run myproject whoami
+coderaft run myproject id
 
 # If running as different user, use sudo inside box
-devbox run myproject "sudo chown -R root:root /workspace/"
+coderaft run myproject "sudo chown -R root:root /workspace/"
 ```
 
 ## Network and Port Issues
@@ -203,12 +203,12 @@ sudo ss -tlnp | grep :5000
 # Kill process using port
 sudo kill -9 <PID>
 
-# Or use different port in devbox.json
+# Or use different port in coderaft.json
 # Change "5000:5000" to "5001:5000"
 
 # Recreate box with new config
-devbox destroy myproject
-devbox init myproject
+coderaft destroy myproject
+coderaft init myproject
 ```
 
 ##### "Can't access web application from host"
@@ -221,13 +221,13 @@ devbox init myproject
 # In your app: app.run(host='0.0.0.0', port=5000)
 
 # Check port mapping in box
-docker port devbox_myproject
+docker port coderaft_myproject
 
-# Verify ports in devbox.json
-cat ~/devbox/myproject/devbox.json
+# Verify ports in coderaft.json
+cat ~/coderaft/myproject/coderaft.json
 
 # Test from inside box
-devbox run myproject "curl http://localhost:5000"
+coderaft run myproject "curl http://localhost:5000"
 
 # Test from host
 curl http://localhost:5000
@@ -236,17 +236,17 @@ curl http://localhost:5000
 ## Configuration Issues
 ---
 
-##### "Invalid JSON in devbox.json"
+##### "Invalid JSON in coderaft.json"
 
 **Problem**: Configuration file has syntax errors.
 
 **Solutions**:
 ```bash
 # Validate JSON syntax
-cat ~/devbox/myproject/devbox.json | python3 -m json.tool
+cat ~/coderaft/myproject/coderaft.json | python3 -m json.tool
 
-# Or use devbox validation
-devbox config validate myproject
+# Or use coderaft validation
+coderaft config validate myproject
 
 # Fix common JSON errors:
 # - Missing commas between elements
@@ -262,17 +262,17 @@ devbox config validate myproject
 **Diagnosis**:
 ```bash
 # Check box logs during init
-docker logs devbox_myproject
+docker logs coderaft_myproject
 
 # Test commands manually
-devbox shell myproject
+coderaft shell myproject
 # Run each setup command individually
 ```
 
 **Solutions**:
 ```bash
 # Common fixes:
-# 1. Add 'apt update' before package installs (though devbox does this automatically)
+# 1. Add 'apt update' before package installs (though coderaft does this automatically)
 # 2. Use full package names
 # 3. Add '-y' flag to apt commands
 # 4. Check command syntax
@@ -287,7 +287,7 @@ devbox shell myproject
 }
 
 # Test commands step by step
-devbox shell myproject
+coderaft shell myproject
 apt install -y python3-pip  # Should work
 pip3 install flask          # Should work
 ```
@@ -306,7 +306,7 @@ docker system df
 docker system prune  # Clean up unused resources
 
 # Monitor during startup
-time devbox shell myproject
+time coderaft shell myproject
 
 # Check system resources
 docker stats --no-stream
@@ -315,48 +315,48 @@ top
 
 ##### "High disk usage"
 
-**Problem**: Docker/devbox using too much disk space.
+**Problem**: Docker/coderaft using too much disk space.
 
 **Solutions**:
 ```bash
 # Check disk usage
-devbox cleanup --dry-run --all
+coderaft cleanup --dry-run --all
 docker system df -v
 
 # Clean up unused resources
-devbox cleanup --all
+coderaft cleanup --all
 docker system prune -a
 
 # Check individual boxes
-docker exec devbox_myproject du -sh /var/cache/apt
-devbox run myproject "apt autoclean"
+docker exec coderaft_myproject du -sh /var/cache/apt
+coderaft run myproject "apt autoclean"
 ```
 
 ## Recovery Procedures
 ---
 
-##### "Complete reset of devbox"
+##### "Complete reset of coderaft"
 
 If everything is broken, start fresh:
 
 ```bash
-# Stop all devbox boxes
-docker stop $(docker ps -q --filter "name=devbox_")
+# Stop all coderaft boxes
+docker stop $(docker ps -q --filter "name=coderaft_")
 
-# Remove all devbox boxes
-docker rm $(docker ps -aq --filter "name=devbox_")
+# Remove all coderaft boxes
+docker rm $(docker ps -aq --filter "name=coderaft_")
 
 # Clean up Docker resources
 docker system prune -a
 
-# Remove devbox configuration
-rm -rf ~/.devbox/
+# Remove coderaft configuration
+rm -rf ~/.coderaft/
 
 # Keep or remove project files (your choice)
-# rm -rf ~/devbox/  # This deletes your code!
+# rm -rf ~/coderaft/  # This deletes your code!
 
-# Reinstall devbox if needed
-curl -fsSL https://raw.githubusercontent.com/itzcozi/devbox/main/install.sh | bash
+# Reinstall coderaft if needed
+curl -fsSL https://raw.githubusercontent.com/itzcozi/coderaft/main/install.sh | bash
 ```
 
 ##### "Recover project after box deletion"
@@ -365,16 +365,16 @@ If box was deleted but files remain:
 
 ```bash
 # Check if files exist
-ls ~/devbox/myproject/
+ls ~/coderaft/myproject/
 
 # Recreate box
-devbox init myproject
+coderaft init myproject
 
 # If you had custom configuration
-# Edit ~/devbox/myproject/devbox.json
+# Edit ~/coderaft/myproject/coderaft.json
 # Then recreate:
-devbox destroy myproject
-devbox init myproject
+coderaft destroy myproject
+coderaft init myproject
 ```
 
 ##### "Fix corrupted configuration"
@@ -383,14 +383,14 @@ If global configuration is corrupted:
 
 ```bash
 # Backup existing config
-cp ~/.devbox/config.json ~/.devbox/config.json.backup
+cp ~/.coderaft/config.json ~/.coderaft/config.json.backup
 
 # Reset configuration
-rm ~/.devbox/config.json
+rm ~/.coderaft/config.json
 
 # Recreate projects
-devbox init project1
-devbox init project2
+coderaft init project1
+coderaft init project2
 # etc.
 ```
 
@@ -410,24 +410,24 @@ cat /etc/os-release
 docker --version
 docker info
 
-# Devbox information
-devbox --version
-devbox list --verbose
+# Coderaft information
+coderaft --version
+coderaft list --verbose
 
 # Box information (if applicable)
-docker logs devbox_myproject
-docker inspect devbox_myproject
+docker logs coderaft_myproject
+docker inspect coderaft_myproject
 
 # Configuration
-cat ~/.devbox/config.json
-cat ~/devbox/myproject/devbox.json
+cat ~/.coderaft/config.json
+cat ~/coderaft/myproject/coderaft.json
 ```
 
 ##### Log Files
 
 Useful log locations:
 - Docker daemon: `journalctl -u docker.service`
-- Box logs: `docker logs devbox_<project>`
+- Box logs: `docker logs coderaft_<project>`
 - System messages: `/var/log/syslog`
 
 ##### Common Commands for Diagnosis
@@ -445,9 +445,9 @@ docker system df
 # Test Docker functionality
 docker run hello-world
 
-# Check devbox projects
-devbox list
-devbox maintenance --health-check
+# Check coderaft projects
+coderaft list
+coderaft maintenance --health-check
 
 # Check system resources
 df -h

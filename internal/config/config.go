@@ -85,7 +85,7 @@ func NewConfigManager() (*ConfigManager, error) {
 		return nil, fmt.Errorf("failed to get home directory: %w", err)
 	}
 
-	configDir := filepath.Join(homeDir, ".devbox")
+	configDir := filepath.Join(homeDir, ".coderaft")
 	if err := os.MkdirAll(configDir, 0755); err != nil {
 		return nil, fmt.Errorf("failed to create config directory: %w", err)
 	}
@@ -153,9 +153,9 @@ func (cm *ConfigManager) Save(config *Config) error {
 func (cm *ConfigManager) LoadProjectConfig(projectPath string) (*ProjectConfig, error) {
 
 	candidates := []string{
-		filepath.Join(projectPath, "devbox.json"),
-		filepath.Join(projectPath, "devbox.project.json"),
-		filepath.Join(projectPath, ".devbox.json"),
+		filepath.Join(projectPath, "coderaft.json"),
+		filepath.Join(projectPath, "coderaft.project.json"),
+		filepath.Join(projectPath, ".coderaft.json"),
 	}
 
 	var configPath string
@@ -185,9 +185,9 @@ func (cm *ConfigManager) LoadProjectConfig(projectPath string) (*ProjectConfig, 
 func (cm *ConfigManager) SaveProjectConfig(projectPath string, config *ProjectConfig) error {
 
 	candidates := []string{
-		filepath.Join(projectPath, "devbox.json"),
-		filepath.Join(projectPath, "devbox.project.json"),
-		filepath.Join(projectPath, ".devbox.json"),
+		filepath.Join(projectPath, "coderaft.json"),
+		filepath.Join(projectPath, "coderaft.project.json"),
+		filepath.Join(projectPath, ".coderaft.json"),
 	}
 	configPath := candidates[0]
 	for _, p := range candidates {
@@ -392,7 +392,7 @@ func (cm *ConfigManager) templatesDir() (string, error) {
 	if err != nil {
 		return "", fmt.Errorf("failed to get user home directory: %w", err)
 	}
-	return filepath.Join(home, ".devbox", "templates"), nil
+	return filepath.Join(home, ".coderaft", "templates"), nil
 }
 
 func (cm *ConfigManager) ListUserTemplates() []string {
@@ -506,7 +506,7 @@ func (config *Config) MergeProjectConfig(project *Project, projectConfig *Projec
 	}
 
 	if projectConfig.Name != "" {
-		project.ConfigFile = filepath.Join(project.WorkspacePath, "devbox.json")
+		project.ConfigFile = filepath.Join(project.WorkspacePath, "coderaft.json")
 	}
 }
 
@@ -525,7 +525,7 @@ func (config *Config) GetEffectiveBaseImage(project *Project, projectConfig *Pro
 
 const ProjectConfigJSONSchema = `{
 	"$schema": "http://json-schema.org/draft-07/schema#",
-	"title": "Devbox Project Config",
+	"title": "Coderaft Project Config",
 	"type": "object",
 	"required": ["name"],
 	"properties": {

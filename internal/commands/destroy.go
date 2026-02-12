@@ -9,7 +9,7 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"devbox/internal/ui"
+	"coderaft/internal/ui"
 )
 
 var destroyCmd = &cobra.Command{
@@ -19,7 +19,7 @@ var destroyCmd = &cobra.Command{
 Removes empty project directories automatically.
 
 Special usage:
-  devbox destroy --cleanup-orphaned  Remove boxes not tracked in config`,
+  coderaft destroy --cleanup-orphaned  Remove boxes not tracked in config`,
 	Args: cobra.ExactArgs(1),
 	RunE: func(cmd *cobra.Command, args []string) error {
 		projectName := args[0]
@@ -123,7 +123,7 @@ func isDirEmpty(dirPath string) (bool, error) {
 }
 
 func cleanupOrphanedboxes() error {
-	ui.Status("cleaning up orphaned devbox boxes...")
+	ui.Status("cleaning up orphaned coderaft boxes...")
 
 	cfg, err := configManager.Load()
 	if err != nil {
@@ -155,7 +155,7 @@ func cleanupOrphanedboxes() error {
 		return nil
 	}
 
-	ui.Info("found %d orphaned devbox box(s):", len(orphanedBoxes))
+	ui.Info("found %d orphaned coderaft box(s):", len(orphanedBoxes))
 	for _, boxName := range orphanedBoxes {
 		ui.Item(boxName)
 	}

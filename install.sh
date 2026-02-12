@@ -32,7 +32,7 @@ echo -e "${RED}❌ $1${NC}"
 print_header() {
 echo -e "${BLUE}"
 echo " = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = "
-echo " devbox Installation Script"
+echo " coderaft Installation Script"
 echo " = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = "
 echo -e "${NC}"
 }
@@ -53,7 +53,7 @@ print_success "Compatible OS detected: $PRETTY_NAME"
 ;;
 *)
 print_error "Unsupported operating system: $PRETTY_NAME"
-print_error "devbox requires Debian or Ubuntu Linux"
+print_error "coderaft requires Debian or Ubuntu Linux"
 exit 1
 ;;
 esac
@@ -65,17 +65,17 @@ command -v "$1" > /dev/null 2>&1
 }
 
 
-install_devbox() {
-print_info "Cloning devbox repository..."
+install_coderaft() {
+print_info "Cloning coderaft repository..."
 
 TEMP_DIR=$(mktemp -d)
 cd "$TEMP_DIR"
 
 
-git clone https://github.com/itzcozi/devbox.git
-cd devbox
+git clone https://github.com/itzcozi/coderaft.git
+cd coderaft
 
-print_info "Building devbox..."
+print_info "Building coderaft..."
 
 
 if ! command_exists go; then
@@ -88,7 +88,7 @@ print_info "Go version: $(go version)"
 
 make build
 
-print_info "Installing devbox to /usr/local/bin..."
+print_info "Installing coderaft to /usr/local/bin..."
 
 
 sudo make install
@@ -97,16 +97,16 @@ sudo make install
 cd /
 rm -rf "$TEMP_DIR"
 
-print_success "devbox installed successfully"
+print_success "coderaft installed successfully"
 }
 
 
 verify_installation() {
 print_info "Verifying installation..."
 
-if command_exists devbox; then
-  DEVBOX_VERSION=$(devbox version 2>/dev/null || echo "unknown")
-  print_success "devbox is installed and accessible: $DEVBOX_VERSION"
+if command_exists coderaft; then
+  CODERAFT_VERSION=$(coderaft version 2>/dev/null || echo "unknown")
+  print_success "coderaft is installed and accessible: $CODERAFT_VERSION"
 
   if docker ps > /dev/null 2>&1; then
     print_success "Docker is accessible"
@@ -116,7 +116,7 @@ if command_exists devbox; then
 
   return 0
   else
-  print_error "devbox installation verification failed"
+  print_error "coderaft installation verification failed"
   return 1
 fi
 }
@@ -124,18 +124,18 @@ fi
 
 print_next_steps() {
 echo
-print_success "🎉 devbox installation completed successfully!"
+print_success "🎉 coderaft installation completed successfully!"
 echo
 print_info "Next steps:"
 echo " 1. If Docker group permissions are needed, log out and log back in"
 echo " 2. Create your first project:"
-echo " devbox init myproject"
+echo " coderaft init myproject"
 echo " 3. Enter the development environment:"
-echo " devbox shell myproject"
+echo " coderaft shell myproject"
 echo " 4. Get help anytime:"
-echo " devbox --help"
+echo " coderaft --help"
 echo
-print_info "For more information, visit: https://github.com/itzcozi/devbox"
+print_info "For more information, visit: https://github.com/itzcozi/coderaft"
 echo
 }
 
@@ -186,14 +186,14 @@ if command_exists docker; then
   exit 1
 fi
 
-print_info "Installing devbox..."
-install_devbox
+print_info "Installing coderaft..."
+install_coderaft
 
 if verify_installation; then
   print_next_steps
   else
   print_error "Installation completed but verification failed"
-  print_info "Try running 'devbox --help' manually to test"
+  print_info "Try running 'coderaft --help' manually to test"
   exit 1
 fi
 }

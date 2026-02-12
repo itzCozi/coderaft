@@ -8,8 +8,8 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"devbox/internal/config"
-	"devbox/internal/ui"
+	"coderaft/internal/config"
+	"coderaft/internal/ui"
 )
 
 var (
@@ -20,15 +20,15 @@ var (
 
 var initCmd = &cobra.Command{
 	Use:   "init <project>",
-	Short: "Initialize a new devbox project",
-	Long: `Create a new devbox project with its own Docker box.
+	Short: "Initialize a new coderaft project",
+	Long: `Create a new coderaft project with its own Docker box.
 This will create a project directory and a corresponding Docker box.
 
 Examples:
-  devbox init myproject                    # Basic project
-  devbox init myproject --template python # Python development project
-  devbox init myproject --config-only     # Generate devbox.json only
-  devbox init myproject --generate-config # Create box and generate devbox.json`,
+  coderaft init myproject                    # Basic project
+  coderaft init myproject --template python # Python development project
+  coderaft init myproject --config-only     # Generate coderaft.json only
+  coderaft init myproject --generate-config # Create box and generate coderaft.json`,
 	Args: cobra.ExactArgs(1),
 	RunE: func(cmd *cobra.Command, args []string) error {
 		projectName := args[0]
@@ -60,7 +60,7 @@ Examples:
 		var projectConfig *config.ProjectConfig
 
 		if existingConfig, err := configManager.LoadProjectConfig(workspacePath); err == nil && existingConfig != nil {
-			ui.Info("found existing devbox.json configuration")
+			ui.Info("found existing coderaft.json configuration")
 			projectConfig = existingConfig
 		} else if templateFlag != "" {
 
@@ -78,13 +78,13 @@ Examples:
 			if err := configManager.SaveProjectConfig(workspacePath, projectConfig); err != nil {
 				return fmt.Errorf("failed to save project configuration: %w", err)
 			}
-			ui.Info("generated devbox.json configuration file")
+			ui.Info("generated coderaft.json configuration file")
 		}
 
 		if configOnlyFlag {
 			ui.Success("configuration generated for '%s'", projectName)
 			ui.Detail("workspace", workspacePath)
-			ui.Detail("config", workspacePath+"/devbox.json")
+			ui.Detail("config", workspacePath+"/coderaft.json")
 			return nil
 		}
 
@@ -94,7 +94,7 @@ Examples:
 			}
 		}
 
-		boxName := fmt.Sprintf("devbox_%s", projectName)
+		boxName := fmt.Sprintf("coderaft_%s", projectName)
 
 		baseImage := cfg.GetEffectiveBaseImage(&config.Project{
 			Name:      projectName,
@@ -169,9 +169,9 @@ Examples:
 			}
 		}
 
-		ui.Status("setting up devbox commands in box...")
-		if err := dockerClient.SetupDevboxInBoxWithUpdate(boxName, projectName); err != nil {
-			return fmt.Errorf("failed to setup devbox in box: %w", err)
+		ui.Status("setting up coderaft commands in box...")
+		if err := dockerClient.SetupCoderaftInBoxWithUpdate(boxName, projectName); err != nil {
+			return fmt.Errorf("failed to setup coderaft in box: %w", err)
 		}
 
 		project := &config.Project{
@@ -196,7 +196,7 @@ Examples:
 		ui.Detail("image", baseImage)
 
 		if projectConfig != nil {
-			ui.Detail("config", "devbox.json")
+			ui.Detail("config", "coderaft.json")
 			if len(projectConfig.SetupCommands) > 0 {
 				ui.Detail("setup commands", fmt.Sprintf("%d executed", len(projectConfig.SetupCommands)))
 			}
@@ -216,10 +216,10 @@ Examples:
 
 		ui.Blank()
 		ui.Info("Next steps:")
-		ui.Info("  devbox shell %s       # open interactive shell", projectName)
-		ui.Info("  devbox run %s <cmd>   # run a command", projectName)
+		ui.Info("  coderaft shell %s       # open interactive shell", projectName)
+		ui.Info("  coderaft run %s <cmd>   # run a command", projectName)
 		if projectConfig == nil && !generateConfig {
-			ui.Info("  devbox config %s      # generate devbox.json config", projectName)
+			ui.Info("  coderaft config %s      # generate coderaft.json config", projectName)
 		}
 
 		return nil
@@ -229,6 +229,6 @@ Examples:
 func init() {
 	initCmd.Flags().BoolVarP(&forceFlag, "force", "f", false, "Force initialization, overwriting existing project")
 	initCmd.Flags().StringVarP(&templateFlag, "template", "t", "", "Initialize from template (python, nodejs, go, web)")
-	initCmd.Flags().BoolVarP(&generateConfig, "generate-config", "g", false, "Generate devbox.json configuration file")
+	initCmd.Flags().BoolVarP(&generateConfig, "generate-config", "g", false, "Generate coderaft.json configuration file")
 	initCmd.Flags().BoolVarP(&configOnlyFlag, "config-only", "c", false, "Generate configuration file only (don't create box)")
 }

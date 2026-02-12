@@ -8,13 +8,13 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"devbox/internal/config"
-	"devbox/internal/ui"
+	"coderaft/internal/config"
+	"coderaft/internal/ui"
 )
 
 var templatesCmd = &cobra.Command{
 	Use:   "templates",
-	Short: "Manage devbox project templates",
+	Short: "Manage coderaft project templates",
 }
 
 var templatesListCmd = &cobra.Command{
@@ -54,7 +54,7 @@ var templatesShowCmd = &cobra.Command{
 
 var templatesCreateCmd = &cobra.Command{
 	Use:   "create <name> [project]",
-	Short: "Create devbox.json from a template in the current directory",
+	Short: "Create coderaft.json from a template in the current directory",
 	Args:  cobra.RangeArgs(1, 2),
 	RunE: func(cmd *cobra.Command, args []string) error {
 		name := args[0]
@@ -75,14 +75,14 @@ var templatesCreateCmd = &cobra.Command{
 		if err := configManager.SaveProjectConfig(wd, cfg); err != nil {
 			return fmt.Errorf("failed to save project config: %w", err)
 		}
-		ui.Success("generated devbox.json from template '%s' for project '%s'", name, project)
+		ui.Success("generated coderaft.json from template '%s' for project '%s'", name, project)
 		return nil
 	},
 }
 
 var templatesSaveCmd = &cobra.Command{
 	Use:   "save <name>",
-	Short: "Save current devbox.json as a reusable template",
+	Short: "Save current coderaft.json as a reusable template",
 	Args:  cobra.ExactArgs(1),
 	RunE: func(cmd *cobra.Command, args []string) error {
 		name := args[0]
@@ -92,7 +92,7 @@ var templatesSaveCmd = &cobra.Command{
 			return fmt.Errorf("failed to load project config: %w", err)
 		}
 		if pc == nil {
-			return fmt.Errorf("no devbox.json found in %s", wd)
+			return fmt.Errorf("no coderaft.json found in %s", wd)
 		}
 		tpl := &config.ConfigTemplate{Name: name, Description: fmt.Sprintf("Saved from %s", filepath.Base(wd)), Config: *pc}
 		if err := configManager.SaveUserTemplate(tpl); err != nil {

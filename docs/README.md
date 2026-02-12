@@ -1,4 +1,4 @@
-# Devbox Docs
+# Coderaft Docs
 
 This site is built with [Astro + Starlight](https://starlight.astro.build).
 
@@ -81,7 +81,7 @@ description: Brief one‑liner that appears in search and previews.
 - Keep titles concise; first H1 should match the page’s purpose.
 - Use present tense and active voice; prefer simple, clear language.
 - Show commands first, then output. Mark commands with the correct language (bash, powershell, json, yaml, etc.).
-- Use inline code for flags and filenames (e.g., `--help`, `devbox.yaml`).
+- Use inline code for flags and filenames (e.g., `--help`, `coderaft.yaml`).
 - Include prerequisites at the top of task/guide pages.
 - Cross‑link related pages with relative links when possible.
 

@@ -6,7 +6,7 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"devbox/internal/ui"
+	"coderaft/internal/ui"
 )
 
 var (
@@ -15,8 +15,8 @@ var (
 
 var listCmd = &cobra.Command{
 	Use:   "list",
-	Short: "List all devbox projects and their status",
-	Long:  `Display all managed devbox projects along with their box status.`,
+	Short: "List all coderaft projects and their status",
+	Long:  `Display all managed coderaft projects along with their box status.`,
 	Args:  cobra.NoArgs,
 	RunE: func(cmd *cobra.Command, args []string) error {
 
@@ -27,8 +27,8 @@ var listCmd = &cobra.Command{
 
 		projects := cfg.GetProjects()
 		if len(projects) == 0 {
-			ui.Info("no devbox projects found.")
-			ui.Info("create a new project with: devbox init <project-name>")
+			ui.Info("no coderaft projects found.")
+			ui.Info("create a new project with: coderaft init <project-name>")
 			return nil
 		}
 
@@ -46,7 +46,7 @@ var listCmd = &cobra.Command{
 			}
 		}
 
-		ui.Header("devbox projects")
+		ui.Header("coderaft projects")
 		if verboseFlag {
 			fmt.Printf("%-20s %-20s %-15s %-12s %s\n", "PROJECT", "BOX", "STATUS", "CONFIG", "WORKSPACE")
 			fmt.Printf("%-20s %-20s %-15s %-12s %s\n",
@@ -72,12 +72,12 @@ var listCmd = &cobra.Command{
 
 			configStatus := "none"
 			if project.ConfigFile != "" {
-				configStatus = "devbox.json"
+				configStatus = "coderaft.json"
 			} else {
 
 				projectConfig, err := configManager.LoadProjectConfig(project.WorkspacePath)
 				if err == nil && projectConfig != nil {
-					configStatus = "devbox.json"
+					configStatus = "coderaft.json"
 				}
 			}
 

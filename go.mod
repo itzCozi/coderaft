@@ -1,4 +1,4 @@
-module devbox
+module coderaft
 
 go 1.24.0
 

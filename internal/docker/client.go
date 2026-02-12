@@ -12,8 +12,8 @@ import (
 
 	dockerclient "github.com/docker/docker/client"
 
-	"devbox/internal/parallel"
-	"devbox/internal/ui"
+	"coderaft/internal/parallel"
+	"coderaft/internal/ui"
 )
 
 type Client struct {
@@ -48,7 +48,7 @@ func (c *Client) SDKExecFunc() func(ctx context.Context, containerID string, cmd
 }
 
 func dockerCmd() string {
-	if eng := strings.TrimSpace(os.Getenv("DEVBOX_ENGINE")); eng != "" {
+	if eng := strings.TrimSpace(os.Getenv("CODERAFT_ENGINE")); eng != "" {
 		return eng
 	}
 	return "docker"
@@ -267,17 +267,17 @@ func (c *Client) StartBox(boxID string) error {
 	return nil
 }
 
-func (c *Client) SetupDevboxInBox(boxName, projectName string) error {
-	return c.setupDevboxInBoxWithOptions(boxName, projectName, false)
+func (c *Client) SetupCoderaftInBox(boxName, projectName string) error {
+	return c.setupCoderaftInBoxWithOptions(boxName, projectName, false)
 }
 
-func (c *Client) SetupDevboxInBoxWithUpdate(boxName, projectName string) error {
-	return c.setupDevboxInBoxWithOptions(boxName, projectName, true)
+func (c *Client) SetupCoderaftInBoxWithUpdate(boxName, projectName string) error {
+	return c.setupCoderaftInBoxWithOptions(boxName, projectName, true)
 }
 
 func (c *Client) IsBoxInitialized(boxName string) bool {
 	ctx := context.Background()
-	result, err := c.sdk.containerExec(ctx, boxName, []string{"test", "-f", "/etc/devbox-initialized"}, false)
+	result, err := c.sdk.containerExec(ctx, boxName, []string{"test", "-f", "/etc/coderaft-initialized"}, false)
 	return err == nil && result != nil && result.ExitCode == 0
 }
 
@@ -287,21 +287,21 @@ func (c *Client) ImageExists(ref string) bool {
 	return err == nil && exists
 }
 
-func (c *Client) setupDevboxInBoxWithOptions(boxName, projectName string, forceUpdate bool) error {
+func (c *Client) setupCoderaftInBoxWithOptions(boxName, projectName string, forceUpdate bool) error {
 
 	ctx := context.Background()
 
 	wrapperScript := `#!/bin/bash
 
-# devbox-wrapper.sh
-# This script provides devbox commands inside the box
+# coderaft-wrapper.sh
+# This script provides coderaft commands inside the box
 
 BOX_NAME="` + boxName + `"
 PROJECT_NAME="` + projectName + `"
 
 case "$1" in
 	"status"|"info")
-		echo "Devbox box status"
+		echo "Coderaft box status"
         echo "Project: $PROJECT_NAME"
         echo "Box: $BOX_NAME"
         echo "Workspace: /workspace"
@@ -309,50 +309,50 @@ case "$1" in
         echo "User: $(whoami)"
         echo "Working Directory: $(pwd)"
         echo ""
-	echo "hint: available devbox commands inside box:"
-        echo "  devbox exit     - Exit the shell"
-        echo "  devbox status   - Show box information"
-        echo "  devbox help     - Show this help"
+	echo "hint: available coderaft commands inside box:"
+        echo "  coderaft exit     - Exit the shell"
+        echo "  coderaft status   - Show box information"
+        echo "  coderaft help     - Show this help"
         ;;
 	"help"|"--help"|"-h")
-		echo "Devbox box commands"
+		echo "Coderaft box commands"
         echo ""
         echo "Available commands inside the box:"
-        echo "  devbox exit         - Exit the devbox shell"
-        echo "  devbox status       - Show box and project information"
-        echo "  devbox help         - Show this help message"
+        echo "  coderaft exit         - Exit the coderaft shell"
+        echo "  coderaft status       - Show box and project information"
+        echo "  coderaft help         - Show this help message"
         echo ""
 	echo "Your project files are in: /workspace"
 	echo "You are in an Ubuntu box with full package management"
         echo ""
         echo "Examples:"
-        echo "  devbox exit                    # Exit to host"
-        echo "  devbox status                  # Check box info"
+        echo "  coderaft exit                    # Exit to host"
+        echo "  coderaft status                  # Check box info"
         echo ""
 	echo "hint: Files in /workspace are shared with your host system"
         ;;
     "host")
-		echo "error: the 'devbox host' command is not yet available"
-		echo "hint: Exit the box with 'devbox exit' and run commands on the host directly"
+		echo "error: the 'coderaft host' command is not yet available"
+		echo "hint: Exit the box with 'coderaft exit' and run commands on the host directly"
 		exit 1
         ;;
     "version")
-        echo "devbox box wrapper v1.0"
+        echo "coderaft box wrapper v1.0"
         echo "Box: $BOX_NAME"
         echo "Project: $PROJECT_NAME"
         ;;
 	"")
-		echo "error: missing command. Use \"devbox help\" for available commands."
+		echo "error: missing command. Use \"coderaft help\" for available commands."
         exit 1
         ;;
     *)
-		echo "error: unknown devbox command: $1"
-		echo "hint: Use \"devbox help\" to see available commands inside the box"
+		echo "error: unknown coderaft command: $1"
+		echo "hint: Use \"coderaft help\" to see available commands inside the box"
         echo ""
         echo "Available commands:"
         echo "  exit, status, help, version"
         echo ""
-        echo "Note: 'devbox exit' is handled by the shell function for proper exit behavior"
+        echo "Note: 'coderaft exit' is handled by the shell function for proper exit behavior"
         exit 1
         ;;
 esac`
@@ -360,28 +360,28 @@ esac`
 	setupScript := `set -e
 
 # Mark as initialized
-touch /etc/devbox-initialized
+touch /etc/coderaft-initialized
 
-# Install devbox wrapper
-rm -f /usr/local/bin/devbox
-cat > /usr/local/bin/devbox << 'DEVBOX_WRAPPER_EOF'
+# Install coderaft wrapper
+rm -f /usr/local/bin/coderaft
+cat > /usr/local/bin/coderaft << 'CODERAFT_WRAPPER_EOF'
 ` + wrapperScript + `
-DEVBOX_WRAPPER_EOF
-chmod +x /usr/local/bin/devbox
+CODERAFT_WRAPPER_EOF
+chmod +x /usr/local/bin/coderaft
 
 # Configure bashrc
-sed -i '/# Devbox welcome message/,/^$/d' /root/.bashrc 2>/dev/null || true
-sed -i '/devbox_exit()/,/^}$/d' /root/.bashrc 2>/dev/null || true
-sed -i '/devbox() {/,/^}$/d' /root/.bashrc 2>/dev/null || true
-sed -i '/# Devbox package tracking start/,/# Devbox package tracking end/d' /root/.bashrc 2>/dev/null || true
+sed -i '/# Coderaft welcome message/,/^$/d' /root/.bashrc 2>/dev/null || true
+sed -i '/coderaft_exit()/,/^}$/d' /root/.bashrc 2>/dev/null || true
+sed -i '/coderaft() {/,/^}$/d' /root/.bashrc 2>/dev/null || true
+sed -i '/# Coderaft package tracking start/,/# Coderaft package tracking end/d' /root/.bashrc 2>/dev/null || true
 
 cat >> /root/.bashrc << 'BASHRC_EOF'
 
 if [ -t 1 ]; then
-	echo "Welcome to devbox project: ` + projectName + `"
+	echo "Welcome to coderaft project: ` + projectName + `"
 	echo "Your files are in: /workspace"
-	echo "hint: Type 'devbox help' for available commands"
-	echo "hint: Type 'devbox exit' to leave the box"
+	echo "hint: Type 'coderaft help' for available commands"
+	echo "hint: Type 'coderaft exit' to leave the box"
     echo ""
 fi
 
@@ -405,31 +405,31 @@ if [ -d "/dotfiles" ]; then
 	fi
 fi
 
-devbox_exit() {
-	echo "Exiting devbox shell for project \"` + projectName + `\""
+coderaft_exit() {
+	echo "Exiting coderaft shell for project \"` + projectName + `\""
 	exit 0
 }
 
-devbox() {
+coderaft() {
     if [[ "$1" == "exit" || "$1" == "quit" ]]; then
-        devbox_exit
+        coderaft_exit
         return
     fi
-    /usr/local/bin/devbox "$@"
+    /usr/local/bin/coderaft "$@"
 }
 
-export DEVBOX_LOCKFILE="${DEVBOX_LOCKFILE:-/workspace/devbox.lock}"
+export CODERAFT_LOCKFILE="${CODERAFT_LOCKFILE:-/workspace/coderaft.lock}"
 
-devbox_record_cmd() {
+coderaft_record_cmd() {
 	local cmd="$1"
-	if [ -n "$DEVBOX_LOCKFILE" ] && [ -w "$(dirname "$DEVBOX_LOCKFILE")" ]; then
-		if [ ! -f "$DEVBOX_LOCKFILE" ] || ! grep -Fxq "$cmd" "$DEVBOX_LOCKFILE" 2>/dev/null; then
-			echo "$cmd" >> "$DEVBOX_LOCKFILE"
+	if [ -n "$CODERAFT_LOCKFILE" ] && [ -w "$(dirname "$CODERAFT_LOCKFILE")" ]; then
+		if [ ! -f "$CODERAFT_LOCKFILE" ] || ! grep -Fxq "$cmd" "$CODERAFT_LOCKFILE" 2>/dev/null; then
+			echo "$cmd" >> "$CODERAFT_LOCKFILE"
 		fi
 	fi
 }
 
-_devbox_wrap_and_record() {
+_coderaft_wrap_and_record() {
 	local bin="$1"; shift
 	local name="$1"; shift
 	"$bin" "$@"
@@ -439,32 +439,32 @@ _devbox_wrap_and_record() {
 			apt|apt-get)
 				# Track install/remove/purge/autoremove
 				if printf ' %s ' "$*" | grep -qE '(^| )(install|remove|purge|autoremove)( |$)'; then
-					devbox_record_cmd "$name $*"
+					coderaft_record_cmd "$name $*"
 				fi
 				;;
 			pip|pip3)
 				if [ "$1" = install ] || [ "$1" = uninstall ]; then
-					devbox_record_cmd "$name $*"
+					coderaft_record_cmd "$name $*"
 				fi
 				;;
 			npm)
 				# Track install and uninstall variants
 				if [ "$1" = install ] || [ "$1" = i ] || [ "$1" = add ] \
 				   || [ "$1" = uninstall ] || [ "$1" = remove ] || [ "$1" = rm ] || [ "$1" = r ] || [ "$1" = un ]; then
-					devbox_record_cmd "$name $*"
+					coderaft_record_cmd "$name $*"
 				fi
 				;;
 			yarn)
 				# Track add/remove and global add/remove
 				if [ "$1" = add ] || [ "$1" = remove ] || { [ "$1" = global ] && { [ "$2" = add ] || [ "$2" = remove ]; }; }; then
-					devbox_record_cmd "$name $*"
+					coderaft_record_cmd "$name $*"
 				fi
 				;;
 			pnpm)
 				# Track add/install and remove/uninstall variants
 				if [ "$1" = add ] || [ "$1" = install ] || [ "$1" = i ] \
 				   || [ "$1" = remove ] || [ "$1" = rm ] || [ "$1" = uninstall ] || [ "$1" = un ]; then
-					devbox_record_cmd "$name $*"
+					coderaft_record_cmd "$name $*"
 				fi
 				;;
 			corepack)
@@ -474,12 +474,12 @@ _devbox_wrap_and_record() {
 				subcmd="$1"; shift || true
 				if [ "$subcmd" = yarn ]; then
 					if [ "$1" = add ] || [ "$1" = remove ] || { [ "$1" = global ] && { [ "$2" = add ] || [ "$2" = remove ]; }; }; then
-						devbox_record_cmd "corepack yarn $*"
+						coderaft_record_cmd "corepack yarn $*"
 					fi
 				elif [ "$subcmd" = pnpm ]; then
 					if [ "$1" = add ] || [ "$1" = install ] || [ "$1" = i ] \
 					   || [ "$1" = remove ] || [ "$1" = rm ] || [ "$1" = uninstall ] || [ "$1" = un ]; then
-						devbox_record_cmd "corepack pnpm $*"
+						coderaft_record_cmd "corepack pnpm $*"
 					fi
 				fi
 				;;
@@ -497,23 +497,23 @@ YARN_BIN="$(command -v yarn 2>/dev/null || echo /usr/bin/yarn)"
 PNPM_BIN="$(command -v pnpm 2>/dev/null || echo /usr/bin/pnpm)"
 COREPACK_BIN="$(command -v corepack 2>/dev/null || echo /usr/bin/corepack)"
 
-apt()      { _devbox_wrap_and_record "$APT_BIN" apt "$@"; }
-apt-get()  { _devbox_wrap_and_record "$APTGET_BIN" apt-get "$@"; }
-pip()      { _devbox_wrap_and_record "$PIP_BIN" pip "$@"; }
-pip3()     { _devbox_wrap_and_record "$PIP3_BIN" pip3 "$@"; }
-npm()      { _devbox_wrap_and_record "$NPM_BIN" npm "$@"; }
-yarn()     { _devbox_wrap_and_record "$YARN_BIN" yarn "$@"; }
-pnpm()     { _devbox_wrap_and_record "$PNPM_BIN" pnpm "$@"; }
-corepack(){ _devbox_wrap_and_record "$COREPACK_BIN" corepack "$@"; }
+apt()      { _coderaft_wrap_and_record "$APT_BIN" apt "$@"; }
+apt-get()  { _coderaft_wrap_and_record "$APTGET_BIN" apt-get "$@"; }
+pip()      { _coderaft_wrap_and_record "$PIP_BIN" pip "$@"; }
+pip3()     { _coderaft_wrap_and_record "$PIP3_BIN" pip3 "$@"; }
+npm()      { _coderaft_wrap_and_record "$NPM_BIN" npm "$@"; }
+yarn()     { _coderaft_wrap_and_record "$YARN_BIN" yarn "$@"; }
+pnpm()     { _coderaft_wrap_and_record "$PNPM_BIN" pnpm "$@"; }
+corepack(){ _coderaft_wrap_and_record "$COREPACK_BIN" corepack "$@"; }
 BASHRC_EOF
 `
 
 	result, err := c.sdk.containerExec(ctx, boxName, []string{"bash", "-c", setupScript}, false)
 	if err != nil {
-		return fmt.Errorf("failed to setup devbox in box: %w", err)
+		return fmt.Errorf("failed to setup coderaft in box: %w", err)
 	}
 	if result != nil && result.ExitCode != 0 {
-		return fmt.Errorf("failed to setup devbox in box: exit code %d: %s", result.ExitCode, result.Stderr)
+		return fmt.Errorf("failed to setup coderaft in box: exit code %d: %s", result.ExitCode, result.Stderr)
 	}
 
 	return nil
@@ -522,7 +522,7 @@ BASHRC_EOF
 func (c *Client) StopBox(boxName string) error {
 
 	timeoutSec := 2
-	if v := strings.TrimSpace(os.Getenv("DEVBOX_STOP_TIMEOUT")); v != "" {
+	if v := strings.TrimSpace(os.Getenv("CODERAFT_STOP_TIMEOUT")); v != "" {
 		if n, err := strconv.Atoi(v); err == nil && n >= 0 {
 			timeoutSec = n
 		}
@@ -569,9 +569,9 @@ func (c *Client) GetBoxStatus(boxName string) (string, error) {
 func AttachShell(boxName string) error {
 
 	cmd := exec.Command(dockerCmd(), "exec", "-it",
-		"-e", fmt.Sprintf("DEVBOX_BOX_NAME=%s", boxName),
+		"-e", fmt.Sprintf("CODERAFT_BOX_NAME=%s", boxName),
 		boxName, "/bin/bash", "-c",
-		"export PS1='devbox(\\$PROJECT_NAME):\\w\\$ '; exec /bin/bash")
+		"export PS1='coderaft(\\$PROJECT_NAME):\\w\\$ '; exec /bin/bash")
 	cmd.Stdin = os.Stdin
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
@@ -642,7 +642,7 @@ func (c *Client) ListBoxes() ([]BoxInfo, error) {
 		for _, name := range ctr.Names {
 
 			cleanName := strings.TrimPrefix(name, "/")
-			if strings.HasPrefix(cleanName, "devbox_") {
+			if strings.HasPrefix(cleanName, "coderaft_") {
 				boxes = append(boxes, BoxInfo{
 					Names:  []string{cleanName},
 					Status: ctr.Status,

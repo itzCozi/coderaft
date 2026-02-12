@@ -98,7 +98,7 @@ linters-settings:
   gofmt:
     simplify: true
   goimports:
-    local-prefixes: devbox
+    local-prefixes: coderaft
   mnd:
     checks:
       - argument

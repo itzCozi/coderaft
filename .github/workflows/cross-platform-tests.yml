@@ -52,9 +52,9 @@ jobs:
       run: go test -race ./...
 
     - name: Build application
-      run: go build -v ./cmd/devbox
+      run: go build -v ./cmd/coderaft
 
     - name: Test binary execution
       run: |
-        ./devbox version || echo "Expected failure on non-Linux systems"
-        ./devbox --help
+        ./coderaft version || echo "Expected failure on non-Linux systems"
+        ./coderaft --help

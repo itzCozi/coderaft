@@ -47,7 +47,7 @@ func TestConfigManager_LoadAndSave(t *testing.T) {
 		Name:          "test-project",
 		BoxName:       "test-project-box",
 		BaseImage:     "ubuntu:22.04",
-		WorkspacePath: "/home/user/devbox/test-project",
+		WorkspacePath: "/home/user/coderaft/test-project",
 		Status:        "stopped",
 	}
 	config.Projects["test-project"] = testProject
@@ -114,7 +114,7 @@ func TestConfigManager_LoadProjectConfig(t *testing.T) {
 		WorkingDir: "/workspace",
 	}
 
-	configPath := filepath.Join(tempDir, "devbox.json")
+	configPath := filepath.Join(tempDir, "coderaft.json")
 	data, err := json.MarshalIndent(testProjectConfig, "", "  ")
 	if err != nil {
 		t.Fatalf("Failed to marshal project config: %v", err)

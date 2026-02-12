@@ -7,12 +7,12 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"devbox/internal/ui"
+	"coderaft/internal/ui"
 )
 
 var statusCmd = &cobra.Command{
 	Use:   "status [project]",
-	Short: "Show detailed status for a devbox project",
+	Short: "Show detailed status for a coderaft project",
 	Long:  "Displays container state, resource usage, uptime, ports, mounts, and other diagnostics for the project's box.",
 	Args:  cobra.MaximumNArgs(1),
 	RunE: func(cmd *cobra.Command, args []string) error {
@@ -26,10 +26,10 @@ var statusCmd = &cobra.Command{
 				return fmt.Errorf("failed to list boxes: %w", err)
 			}
 			if len(boxes) == 0 {
-				ui.Info("no devbox containers found.")
+				ui.Info("no coderaft containers found.")
 				return nil
 			}
-			ui.Header("devbox containers")
+			ui.Header("coderaft containers")
 			for _, b := range boxes {
 				name := ""
 				if len(b.Names) > 0 {
@@ -38,7 +38,7 @@ var statusCmd = &cobra.Command{
 				ui.Item("%s\t%s\t%s", name, b.Status, b.Image)
 			}
 			ui.Blank()
-			ui.Info("tip: devbox status <project> for detailed view.")
+			ui.Info("tip: coderaft status <project> for detailed view.")
 			return nil
 		}
 
@@ -58,7 +58,7 @@ var statusCmd = &cobra.Command{
 
 		box := project.BoxName
 		if box == "" {
-			box = fmt.Sprintf("devbox_%s", projectName)
+			box = fmt.Sprintf("coderaft_%s", projectName)
 		}
 
 		exists, err := dockerClient.BoxExists(box)
@@ -80,7 +80,7 @@ var statusCmd = &cobra.Command{
 		ports, _ := dockerClient.GetPortMappings(box)
 		mounts, _ := dockerClient.GetMounts(box)
 
-		ui.Header("devbox status")
+		ui.Header("coderaft status")
 		ui.Detail("project", projectName)
 		ui.Detail("box", box)
 		ui.Detail("image", project.BaseImage)

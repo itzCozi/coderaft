@@ -1,11 +1,11 @@
 ---
 title: Introduction
-description: Learn about devbox and its principles
+description: Learn about coderaft and its principles
 ---
 
-Welcome to the devbox documentation! This guide provides an overview of what devbox is, its core principles, and how it can help you manage your development environments effectively. devbox is a tool designed to create isolated, reproducible development environments using boxes (Docker containers). It simplifies the process of setting up and managing dependencies, ensuring that your projects run consistently across different machines.
+Welcome to the coderaft documentation! This guide provides an overview of what coderaft is, its core principles, and how it can help you manage your development environments effectively. coderaft is a tool designed to create isolated, reproducible development environments using boxes (Docker containers). It simplifies the process of setting up and managing dependencies, ensuring that your projects run consistently across different machines.
 
-#### Key Features of devbox
+#### Key Features of coderaft
 - **Isolation**: Each project gets its own isolated environment, preventing dependency conflicts.
 - **Reproducibility**: Environments can be easily recreated on any machine, ensuring consistent behavior.
 - **Simplicity**: Easy to set up and manage environments with simple commands.
@@ -18,7 +18,7 @@ Welcome to the devbox documentation! This guide provides an overview of what dev
 
 Traditional development environments can lead to "it works on my machine" issues, where code behaves differently depending on the local setup. This can cause significant delays and frustration, especially in team settings where multiple developers work on the same project on different machines with different dependencies and configurations.
 
-## Principles of devbox
+## Principles of coderaft
 ---
 
 1. **Box-based isolation**: Each development environment runs in a dedicated box (container), ensuring isolation from the host system and other projects.
@@ -29,4 +29,4 @@ Traditional development environments can lead to "it works on my machine" issues
 
 ## Getting Started
 
-To get started with devbox, follow this guide on [installation and setup](/docs/install).
+To get started with coderaft, follow this guide on [installation and setup](/docs/install).

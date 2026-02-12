@@ -8,7 +8,7 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"devbox/internal/ui"
+	"coderaft/internal/ui"
 )
 
 var (
@@ -23,23 +23,23 @@ var (
 
 var cleanupCmd = &cobra.Command{
 	Use:   "cleanup [flags]",
-	Short: "Clean up Docker resources and devbox artifacts",
-	Long: `Clean up various Docker resources and devbox-related artifacts.
+	Short: "Clean up Docker resources and coderaft artifacts",
+	Long: `Clean up various Docker resources and coderaft-related artifacts.
 This command helps maintain a clean system by removing:
 
-- Orphaned devbox boxes (not tracked in config)
+- Orphaned coderaft boxes (not tracked in config)
 - Unused Docker images
 - Unused Docker volumes
 - Unused Docker networks
 - Dangling build artifacts
 
 Examples:
-  devbox cleanup                    # Interactive cleanup menu
-  devbox cleanup --orphaned         # Remove orphaned boxes only
-  devbox cleanup --images           # Remove unused images only
-  devbox cleanup --all              # Clean up everything
-  devbox cleanup --system-prune     # Run docker system prune
-  devbox cleanup --dry-run          # Show what would be cleaned`,
+  coderaft cleanup                    # Interactive cleanup menu
+  coderaft cleanup --orphaned         # Remove orphaned boxes only
+  coderaft cleanup --images           # Remove unused images only
+  coderaft cleanup --all              # Clean up everything
+  coderaft cleanup --system-prune     # Run docker system prune
+  coderaft cleanup --dry-run          # Show what would be cleaned`,
 	Args: cobra.NoArgs,
 	RunE: func(cmd *cobra.Command, args []string) error {
 
@@ -92,7 +92,7 @@ Examples:
 }
 
 func runInteractiveCleanup() error {
-	ui.Header("Devbox Cleanup")
+	ui.Header("Coderaft Cleanup")
 	ui.Blank()
 	ui.Info("Available options:")
 	ui.Info("  1. Clean up orphaned boxes")
@@ -181,7 +181,7 @@ func cleanupOrphanedFromCleanup() error {
 	for _, box := range boxes {
 		for _, name := range box.Names {
 			cleanName := strings.TrimPrefix(name, "/")
-			if strings.HasPrefix(cleanName, "devbox_") && !trackedboxes[cleanName] {
+			if strings.HasPrefix(cleanName, "coderaft_") && !trackedboxes[cleanName] {
 				orphanedboxes = append(orphanedboxes, cleanName)
 			}
 		}
@@ -385,7 +385,7 @@ func showSystemStatus() error {
 	}
 
 	ui.Blank()
-	ui.Info("Devbox Boxes:")
+	ui.Info("Coderaft Boxes:")
 	boxes, err := dockerClient.ListBoxes()
 	if err != nil {
 		ui.Error("failed to list boxes: %v", err)
@@ -423,7 +423,7 @@ func showSystemStatus() error {
 func init() {
 	cleanupCmd.Flags().BoolVarP(&dryRunFlag, "dry-run", "n", false, "Show what would be cleaned without actually removing anything")
 	cleanupCmd.Flags().BoolVarP(&allFlag, "all", "a", false, "Clean up all unused resources (boxes, images, volumes, networks)")
-	cleanupCmd.Flags().BoolVar(&orphanedFlag, "orphaned", false, "Clean up orphaned devbox boxes only")
+	cleanupCmd.Flags().BoolVar(&orphanedFlag, "orphaned", false, "Clean up orphaned coderaft boxes only")
 	cleanupCmd.Flags().BoolVar(&imagesFlag, "images", false, "Clean up unused Docker images only")
 	cleanupCmd.Flags().BoolVar(&volumesFlag, "volumes", false, "Clean up unused Docker volumes only")
 	cleanupCmd.Flags().BoolVar(&networksFlag, "networks", false, "Clean up unused Docker networks only")

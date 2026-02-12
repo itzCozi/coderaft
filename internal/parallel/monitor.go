@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"time"
 
-	"devbox/internal/ui"
+	"coderaft/internal/ui"
 )
 
 type PerformanceMonitor struct {

@@ -49,8 +49,8 @@ func BenchmarkGenerateDockerfile(b *testing.B) {
 			"PATH":             "/usr/local/go/bin:$PATH",
 		},
 		Labels: map[string]string{
-			"devbox.project": "bench",
-			"devbox.version": "1.0",
+			"coderaft.project": "bench",
+			"coderaft.version": "1.0",
 		},
 		WorkingDir:  "/workspace",
 		ProjectName: "bench-project",

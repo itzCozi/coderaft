@@ -9,12 +9,12 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"devbox/internal/ui"
+	"coderaft/internal/ui"
 )
 
 var restoreCmd = &cobra.Command{
 	Use:   "restore <project> <backup-dir>",
-	Short: "Restore a project's devbox environment from a backup directory",
+	Short: "Restore a project's coderaft environment from a backup directory",
 	Args:  cobra.ExactArgs(2),
 	RunE: func(cmd *cobra.Command, args []string) error {
 		projectName := args[0]

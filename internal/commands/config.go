@@ -8,19 +8,19 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"devbox/internal/config"
-	"devbox/internal/ui"
+	"coderaft/internal/config"
+	"coderaft/internal/ui"
 )
 
 var configCmd = &cobra.Command{
 	Use:   "config <command>",
-	Short: "Manage devbox configurations",
-	Long: `Manage devbox configurations including project-specific settings and global options.
+	Short: "Manage coderaft configurations",
+	Long: `Manage coderaft configurations including project-specific settings and global options.
 
 Available commands:
-  generate <project>    Generate devbox.json for project
+  generate <project>    Generate coderaft.json for project
   validate <project>    Validate project configuration
-	schema                Print JSON Schema for devbox.json
+	schema                Print JSON Schema for coderaft.json
   show <project>        Show project configuration
   templates             List available templates
   global               Show global configuration`,
@@ -72,9 +72,9 @@ func generateProjectConfig(projectName string) error {
 		return fmt.Errorf("project '%s' not found", projectName)
 	}
 
-	configPath := filepath.Join(project.WorkspacePath, "devbox.json")
+	configPath := filepath.Join(project.WorkspacePath, "coderaft.json")
 	if _, err := os.Stat(configPath); err == nil && !forceFlag {
-		return fmt.Errorf("devbox.json already exists. Use --force to overwrite")
+		return fmt.Errorf("coderaft.json already exists. Use --force to overwrite")
 	}
 
 	projectConfig := configManager.GetDefaultProjectConfig(projectName)
@@ -84,7 +84,7 @@ func generateProjectConfig(projectName string) error {
 		return fmt.Errorf("failed to save project configuration: %w", err)
 	}
 
-	ui.Success("generated devbox.json for project '%s'", projectName)
+	ui.Success("generated coderaft.json for project '%s'", projectName)
 	ui.Detail("configuration file", configPath)
 	ui.Blank()
 	ui.Info("edit the file to customize your development environment.")
@@ -114,8 +114,8 @@ func validateProjectConfig(projectName string) error {
 	}
 
 	if projectConfig == nil {
-		ui.Info("no devbox.json found for project '%s'", projectName)
-		ui.Info("generate one with: devbox config generate %s", projectName)
+		ui.Info("no coderaft.json found for project '%s'", projectName)
+		ui.Info("generate one with: coderaft config generate %s", projectName)
 		return nil
 	}
 
@@ -182,13 +182,13 @@ func showProjectConfig(projectName string) error {
 
 	if projectConfig == nil {
 		ui.Blank()
-		ui.Info("no devbox.json configuration file found.")
-		ui.Info("generate one with: devbox config generate %s", projectName)
+		ui.Info("no coderaft.json configuration file found.")
+		ui.Info("generate one with: coderaft config generate %s", projectName)
 		return nil
 	}
 
 	ui.Blank()
-	ui.Info("project configuration (devbox.json):")
+	ui.Info("project configuration (coderaft.json):")
 
 	if projectConfig.BaseImage != "" && projectConfig.BaseImage != project.BaseImage {
 		ui.Detail("base image override", projectConfig.BaseImage)
@@ -309,8 +309,8 @@ func showTemplates() error {
 
 	ui.Blank()
 	ui.Info("usage:")
-	ui.Info("  devbox init myproject --template python")
-	ui.Info("  devbox init myproject --template nodejs")
+	ui.Info("  coderaft init myproject --template python")
+	ui.Info("  coderaft init myproject --template nodejs")
 
 	return nil
 }
@@ -321,7 +321,7 @@ func showGlobalConfig() error {
 		return fmt.Errorf("failed to load configuration: %w", err)
 	}
 
-	ui.Header("global devbox configuration")
+	ui.Header("global coderaft configuration")
 
 	if cfg.Settings != nil {
 		ui.Info("settings:")

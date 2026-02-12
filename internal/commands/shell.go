@@ -5,8 +5,8 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"devbox/internal/docker"
-	"devbox/internal/ui"
+	"coderaft/internal/docker"
+	"coderaft/internal/ui"
 )
 
 var keepRunningFlag bool
@@ -30,7 +30,7 @@ var shellCmd = &cobra.Command{
 
 		project, exists := cfg.GetProject(projectName)
 		if !exists {
-			return fmt.Errorf("project '%s' not found. Run 'devbox init %s' first", projectName, projectName)
+			return fmt.Errorf("project '%s' not found. Run 'coderaft init %s' first", projectName, projectName)
 		}
 
 		exists, err = dockerClient.BoxExists(project.BoxName)
@@ -39,7 +39,7 @@ var shellCmd = &cobra.Command{
 		}
 
 		if !exists {
-			return fmt.Errorf("box '%s' not found. Run 'devbox init %s' to recreate", project.BoxName, projectName)
+			return fmt.Errorf("box '%s' not found. Run 'coderaft init %s' to recreate", project.BoxName, projectName)
 		}
 
 		status, err := dockerClient.GetBoxStatus(project.BoxName)
@@ -55,9 +55,9 @@ var shellCmd = &cobra.Command{
 		}
 
 		if !dockerClient.IsBoxInitialized(project.BoxName) {
-			ui.Status("setting up devbox commands in box...")
-			if err := dockerClient.SetupDevboxInBox(project.BoxName, projectName); err != nil {
-				return fmt.Errorf("failed to setup devbox in box: %w", err)
+			ui.Status("setting up coderaft commands in box...")
+			if err := dockerClient.SetupCoderaftInBox(project.BoxName, projectName); err != nil {
+				return fmt.Errorf("failed to setup coderaft in box: %w", err)
 			}
 		}
 

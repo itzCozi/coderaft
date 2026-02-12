@@ -11,7 +11,7 @@ import (
 	"strings"
 	"time"
 
-	"devbox/internal/ui"
+	"coderaft/internal/ui"
 )
 
 type ExecFunc func(ctx context.Context, containerID string, cmd []string, showOutput bool) (stdout, stderr string, exitCode int, err error)

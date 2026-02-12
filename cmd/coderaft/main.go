@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"os"
 
-	"devbox/internal/commands"
+	"coderaft/internal/commands"
 )
 
 func main() {

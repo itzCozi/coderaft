@@ -10,7 +10,7 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"devbox/internal/ui"
+	"coderaft/internal/ui"
 )
 
 type lockFile struct {
@@ -75,7 +75,7 @@ var (
 
 var lockCmd = &cobra.Command{
 	Use:   "lock <project>",
-	Short: "Generate a comprehensive devbox.lock.json for a project",
+	Short: "Generate a comprehensive coderaft.lock.json for a project",
 	Args:  cobra.ExactArgs(1),
 	RunE: func(cmd *cobra.Command, args []string) error {
 		projectName := args[0]
@@ -86,7 +86,7 @@ var lockCmd = &cobra.Command{
 		}
 		proj, ok := cfg.GetProject(projectName)
 		if !ok {
-			return fmt.Errorf("project '%s' not found. Run 'devbox init %s' first", projectName, projectName)
+			return fmt.Errorf("project '%s' not found. Run 'coderaft init %s' first", projectName, projectName)
 		}
 
 		exists, err := dockerClient.BoxExists(proj.BoxName)
@@ -94,7 +94,7 @@ var lockCmd = &cobra.Command{
 			return err
 		}
 		if !exists {
-			return fmt.Errorf("box '%s' does not exist. Start it with 'devbox up %s'", proj.BoxName, projectName)
+			return fmt.Errorf("box '%s' does not exist. Start it with 'coderaft up %s'", proj.BoxName, projectName)
 		}
 		status, err := dockerClient.GetBoxStatus(proj.BoxName)
 		if err != nil {
@@ -179,7 +179,7 @@ var lockCmd = &cobra.Command{
 
 		outPath := lockOutput
 		if strings.TrimSpace(outPath) == "" {
-			outPath = filepath.Join(proj.WorkspacePath, "devbox.lock.json")
+			outPath = filepath.Join(proj.WorkspacePath, "coderaft.lock.json")
 		}
 
 		b, err := json.MarshalIndent(lf, "", "  ")
@@ -197,7 +197,7 @@ var lockCmd = &cobra.Command{
 
 func init() {
 	rootCmd.AddCommand(lockCmd)
-	lockCmd.Flags().StringVarP(&lockOutput, "output", "o", "", "Output path for lock file (default: <workspace>/devbox.lock.json)")
+	lockCmd.Flags().StringVarP(&lockOutput, "output", "o", "", "Output path for lock file (default: <workspace>/coderaft.lock.json)")
 }
 
 func tryExecList(boxName, cmd string) []string {

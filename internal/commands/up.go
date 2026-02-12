@@ -8,8 +8,8 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"devbox/internal/config"
-	"devbox/internal/ui"
+	"coderaft/internal/config"
+	"coderaft/internal/ui"
 )
 
 var (
@@ -20,8 +20,8 @@ var keepRunningUpFlag bool
 
 var upCmd = &cobra.Command{
 	Use:   "up",
-	Short: "Start a devbox environment from the current folder's devbox.json",
-	Long:  "Reads devbox.json in the current directory and boots the environment so new teammates can simply run 'devbox up'.",
+	Short: "Start a coderaft environment from the current folder's coderaft.json",
+	Long:  "Reads coderaft.json in the current directory and boots the environment so new teammates can simply run 'coderaft up'.",
 	Args:  cobra.NoArgs,
 	RunE: func(cmd *cobra.Command, args []string) error {
 		cwd, err := os.Getwd()
@@ -31,14 +31,14 @@ var upCmd = &cobra.Command{
 
 		projectConfig, err := configManager.LoadProjectConfig(cwd)
 		if err != nil {
-			return fmt.Errorf("failed to load devbox.json: %w", err)
+			return fmt.Errorf("failed to load coderaft.json: %w", err)
 		}
 		if projectConfig == nil {
-			return fmt.Errorf("no devbox.json found in %s", cwd)
+			return fmt.Errorf("no coderaft.json found in %s", cwd)
 		}
 
 		if err := configManager.ValidateProjectConfig(projectConfig); err != nil {
-			return fmt.Errorf("invalid devbox.json: %w", err)
+			return fmt.Errorf("invalid coderaft.json: %w", err)
 		}
 
 		projectName := projectConfig.Name
@@ -52,7 +52,7 @@ var upCmd = &cobra.Command{
 			return fmt.Errorf("failed to load global config: %w", err)
 		}
 
-		boxName := fmt.Sprintf("devbox_%s", projectName)
+		boxName := fmt.Sprintf("coderaft_%s", projectName)
 		baseImage := cfg.GetEffectiveBaseImage(&config.Project{Name: projectName, BaseImage: projectConfig.BaseImage}, projectConfig)
 
 		workspaceBox := "/workspace"
@@ -77,15 +77,15 @@ var upCmd = &cobra.Command{
 			}
 
 			if !dockerClient.IsBoxInitialized(boxName) {
-				if err := dockerClient.SetupDevboxInBox(boxName, projectName); err != nil {
-					return fmt.Errorf("failed to setup devbox in existing box: %w", err)
+				if err := dockerClient.SetupCoderaftInBox(boxName, projectName); err != nil {
+					return fmt.Errorf("failed to setup coderaft in existing box: %w", err)
 				}
 			}
 			ui.Success("environment is up")
 			ui.Detail("workspace", cwd)
 			ui.Detail("box", boxName)
 			ui.Detail("image", baseImage)
-			ui.Info("hint: run 'devbox shell %s' to enter the environment.", projectName)
+			ui.Info("hint: run 'coderaft shell %s' to enter the environment.", projectName)
 
 			if cfg.Settings != nil && cfg.Settings.AutoStopOnExit && !keepRunningUpFlag {
 				if idle, err := dockerClient.IsContainerIdle(boxName); err == nil && idle {
@@ -145,7 +145,7 @@ var upCmd = &cobra.Command{
 		ui.Detail("workspace", cwd)
 		ui.Detail("box", boxName)
 		ui.Detail("image", baseImage)
-		ui.Info("hint: run 'devbox shell %s' to enter the environment.", projectName)
+		ui.Info("hint: run 'coderaft shell %s' to enter the environment.", projectName)
 
 		if cfg.Settings != nil && cfg.Settings.AutoStopOnExit && !keepRunningUpFlag {
 			if idle, err := dockerClient.IsContainerIdle(boxName); err == nil && idle {

@@ -5,8 +5,8 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"devbox/internal/docker"
-	"devbox/internal/ui"
+	"coderaft/internal/docker"
+	"coderaft/internal/ui"
 )
 
 var keepRunningRunFlag bool
@@ -31,7 +31,7 @@ var runCmd = &cobra.Command{
 
 		project, exists := cfg.GetProject(projectName)
 		if !exists {
-			return fmt.Errorf("project '%s' not found. Run 'devbox init %s' first", projectName, projectName)
+			return fmt.Errorf("project '%s' not found. Run 'coderaft init %s' first", projectName, projectName)
 		}
 
 		exists, err = dockerClient.BoxExists(project.BoxName)
@@ -40,7 +40,7 @@ var runCmd = &cobra.Command{
 		}
 
 		if !exists {
-			return fmt.Errorf("box '%s' not found. Run 'devbox init %s' to recreate", project.BoxName, projectName)
+			return fmt.Errorf("box '%s' not found. Run 'coderaft init %s' to recreate", project.BoxName, projectName)
 		}
 
 		status, err := dockerClient.GetBoxStatus(project.BoxName)

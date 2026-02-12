@@ -8,10 +8,10 @@ import (
 	"strings"
 	"time"
 
-	"devbox/internal/config"
-	"devbox/internal/docker"
-	"devbox/internal/parallel"
-	"devbox/internal/ui"
+	"coderaft/internal/config"
+	"coderaft/internal/docker"
+	"coderaft/internal/parallel"
+	"coderaft/internal/ui"
 )
 
 type OptimizedSetup struct {
@@ -25,7 +25,7 @@ type DockerClientInterface interface {
 	CreateBoxWithConfig(name, image, workspaceHost, workspaceBox string, projectConfig interface{}) (string, error)
 	StartBox(boxID string) error
 	WaitForBox(boxName string, timeout time.Duration) error
-	SetupDevboxInBoxWithUpdate(boxName, projectName string) error
+	SetupCoderaftInBoxWithUpdate(boxName, projectName string) error
 	ExecuteSetupCommandsWithOutput(boxName string, commands []string, showOutput bool) error
 	QueryPackagesParallel(boxName string) (aptList, pipList, npmList, yarnList, pnpmList []string)
 	ImageExists(ref string) bool
@@ -68,7 +68,7 @@ func (optSetup *OptimizedSetup) OptimizedSystemUpdate(boxName string) error {
 }
 
 func (optSetup *OptimizedSetup) FastInit(projectName string, projectConfig *config.ProjectConfig, cfg *config.Config, workspacePath string, forceFlag bool) error {
-	boxName := fmt.Sprintf("devbox_%s", projectName)
+	boxName := fmt.Sprintf("coderaft_%s", projectName)
 	baseImage := cfg.GetEffectiveBaseImage(&config.Project{
 		Name:      projectName,
 		BaseImage: "ubuntu:22.04",
@@ -133,9 +133,9 @@ func (optSetup *OptimizedSetup) FastInit(projectName string, projectConfig *conf
 		return fmt.Errorf("box failed to start: %w", err)
 	}
 
-	ui.Status("setting up devbox commands...")
-	if err := optSetup.dockerClient.SetupDevboxInBoxWithUpdate(boxName, projectName); err != nil {
-		return fmt.Errorf("failed to setup devbox in box: %w", err)
+	ui.Status("setting up coderaft commands...")
+	if err := optSetup.dockerClient.SetupCoderaftInBoxWithUpdate(boxName, projectName); err != nil {
+		return fmt.Errorf("failed to setup coderaft in box: %w", err)
 	}
 
 	if effectiveImage == baseImage && projectConfig != nil && len(projectConfig.SetupCommands) > 0 {
@@ -194,11 +194,11 @@ func (optSetup *OptimizedSetup) FastUp(projectConfig *config.ProjectConfig, proj
 		return fmt.Errorf("box failed to start: %w", err)
 	}
 
-	if err := optSetup.dockerClient.SetupDevboxInBoxWithUpdate(boxName, projectName); err != nil {
-		return fmt.Errorf("failed to setup devbox in box: %w", err)
+	if err := optSetup.dockerClient.SetupCoderaftInBoxWithUpdate(boxName, projectName); err != nil {
+		return fmt.Errorf("failed to setup coderaft in box: %w", err)
 	}
 
-	lockfilePath := filepath.Join(cwd, "devbox.lock")
+	lockfilePath := filepath.Join(cwd, "coderaft.lock")
 	if _, err := os.Stat(lockfilePath); err == nil {
 		ui.Status("processing lock file...")
 		if err := optSetup.processLockFile(boxName, lockfilePath); err != nil {

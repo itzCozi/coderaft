@@ -9,8 +9,8 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"devbox/internal/config"
-	"devbox/internal/docker"
+	"coderaft/internal/config"
+	"coderaft/internal/docker"
 )
 
 var (
@@ -20,13 +20,13 @@ var (
 )
 
 var rootCmd = &cobra.Command{
-	Use:   "devbox",
+	Use:   "coderaft",
 	Short: "Isolated development environments for anything",
-	Long:  `devbox creates isolated development environments, contained in a project's Docker box. Each project operates in its own disposable environment, while your code remains neatly organized in a simple, flat folder on the host machine.`,
+	Long:  `coderaft creates isolated development environments, contained in a project's Docker box. Each project operates in its own disposable environment, while your code remains neatly organized in a simple, flat folder on the host machine.`,
 	PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
 
 		if runtime.GOOS != "linux" && runtime.GOOS != "darwin" && runtime.GOOS != "windows" {
-			return fmt.Errorf("devbox requires Docker and supports Linux, macOS, and Windows")
+			return fmt.Errorf("coderaft requires Docker and supports Linux, macOS, and Windows")
 		}
 
 		var err error
@@ -104,5 +104,5 @@ func getWorkspacePath(projectName string) (string, error) {
 		return "", fmt.Errorf("failed to get home directory: %w", err)
 	}
 
-	return filepath.Join(homeDir, "devbox", projectName), nil
+	return filepath.Join(homeDir, "coderaft", projectName), nil
 }

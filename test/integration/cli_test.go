@@ -10,8 +10,8 @@ import (
 )
 
 func TestMain(m *testing.M) {
-	if err := buildDevboxBinary(); err != nil {
-		panic("Failed to build devbox binary for testing: " + err.Error())
+	if err := buildCoderaftBinary(); err != nil {
+		panic("Failed to build coderaft binary for testing: " + err.Error())
 	}
 
 	code := m.Run()
@@ -21,18 +21,18 @@ func TestMain(m *testing.M) {
 	os.Exit(code)
 }
 
-func buildDevboxBinary() error {
-	binaryName := "devbox-test"
-	cmd := exec.Command("go", "build", "-o", binaryName, "./cmd/devbox")
+func buildCoderaftBinary() error {
+	binaryName := "coderaft-test"
+	cmd := exec.Command("go", "build", "-o", binaryName, "./cmd/coderaft")
 	cmd.Dir = getProjectRoot()
 	if err := cmd.Run(); err != nil {
-		return fmt.Errorf("failed to build devbox binary: %w", err)
+		return fmt.Errorf("failed to build coderaft binary: %w", err)
 	}
 	return nil
 }
 
 func cleanupTestBinary() {
-	testBinary := filepath.Join(getProjectRoot(), "devbox-test")
+	testBinary := filepath.Join(getProjectRoot(), "coderaft-test")
 	os.Remove(testBinary)
 }
 
@@ -43,7 +43,7 @@ func getProjectRoot() string {
 
 func getTestBinaryPath() string {
 	basePath := getProjectRoot()
-	return filepath.Join(basePath, "devbox-test")
+	return filepath.Join(basePath, "coderaft-test")
 }
 
 func TestVersionCommand(t *testing.T) {
@@ -52,11 +52,11 @@ func TestVersionCommand(t *testing.T) {
 
 	outputStr := strings.TrimSpace(string(output))
 
-	if err != nil && !strings.Contains(outputStr, "devbox") {
+	if err != nil && !strings.Contains(outputStr, "coderaft") {
 		t.Fatalf("Failed to run version command: %v, Output: %s", err, outputStr)
 	}
 
-	expectedPrefix := "devbox (v"
+	expectedPrefix := "coderaft (v"
 	if strings.Contains(outputStr, expectedPrefix) && strings.Contains(outputStr, "1.0") {
 		return
 	}
@@ -87,13 +87,13 @@ func TestHelpCommand(t *testing.T) {
 
 			outputStr := string(output)
 
-			if !strings.Contains(outputStr, "devbox") && !strings.Contains(outputStr, "Usage:") {
+			if !strings.Contains(outputStr, "coderaft") && !strings.Contains(outputStr, "Usage:") {
 				if len(output) == 0 && err != nil {
 					t.Fatalf("Failed to run help command %v: %v", tt.args, err)
 				}
 			}
 
-			if strings.Contains(outputStr, "devbox") || strings.Contains(outputStr, "Usage:") {
+			if strings.Contains(outputStr, "coderaft") || strings.Contains(outputStr, "Usage:") {
 				return
 			}
 

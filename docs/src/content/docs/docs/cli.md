@@ -1,12 +1,12 @@
 ---
 title: CLI Reference
-description: Comprehensive reference for all devbox commands and options
+description: Comprehensive reference for all coderaft commands and options
 tableOfContents:
   minHeadingLevel: 2
   maxHeadingLevel: 4
 ---
 
-Complete reference for all devbox commands, options, and usage patterns.
+Complete reference for all coderaft commands, options, and usage patterns.
 
 ## Global Options
 
@@ -20,37 +20,37 @@ All commands support these global options:
 
 ---
 
-### `devbox status`
+### `coderaft status`
 
-Show detailed container status and resource usage for a project. With no project specified, prints a quick overview of all devbox containers.
+Show detailed container status and resource usage for a project. With no project specified, prints a quick overview of all coderaft containers.
 
 **Syntax:**
 ```bash
-devbox status [project]
+coderaft status [project]
 ```
 
 **Behavior:**
 - With a project: shows state, uptime, CPU%, memory usage/%, network I/O, block I/O, PIDs, ports, and mounts
-- Without a project: lists all devbox containers with status and image
+- Without a project: lists all coderaft containers with status and image
 
 **Examples:**
 ```bash
-# Overview of all devbox containers
-devbox status
+# Overview of all coderaft containers
+coderaft status
 
 # Detailed status for a specific project
-devbox status myproject
+coderaft status myproject
 ```
 
 ---
 
-### `devbox up`
+### `coderaft up`
 
-Start a devbox environment from a shared devbox.json in the current directory. Perfect for onboarding: clone the repo and run `devbox up`.
+Start a coderaft environment from a shared coderaft.json in the current directory. Perfect for onboarding: clone the repo and run `coderaft up`.
 
 **Syntax:**
 ```bash
-devbox up [--dotfiles <path>] [--keep-running]
+coderaft up [--dotfiles <path>] [--keep-running]
 ```
 
 **Options:**
@@ -58,57 +58,57 @@ devbox up [--dotfiles <path>] [--keep-running]
 - `--keep-running`: Keep the box running after setup completes (overrides auto-stop-on-idle)
 
 **Behavior:**
-- Reads `./devbox.json`
-- Creates/starts a box named `devbox_<name>` where `<name>` comes from `devbox.json`'s `name` (or the folder name)
+- Reads `./coderaft.json`
+- Creates/starts a box named `coderaft_<name>` where `<name>` comes from `coderaft.json`'s `name` (or the folder name)
 - Applies ports, env, and volumes from configuration
 - Runs a system update, then `setup_commands`
-- Installs the devbox wrapper for nice shell UX
- - Records package installations you perform inside the box to `devbox.lock` (apt/pip/npm/yarn/pnpm). On rebuilds, these commands are replayed to reproduce the environment.
- - If global setting `auto_stop_on_exit` is enabled (default), `devbox up` stops the container right away if it is idle (no exposed ports and only the init process running). Use `--keep-running` to leave it running.
- - When `auto_stop_on_exit` is enabled and your `devbox.json` does not specify a `restart` policy, devbox uses `--restart no` to prevent the container from auto-restarting after being stopped.
+- Installs the coderaft wrapper for nice shell UX
+ - Records package installations you perform inside the box to `coderaft.lock` (apt/pip/npm/yarn/pnpm). On rebuilds, these commands are replayed to reproduce the environment.
+ - If global setting `auto_stop_on_exit` is enabled (default), `coderaft up` stops the container right away if it is idle (no exposed ports and only the init process running). Use `--keep-running` to leave it running.
+ - When `auto_stop_on_exit` is enabled and your `coderaft.json` does not specify a `restart` policy, coderaft uses `--restart no` to prevent the container from auto-restarting after being stopped.
 
 **Examples:**
 ```bash
-# Start from current folder's devbox.json
-devbox up
+# Start from current folder's coderaft.json
+coderaft up
 
 # Mount your dotfiles
-devbox up --dotfiles ~/.dotfiles
+coderaft up --dotfiles ~/.dotfiles
 ```
 
 ---
 
-### `devbox init`
+### `coderaft init`
 
-Create a new devbox project with its own Docker box (container).
+Create a new coderaft project with its own Docker box (container).
 
 **Syntax:**
 ```bash
-devbox init <project> [flags]
+coderaft init <project> [flags]
 ```
 
 **Options:**
 - `--force, -f`: Force initialization, overwriting existing project
 - `--template, -t <template>`: Initialize from template (python, nodejs, go, web)
-- `--generate-config, -g`: Generate devbox.json configuration file
+- `--generate-config, -g`: Generate coderaft.json configuration file
 - `--config-only, -c`: Generate configuration file only (don't create box)
 
 **Examples:**
 ```bash
 # Basic project
-devbox init myproject
+coderaft init myproject
 
 # Python project with template
-devbox init python-app --template python
+coderaft init python-app --template python
 
 # Force overwrite existing project
-devbox init myproject --force
+coderaft init myproject --force
 
 # Generate config file only
-devbox init myproject --config-only --template nodejs
+coderaft init myproject --config-only --template nodejs
 
 # Create with custom configuration
-devbox init webapp --generate-config
+coderaft init webapp --generate-config
 ```
 
 **Templates:**
@@ -119,22 +119,22 @@ devbox init webapp --generate-config
 
 ---
 
-### `devbox shell`
+### `coderaft shell`
 
 Open an interactive bash shell in the project's box.
 
 **Syntax:**
 ```bash
-devbox shell <project> [--keep-running]
+coderaft shell <project> [--keep-running]
 ```
 
 **Examples:**
 ```bash
 # Enter project environment
-devbox shell myproject
+coderaft shell myproject
 
 # Start stopped box and enter shell
-devbox shell python-app
+coderaft shell python-app
 ```
 
 **Notes:**
@@ -147,28 +147,28 @@ devbox shell python-app
 
 ---
 
-### `devbox run`
+### `coderaft run`
 
 Run an arbitrary command inside the project's box.
 
 **Syntax:**
 ```bash
-devbox run <project> <command> [args...] [--keep-running]
+coderaft run <project> <command> [args...] [--keep-running]
 ```
 
 **Examples:**
 ```bash
 # Run single command
-devbox run myproject python3 --version
+coderaft run myproject python3 --version
 
 # Run with arguments
-devbox run myproject apt install -y htop
+coderaft run myproject apt install -y htop
 
 # Complex command with pipes
-devbox run myproject "cd /workspace && python3 -m http.server 8000"
+coderaft run myproject "cd /workspace && python3 -m http.server 8000"
 
 # Execute script
-devbox run myproject bash /workspace/setup.sh
+coderaft run myproject bash /workspace/setup.sh
 ```
 
 **Notes:**
@@ -180,22 +180,22 @@ devbox run myproject bash /workspace/setup.sh
 
 ---
 
-### `devbox stop`
+### `coderaft stop`
 
 Stop a project's box if it's running.
 
 **Syntax:**
 ```bash
-devbox stop <project>
+coderaft stop <project>
 ```
 
 **Examples:**
 ```bash
 # Stop a running box
-devbox stop myproject
+coderaft stop myproject
 
 # Stop another project's box
-devbox stop webapp
+coderaft stop webapp
 ```
 
 **Notes:**
@@ -204,13 +204,13 @@ devbox stop webapp
 
 ---
 
-### `devbox destroy`
+### `coderaft destroy`
 
 Stop and remove the project's box.
 
 **Syntax:**
 ```bash
-devbox destroy <project> [flags]
+coderaft destroy <project> [flags]
 ```
 
 **Options:**
@@ -219,26 +219,26 @@ devbox destroy <project> [flags]
 **Examples:**
 ```bash
 # Destroy with confirmation
-devbox destroy myproject
+coderaft destroy myproject
 
 # Force destroy without prompt
-devbox destroy myproject --force
+coderaft destroy myproject --force
 ```
 
 **Notes:**
-- Preserves project files in `~/devbox/<project>/`
-- Box can be recreated with `devbox init`
-- Use `rm -rf ~/devbox/<project>/` to remove files
+- Preserves project files in `~/coderaft/<project>/`
+- Box can be recreated with `coderaft init`
+- Use `rm -rf ~/coderaft/<project>/` to remove files
 
 ---
 
-### `devbox list`
+### `coderaft list`
 
 Show all managed projects and their box status.
 
 **Syntax:**
 ```bash
-devbox list [flags]
+coderaft list [flags]
 ```
 
 **Options:**
@@ -247,36 +247,36 @@ devbox list [flags]
 **Examples:**
 ```bash
 # Basic list
-devbox list
+coderaft list
 
 # Detailed information
-devbox list --verbose
+coderaft list --verbose
 ```
 
 **Output Format:**
 ```
-DEVBOX PROJECTS
+CODERAFT PROJECTS
 PROJECT              BOX                  STATUS          CONFIG       WORKSPACE
 --------------------  --------------------  ---------------  ------------  ------------------------------
-myproject            devbox_myproject     Up 2 hours      devbox.json  /home/user/devbox/myproject
-webapp               devbox_webapp        Exited          none         /home/user/devbox/webapp
+myproject            coderaft_myproject     Up 2 hours      coderaft.json  /home/user/coderaft/myproject
+webapp               coderaft_webapp        Exited          none         /home/user/coderaft/webapp
 
 Total projects: 2
 ```
 
 ---
 
-### `devbox lock`
+### `coderaft lock`
 
-Generate a comprehensive environment snapshot as `devbox.lock.json` for a project. This is ideal for sharing/auditing the exact box image, container configuration, and globally installed packages.
+Generate a comprehensive environment snapshot as `coderaft.lock.json` for a project. This is ideal for sharing/auditing the exact box image, container configuration, and globally installed packages.
 
 **Syntax:**
 ```bash
-devbox lock <project> [-o, --output <path>]
+coderaft lock <project> [-o, --output <path>]
 ```
 
 **Options:**
-- `-o, --output <path>`: Write the lock file to a custom path. Defaults to `<workspace>/devbox.lock.json`.
+- `-o, --output <path>`: Write the lock file to a custom path. Defaults to `<workspace>/coderaft.lock.json`.
 
 **Behavior:**
 - Ensures the project's box is running (starts it if needed).
@@ -291,17 +291,17 @@ devbox lock <project> [-o, --output <path>]
     - pip: `index-url` and `extra-index-url`
     - npm/yarn/pnpm: global registry URLs
     - apt: `sources.list` lines, snapshot base URL if present, and OS release codename
-- If `devbox.json` exists in the workspace, includes its `setup_commands` for context.
+- If `coderaft.json` exists in the workspace, includes its `setup_commands` for context.
 
-This snapshot is meant for sharing and audit. It does not currently drive `devbox up` automatically; continue to use `devbox.json` plus the simple `devbox.lock` command list for replay. A future `devbox restore` may apply `devbox.lock.json` directly.
+This snapshot is meant for sharing and audit. It does not currently drive `coderaft up` automatically; continue to use `coderaft.json` plus the simple `coderaft.lock` command list for replay. A future `coderaft restore` may apply `coderaft.lock.json` directly.
 
 **Examples:**
 ```bash
 # Write snapshot into the project workspace
-devbox lock myproject
+coderaft lock myproject
 
 # Write snapshot to a custom file
-devbox lock myproject -o ./env/devbox.lock.json
+coderaft lock myproject -o ./env/coderaft.lock.json
 ```
 
 **Sample Output (excerpt):**
@@ -309,7 +309,7 @@ devbox lock myproject -o ./env/devbox.lock.json
 {
   "version": 1,
   "project": "myproject",
-  "box_name": "devbox_myproject",
+  "box_name": "coderaft_myproject",
   "created_at": "2025-09-18T20:41:51Z",
   "base_image": {
     "name": "ubuntu:22.04",
@@ -324,7 +324,7 @@ devbox lock myproject -o ./env/devbox.lock.json
     "ports": ["3000/tcp -> 0.0.0.0:3000"],
     "volumes": ["bind /host/path -> /workspace (rw=true)"],
     "environment": {"TZ": "UTC"},
-    "labels": {"devbox.project": "myproject"},
+    "labels": {"coderaft.project": "myproject"},
     "capabilities": ["SYS_PTRACE"],
     "resources": {"cpus": "2", "memory": "2048MB"}
   },
@@ -357,13 +357,13 @@ devbox lock myproject -o ./env/devbox.lock.json
 
 ---
 
-### `devbox verify`
+### `coderaft verify`
 
-Validate that the running box matches the `devbox.lock.json` exactly. Fails fast on any drift.
+Validate that the running box matches the `coderaft.lock.json` exactly. Fails fast on any drift.
 
 **Syntax:**
 ```bash
-devbox verify <project>
+coderaft verify <project>
 ```
 
 **Checks:**
@@ -375,18 +375,18 @@ Returns non-zero on any mismatch and prints a concise drift report.
 
 **Example:**
 ```bash
-devbox verify myproject
+coderaft verify myproject
 ```
 
 ---
 
-### `devbox apply`
+### `coderaft apply`
 
-Apply the `devbox.lock.json` to the running box: configure registries and apt sources, then reconcile package sets to match the lock.
+Apply the `coderaft.lock.json` to the running box: configure registries and apt sources, then reconcile package sets to match the lock.
 
 **Syntax:**
 ```bash
-devbox apply <project>
+coderaft apply <project>
 ```
 
 **Behavior:**
@@ -405,82 +405,82 @@ Exits non-zero if application fails at any step.
 
 **Example:**
 ```bash
-devbox apply myproject
+coderaft apply myproject
 ```
 
 ## Configuration Commands
 
 ---
 
-### `devbox templates`
+### `coderaft templates`
 
-Manage devbox project templates (built-in and user-defined).
+Manage coderaft project templates (built-in and user-defined).
 
 **Subcommands:**
 
-#### `devbox templates list`
-List available templates (built-in + user templates in `~/.devbox/templates`).
+#### `coderaft templates list`
+List available templates (built-in + user templates in `~/.coderaft/templates`).
 
 **Syntax:**
 ```bash
-devbox templates list
+coderaft templates list
 ```
 
-#### `devbox templates show`
+#### `coderaft templates show`
 Show a template’s JSON (name, description, and config).
 
 **Syntax:**
 ```bash
-devbox templates show <name>
+coderaft templates show <name>
 ```
 
-#### `devbox templates create`
-Create `devbox.json` in the current directory from a template.
+#### `coderaft templates create`
+Create `coderaft.json` in the current directory from a template.
 
 **Syntax:**
 ```bash
-devbox templates create <name> [project]
+coderaft templates create <name> [project]
 ```
 
 **Examples:**
 ```bash
-cd ~/devbox/myapp
-devbox templates create python MyApp
+cd ~/coderaft/myapp
+coderaft templates create python MyApp
 
 # If project name omitted, folder name is used
-devbox templates create nodejs
+coderaft templates create nodejs
 ```
 
-#### `devbox templates save`
-Save the current folder’s `devbox.json` as a reusable user template in `~/.devbox/templates/<name>.json`.
+#### `coderaft templates save`
+Save the current folder’s `coderaft.json` as a reusable user template in `~/.coderaft/templates/<name>.json`.
 
 **Syntax:**
 ```bash
-devbox templates save <name>
+coderaft templates save <name>
 ```
 
-#### `devbox templates delete`
+#### `coderaft templates delete`
 Delete a user template by name.
 
 **Syntax:**
 ```bash
-devbox templates delete <name>
+coderaft templates delete <name>
 ```
 
 ---
 
-### `devbox config`
+### `coderaft config`
 
-Manage devbox configurations.
+Manage coderaft configurations.
 
 **Subcommands:**
 
-#### `devbox config generate`
-Generate devbox.json configuration file for a project.
+#### `coderaft config generate`
+Generate coderaft.json configuration file for a project.
 
 **Syntax:**
 ```bash
-devbox config generate <project> [flags]
+coderaft config generate <project> [flags]
 ```
 
 **Options:**
@@ -489,71 +489,71 @@ devbox config generate <project> [flags]
 **Examples:**
 ```bash
 # Generate basic config
-devbox config generate myproject
+coderaft config generate myproject
 
 # Generate with template
-devbox config generate myproject --template python
+coderaft config generate myproject --template python
 ```
 
-#### `devbox config validate`
+#### `coderaft config validate`
 Validate project configuration file.
 
 **Syntax:**
 ```bash
-devbox config validate <project>
+coderaft config validate <project>
 ```
 
-#### `devbox config show`
+#### `coderaft config show`
 Display project configuration details.
 
 **Syntax:**
 ```bash
-devbox config show <project>
+coderaft config show <project>
 ```
 
-Note: Template listing and management has moved to the top-level `devbox templates` command.
+Note: Template listing and management has moved to the top-level `coderaft templates` command.
 
-#### `devbox config global`
-Show global devbox configuration.
+#### `coderaft config global`
+Show global coderaft configuration.
 
 **Syntax:**
 ```bash
-devbox config global
+coderaft config global
 ```
 
 ## Maintenance Commands
 
 ---
 
-### `devbox version`
+### `coderaft version`
 
-Display the version information for devbox.
+Display the version information for coderaft.
 
 **Syntax:**
 ```bash
-devbox version
+coderaft version
 ```
 
 **Examples:**
 ```bash
 # Display version information
-devbox version
+coderaft version
 ```
 
 **Output Format:**
 ```
-devbox (v1.0)
+coderaft (v1.0)
 ```
 
 ---
 
-### `devbox cleanup`
+### `coderaft cleanup`
 
-Clean up Docker resources and devbox artifacts.
+Clean up Docker resources and coderaft artifacts.
 
 **Syntax:**
 ```bash
-devbox cleanup [flags]
+coderaft cleanup [flags]
 ```
 
 **Options:**
@@ -569,31 +569,31 @@ devbox cleanup [flags]
 **Examples:**
 ```bash
 # Interactive cleanup menu
-devbox cleanup
+coderaft cleanup
 
 # Clean specific resources
-devbox cleanup --orphaned
-devbox cleanup --images
+coderaft cleanup --orphaned
+coderaft cleanup --images
 
 # Comprehensive cleanup
-devbox cleanup --all
+coderaft cleanup --all
 
 # Preview cleanup actions
-devbox cleanup --dry-run --all
+coderaft cleanup --dry-run --all
 
 # Cleanup without prompts
-devbox cleanup --all --force
+coderaft cleanup --all --force
 ```
 
 ---
 
-### `devbox maintenance`
+### `coderaft maintenance`
 
-Perform maintenance tasks on devbox projects and boxes.
+Perform maintenance tasks on coderaft projects and boxes.
 
 **Syntax:**
 ```bash
-devbox maintenance [flags]
+coderaft maintenance [flags]
 ```
 
 **Options:**
@@ -608,26 +608,26 @@ devbox maintenance [flags]
 **Examples:**
 ```bash
 # Interactive maintenance menu
-devbox maintenance
+coderaft maintenance
 
 # Individual tasks
-devbox maintenance --health-check
-devbox maintenance --update
-devbox maintenance --restart
+coderaft maintenance --health-check
+coderaft maintenance --update
+coderaft maintenance --restart
 
 # Combined operations
-devbox maintenance --health-check --update --restart
+coderaft maintenance --health-check --update --restart
 
 # Auto-repair issues
-devbox maintenance --auto-repair
+coderaft maintenance --auto-repair
 
 # Force operations without prompts
-devbox maintenance --force --rebuild
+coderaft maintenance --force --rebuild
 ```
 
 ---
 
-### `devbox update`
+### `coderaft update`
 
 Pull the latest base image(s) and rebuild environment box(es).
 
@@ -635,30 +635,30 @@ This command replaces boxes to ensure they are based on the newest upstream imag
 
 **Syntax:**
 ```bash
-devbox update [project]
+coderaft update [project]
 ```
 
 **Behavior:**
 - When a project is specified, only that environment is updated
 - With no project, all registered projects are updated
-- Pulls the latest base image, recreates the box with current devbox.json config, and re-runs setup commands
- - Replays package install commands from `devbox.lock` to restore your previously installed packages
+- Pulls the latest base image, recreates the box with current coderaft.json config, and re-runs setup commands
+ - Replays package install commands from `coderaft.lock` to restore your previously installed packages
 
 **Options:**
-- None currently. Uses your existing configuration in `devbox.json` if present.
+- None currently. Uses your existing configuration in `coderaft.json` if present.
 
 **Examples:**
 ```bash
 # Update a single project
-devbox update myproject
+coderaft update myproject
 
 # Update all projects
-devbox update
+coderaft update
 ```
 
 **Notes:**
-- Your files remain in ~/devbox/<project>/ and are re-mounted into the new box
-- If the project has a devbox.json, its settings (ports, env, volumes, etc.) are applied on rebuild
+- Your files remain in ~/coderaft/<project>/ and are re-mounted into the new box
+- If the project has a coderaft.json, its settings (ports, env, volumes, etc.) are applied on rebuild
 - System packages inside the box are updated as part of the rebuild
  - If the box exists, it will be stopped and replaced; if missing, it will be created
 
@@ -666,7 +666,7 @@ devbox update
 
 ---
 
-Devbox uses standard exit codes:
+Coderaft uses standard exit codes:
 
 - `0`: Success
 - `1`: General error
@@ -679,33 +679,33 @@ Devbox uses standard exit codes:
 
 ---
 
-Devbox respects these environment variables:
+Coderaft respects these environment variables:
 
 - `DOCKER_HOST`: Docker daemon socket
-- `DEVBOX_HOME`: Override default `~/.devbox` directory
-- `DEVBOX_WORKSPACE`: Override default `~/devbox` workspace directory
+- `CODERAFT_HOME`: Override default `~/.coderaft` directory
+- `CODERAFT_WORKSPACE`: Override default `~/coderaft` workspace directory
 
 ## Project Structure
 
 ---
 
-When you create a project, devbox sets up:
+When you create a project, coderaft sets up:
 
 ```
-~/devbox/<project>/          # Project workspace (host)
-├── devbox.json             # Configuration file (optional)
+~/coderaft/<project>/          # Project workspace (host)
+├── coderaft.json             # Configuration file (optional)
 ├── your-files...           # Your project files
 └── ...
 
-~/.devbox/                  # Global configuration
+~/.coderaft/                  # Global configuration
 ├── config.json            # Global settings and project registry
 └── ...
 ```
 
 **Inside Box:**
 ```
-/workspace/                 # Mounted from ~/devbox/<project>/
-├── devbox.json            # Same files as host
+/workspace/                 # Mounted from ~/coderaft/<project>/
+├── coderaft.json            # Same files as host
 ├── your-files...
 └── ...
 ```
@@ -714,13 +714,13 @@ When you create a project, devbox sets up:
 
 ---
 
-### `devbox completion`
+### `coderaft completion`
 
-Generate completion scripts for your shell to enable tab autocompletion for devbox commands, flags, project names, and template names.
+Generate completion scripts for your shell to enable tab autocompletion for coderaft commands, flags, project names, and template names.
 
 **Syntax:**
 ```bash
-devbox completion [bash|zsh|fish]
+coderaft completion [bash|zsh|fish]
 ```
 
 **Supported Shells:**
@@ -733,10 +733,10 @@ devbox completion [bash|zsh|fish]
 **Bash:**
 ```bash
 # Load completion for current session
-source <(devbox completion bash)
+source <(coderaft completion bash)
 
 # Install for all sessions (Linux)
-sudo devbox completion bash > /etc/bash_completion.d/devbox
+sudo coderaft completion bash > /etc/bash_completion.d/coderaft
 
 
 ```
@@ -747,7 +747,7 @@ sudo devbox completion bash > /etc/bash_completion.d/devbox
 echo "autoload -U compinit; compinit" >> ~/.zshrc
 
 # Install for all sessions
-devbox completion zsh > "${fpath[1]}/_devbox"
+coderaft completion zsh > "${fpath[1]}/_coderaft"
 
 # Restart your shell or source ~/.zshrc
 ```
@@ -755,10 +755,10 @@ devbox completion zsh > "${fpath[1]}/_devbox"
 **Fish:**
 ```bash
 # Load completion for current session
-devbox completion fish | source
+coderaft completion fish | source
 
 # Install for all sessions
-devbox completion fish > ~/.config/fish/completions/devbox.fish
+coderaft completion fish > ~/.config/fish/completions/coderaft.fish
 ```
 
 
@@ -772,42 +772,42 @@ devbox completion fish > ~/.config/fish/completions/devbox.fish
 **Examples:**
 ```bash
 # Tab completion examples (press TAB after typing)
-devbox <TAB>                    # Shows: init, shell, run, list, etc.
-devbox shell <TAB>              # Shows: your-project-names
-devbox init myapp --template <TAB>  # Shows: python, nodejs, go, web
-devbox templates show <TAB>     # Shows: available-template-names
+coderaft <TAB>                    # Shows: init, shell, run, list, etc.
+coderaft shell <TAB>              # Shows: your-project-names
+coderaft init myapp --template <TAB>  # Shows: python, nodejs, go, web
+coderaft templates show <TAB>     # Shows: available-template-names
 ```
 
 ## Docker Integration
 
 ---
 
-Devbox creates boxes (Docker containers) with these characteristics:
+Coderaft creates boxes (Docker containers) with these characteristics:
 
-- **Name**: `devbox_<project>`
+- **Name**: `coderaft_<project>`
 - **Base Image**: `ubuntu:22.04` (configurable)
 - **Working Directory**: `/workspace`
-- **Mount**: `~/devbox/<project>` → `/workspace`
+- **Mount**: `~/coderaft/<project>` → `/workspace`
 - **Restart Policy**: `unless-stopped` (or `no` when `auto_stop_on_exit` is enabled and no explicit policy is set)
 - **Command**: `sleep infinity` (keeps box alive)
 
 **Docker Commands Equivalent:**
 ```bash
-# devbox init myproject
-docker create --name devbox_myproject \
+# coderaft init myproject
+docker create --name coderaft_myproject \
   --restart unless-stopped \
-  -v ~/devbox/myproject:/workspace \
+  -v ~/coderaft/myproject:/workspace \
   -w /workspace \
   ubuntu:22.04 sleep infinity
 
-# devbox shell myproject
-docker start devbox_myproject
-docker exec -it devbox_myproject bash
+# coderaft shell myproject
+docker start coderaft_myproject
+docker exec -it coderaft_myproject bash
 
-# devbox run myproject <command>
-docker exec devbox_myproject <command>
+# coderaft run myproject <command>
+docker exec coderaft_myproject <command>
 
-# devbox destroy myproject
-docker stop devbox_myproject
-docker rm devbox_myproject
+# coderaft destroy myproject
+docker stop coderaft_myproject
+docker rm coderaft_myproject
 ```

@@ -10,7 +10,7 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"devbox/internal/ui"
+	"coderaft/internal/ui"
 )
 
 type verifyLockFile struct {
@@ -24,7 +24,7 @@ type verifyLockFile struct {
 
 var verifyCmd = &cobra.Command{
 	Use:   "verify <project>",
-	Short: "Verify current box matches devbox.lock.json exactly",
+	Short: "Verify current box matches coderaft.lock.json exactly",
 	Args:  cobra.ExactArgs(1),
 	RunE: func(cmd *cobra.Command, args []string) error {
 		projectName := args[0]
@@ -38,7 +38,7 @@ var verifyCmd = &cobra.Command{
 			return fmt.Errorf("project '%s' not found", projectName)
 		}
 
-		lockPath := filepath.Join(proj.WorkspacePath, "devbox.lock.json")
+		lockPath := filepath.Join(proj.WorkspacePath, "coderaft.lock.json")
 		data, err := os.ReadFile(lockPath)
 		if err != nil {
 			return fmt.Errorf("failed to read %s: %w", lockPath, err)
@@ -53,7 +53,7 @@ var verifyCmd = &cobra.Command{
 			return err
 		}
 		if !exists {
-			return fmt.Errorf("box '%s' not found; run 'devbox up %s' first", proj.BoxName, projectName)
+			return fmt.Errorf("box '%s' not found; run 'coderaft up %s' first", proj.BoxName, projectName)
 		}
 		status, err := dockerClient.GetBoxStatus(proj.BoxName)
 		if err != nil {
@@ -127,7 +127,7 @@ var verifyCmd = &cobra.Command{
 			return fmt.Errorf("environment does not match lockfile")
 		}
 
-		ui.Success("environment matches devbox.lock.json")
+		ui.Success("environment matches coderaft.lock.json")
 		return nil
 	},
 }

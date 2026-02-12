@@ -10,7 +10,7 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"devbox/internal/ui"
+	"coderaft/internal/ui"
 )
 
 var updateCmd = &cobra.Command{
@@ -98,9 +98,9 @@ func updateSingleProject(projectName string) error {
 	}
 
 	if project.WorkspacePath != "" {
-		lockfilePath := filepath.Join(project.WorkspacePath, "devbox.lock")
+		lockfilePath := filepath.Join(project.WorkspacePath, "coderaft.lock")
 		if _, err := os.Stat(lockfilePath); err == nil {
-			ui.Info("replaying recorded package installs from devbox.lock...")
+			ui.Info("replaying recorded package installs from coderaft.lock...")
 			if data, readErr := os.ReadFile(lockfilePath); readErr == nil {
 				lines := strings.Split(string(data), "\n")
 				var cmds []string
@@ -113,7 +113,7 @@ func updateSingleProject(projectName string) error {
 				}
 				if len(cmds) > 0 {
 					if err := dockerClient.ExecuteSetupCommandsWithOutput(project.BoxName, cmds, false); err != nil {
-						ui.Warning("failed to replay devbox.lock commands: %v", err)
+						ui.Warning("failed to replay coderaft.lock commands: %v", err)
 					}
 				}
 			}
@@ -126,8 +126,8 @@ func updateSingleProject(projectName string) error {
 		}
 	}
 
-	if err := dockerClient.SetupDevboxInBoxWithUpdate(project.BoxName, projectName); err != nil {
-		ui.Warning("failed to setup devbox environment: %v", err)
+	if err := dockerClient.SetupCoderaftInBoxWithUpdate(project.BoxName, projectName); err != nil {
+		ui.Warning("failed to setup coderaft environment: %v", err)
 	}
 
 	if project.BaseImage != baseImage {

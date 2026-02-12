@@ -1,9 +1,9 @@
 ---
 title: Templates & Setup
-description: Built-in templates and custom setup configurations for devbox
+description: Built-in templates and custom setup configurations for coderaft
 ---
 
-Devbox provides a few built-in templates for common development environments. Use them as a starting point and customize via `devbox.json`.
+Coderaft provides a few built-in templates for common development environments. Use them as a starting point and customize via `coderaft.json`.
 
 ## Built-in Templates
 ---
@@ -31,8 +31,8 @@ Devbox provides a few built-in templates for common development environments. Us
 
 Usage:
 ```bash
-devbox init myapp --template python
-devbox shell myapp
+coderaft init myapp --template python
+coderaft shell myapp
 ```
 
 ---
@@ -60,8 +60,8 @@ devbox shell myapp
 
 Usage:
 ```bash
-devbox init webapp --template nodejs
-devbox shell webapp
+coderaft init webapp --template nodejs
+coderaft shell webapp
 ```
 
 ---
@@ -89,8 +89,8 @@ devbox shell webapp
 
 Usage:
 ```bash
-devbox init service --template go
-devbox shell service
+coderaft init service --template go
+coderaft shell service
 ```
 
 ---
@@ -125,8 +125,8 @@ devbox shell service
 
 Usage:
 ```bash
-devbox init fullstack --template web
-devbox shell fullstack
+coderaft init fullstack --template web
+coderaft shell fullstack
 ```
 
 ## Template Usage
@@ -136,23 +136,23 @@ devbox shell fullstack
 
 ```bash
 # List available templates (built-in + user)
-devbox templates list
+coderaft templates list
 
 # Create project from template
-devbox init myproject --template <template-name>
+coderaft init myproject --template <template-name>
 
 # Available templates: python, nodejs, go, web
-devbox init api --template nodejs
-devbox init ml-project --template python
-devbox init microservice --template go
-devbox init webapp --template web
+coderaft init api --template nodejs
+coderaft init ml-project --template python
+coderaft init microservice --template go
+coderaft init webapp --template web
 ```
 
 ##### Template Customization
 Generate config from a template, edit, then create:
 ```bash
-devbox init myproject --config-only --template python
-devbox init myproject
+coderaft init myproject --config-only --template python
+coderaft init myproject
 ```
 
 ## Custom Configurations
@@ -180,15 +180,15 @@ Create your own reusable configurations (example snippet):
 Save and reuse custom templates locally:
 
 ```bash
-# Save current folder's devbox.json as a template named "data-science"
-devbox templates save data-science
+# Save current folder's coderaft.json as a template named "data-science"
+coderaft templates save data-science
 
 # List templates (now includes data-science)
-devbox templates list
+coderaft templates list
 
-# Create a new devbox.json from your template in a different project
-mkdir ~/devbox/analysis && cd ~/devbox/analysis
-devbox templates create data-science AnalysisProject
+# Create a new coderaft.json from your template in a different project
+mkdir ~/coderaft/analysis && cd ~/coderaft/analysis
+coderaft templates create data-science AnalysisProject
 ```
 
 ##### Database Development (example)
@@ -256,14 +256,14 @@ devbox templates create data-science AnalysisProject
 ## Template Development
 1. Start with working configuration:
 ```bash
-devbox init test-project --generate-config
-# Edit ~/devbox/test-project/devbox.json
-devbox destroy test-project && devbox init test-project
+coderaft init test-project --generate-config
+# Edit ~/coderaft/test-project/coderaft.json
+coderaft destroy test-project && coderaft init test-project
 ```
 
 2. Test thoroughly:
 ```bash
-devbox shell test-project
+coderaft shell test-project
 # Test all tools and commands
 # Verify environment variables
 # Check port access
@@ -288,7 +288,7 @@ Save template configurations in your project repository:
 
 ```
 project/
-├── devbox.json          # Main configuration
+├── coderaft.json          # Main configuration
 ├── templates/           # Additional templates
 │   ├── development.json
 │   ├── testing.json
@@ -300,7 +300,7 @@ project/
 User templates are stored under:
 
 ```
-~/.devbox/templates/
+~/.coderaft/templates/
 ```
 
 Each template is a JSON file named `<template>.json` with this shape:
@@ -324,7 +324,7 @@ Each template is a JSON file named `<template>.json` with this shape:
 You can remove a user template with:
 
 ```bash
-devbox templates delete my-template
+coderaft templates delete my-template
 ```
 
 ## Best Practices

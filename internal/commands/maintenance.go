@@ -9,7 +9,7 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"devbox/internal/ui"
+	"coderaft/internal/ui"
 )
 
 var (
@@ -23,8 +23,8 @@ var (
 
 var maintenanceCmd = &cobra.Command{
 	Use:   "maintenance [flags]",
-	Short: "Perform maintenance tasks on devbox projects and boxes",
-	Long: `Perform various maintenance tasks to keep your devbox environment healthy:
+	Short: "Perform maintenance tasks on coderaft projects and boxes",
+	Long: `Perform various maintenance tasks to keep your coderaft environment healthy:
 
 - Update system packages in boxes
 - Check health status of all projects
@@ -34,13 +34,13 @@ var maintenanceCmd = &cobra.Command{
 - System status checks
 
 Examples:
-  devbox maintenance                     # Interactive maintenance menu
-  devbox maintenance --update            # Update all boxes
-  devbox maintenance --health-check      # Check health of all projects
-  devbox maintenance --restart           # Restart all stopped boxes
-  devbox maintenance --rebuild           # Rebuild all boxes
-  devbox maintenance --status            # Show detailed status
-  devbox maintenance --auto-repair       # Auto-fix common issues`,
+  coderaft maintenance                     # Interactive maintenance menu
+  coderaft maintenance --update            # Update all boxes
+  coderaft maintenance --health-check      # Check health of all projects
+  coderaft maintenance --restart           # Restart all stopped boxes
+  coderaft maintenance --rebuild           # Rebuild all boxes
+  coderaft maintenance --status            # Show detailed status
+  coderaft maintenance --auto-repair       # Auto-fix common issues`,
 	Args: cobra.NoArgs,
 	RunE: func(cmd *cobra.Command, args []string) error {
 
@@ -90,7 +90,7 @@ Examples:
 }
 
 func runInteractiveMaintenance() error {
-	ui.Header("Devbox Maintenance")
+	ui.Header("Coderaft Maintenance")
 	ui.Blank()
 	ui.Info("Available options:")
 	ui.Info("  1. Check system status")
@@ -216,7 +216,7 @@ func performStatusCheck() error {
 }
 
 func performHealthCheck() error {
-	ui.Status("scanning all devbox projects...")
+	ui.Status("scanning all coderaft projects...")
 
 	cfg, err := configManager.Load()
 	if err != nil {
@@ -282,7 +282,7 @@ func performHealthCheck() error {
 
 	if unhealthy > 0 || missing > 0 {
 		ui.Blank()
-		ui.Info("hint: run 'devbox maintenance --auto-repair' to fix common issues")
+		ui.Info("hint: run 'coderaft maintenance --auto-repair' to fix common issues")
 	}
 
 	return nil
@@ -509,8 +509,8 @@ func rebuildAllboxes() error {
 			}
 		}
 
-		if err := dockerClient.SetupDevboxInBoxWithUpdate(project.BoxName, projectName); err != nil {
-			ui.Warning("failed to setup devbox environment: %v", err)
+		if err := dockerClient.SetupCoderaftInBoxWithUpdate(project.BoxName, projectName); err != nil {
+			ui.Warning("failed to setup coderaft environment: %v", err)
 		}
 
 		ui.Success("%s rebuilt", projectName)
@@ -589,8 +589,8 @@ func autoRepairIssues() error {
 				continue
 			}
 
-			if err := dockerClient.SetupDevboxInBoxWithUpdate(project.BoxName, projectName); err != nil {
-				ui.Warning("failed to setup devbox environment: %v", err)
+			if err := dockerClient.SetupCoderaftInBoxWithUpdate(project.BoxName, projectName); err != nil {
+				ui.Warning("failed to setup coderaft environment: %v", err)
 			}
 
 			issuesFound = true

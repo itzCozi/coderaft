@@ -16,9 +16,9 @@ func TestVersionCommand(t *testing.T) {
 		Short: "Print the version information",
 		Run: func(cmd *cobra.Command, args []string) {
 			if CommitHash != "" && CommitHash != "unknown" {
-				buf.WriteString(fmt.Sprintf("devbox (v%s, commit %s)\n", Version, CommitHash))
+				buf.WriteString(fmt.Sprintf("coderaft (v%s, commit %s)\n", Version, CommitHash))
 			} else {
-				buf.WriteString(fmt.Sprintf("devbox (v%s)\n", Version))
+				buf.WriteString(fmt.Sprintf("coderaft (v%s)\n", Version))
 			}
 		},
 	}
@@ -26,7 +26,7 @@ func TestVersionCommand(t *testing.T) {
 	cmd.Run(cmd, []string{})
 
 	output := strings.TrimSpace(buf.String())
-	if !strings.Contains(output, "devbox (v"+Version) {
+	if !strings.Contains(output, "coderaft (v"+Version) {
 		t.Errorf("Expected output to contain version string, got %q", output)
 	}
 }

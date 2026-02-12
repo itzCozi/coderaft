@@ -20,7 +20,7 @@ func TestNewConfigManager(t *testing.T) {
 		t.Error("Config path should not be empty")
 	}
 
-	expectedPath := ".devbox"
+	expectedPath := ".coderaft"
 	if !filepath.IsAbs(cm.configPath) || !contains(cm.configPath, expectedPath) {
 		t.Errorf("Config path should contain %q, got %q", expectedPath, cm.configPath)
 	}
@@ -179,9 +179,9 @@ func TestProject(t *testing.T) {
 		Name:          "test-project",
 		BoxName:       "test-project-box",
 		BaseImage:     "ubuntu:22.04",
-		WorkspacePath: "/home/user/devbox/test-project",
+		WorkspacePath: "/home/user/coderaft/test-project",
 		Status:        "running",
-		ConfigFile:    "/home/user/devbox/test-project/devbox.json",
+		ConfigFile:    "/home/user/coderaft/test-project/coderaft.json",
 	}
 
 	jsonData, err := json.Marshal(project)
@@ -212,7 +212,7 @@ func TestGlobalSettings(t *testing.T) {
 	settings := &GlobalSettings{
 		DefaultBaseImage:    "ubuntu:20.04",
 		DefaultEnvironment:  map[string]string{"PATH": "/usr/local/bin"},
-		ConfigTemplatesPath: "/home/user/.devbox/templates",
+		ConfigTemplatesPath: "/home/user/.coderaft/templates",
 		AutoUpdate:          true,
 		AutoStopOnExit:      false,
 	}
