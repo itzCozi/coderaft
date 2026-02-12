@@ -27,7 +27,7 @@ var cleanupCmd = &cobra.Command{
 	Long: `Clean up various Docker resources and coderaft-related artifacts.
 This command helps maintain a clean system by removing:
 
-- Orphaned coderaft boxes (not tracked in config)
+- Orphaned coderaft islands (not tracked in config)
 - Unused Docker images
 - Unused Docker volumes
 - Unused Docker networks
@@ -35,7 +35,7 @@ This command helps maintain a clean system by removing:
 
 Examples:
   coderaft cleanup                    # Interactive cleanup menu
-  coderaft cleanup --orphaned         # Remove orphaned boxes only
+  coderaft cleanup --orphaned         # Remove orphaned islands only
   coderaft cleanup --images           # Remove unused images only
   coderaft cleanup --all              # Clean up everything
   coderaft cleanup --system-prune     # Run docker system prune
@@ -95,7 +95,7 @@ func runInteractiveCleanup() error {
 	ui.Header("Coderaft Cleanup")
 	ui.Blank()
 	ui.Info("Available options:")
-	ui.Info("  1. Clean up orphaned boxes")
+	ui.Info("  1. Clean up orphaned islands")
 	ui.Info("  2. Remove unused Docker images")
 	ui.Info("  3. Remove unused Docker volumes")
 	ui.Info("  4. Remove unused Docker networks")
@@ -156,10 +156,10 @@ func runInteractiveCleanup() error {
 }
 
 func cleanupOrphanedFromCleanup() error {
-	ui.Status("scanning for orphaned boxes...")
+	ui.Status("scanning for orphaned islands...")
 
 	if dryRunFlag {
-		ui.Info("dry run - no boxes will be removed")
+		ui.Info("dry run - no islands will be removed")
 	}
 
 	cfg, err := configManager.Load()
@@ -167,44 +167,44 @@ func cleanupOrphanedFromCleanup() error {
 		return fmt.Errorf("failed to load configuration: %w", err)
 	}
 
-	boxes, err := dockerClient.ListBoxes()
+	islands, err := dockerClient.ListIslands()
 	if err != nil {
-		return fmt.Errorf("failed to list boxes: %w", err)
+		return fmt.Errorf("failed to list islands: %w", err)
 	}
 
-	trackedboxes := make(map[string]bool)
+	trackedislands := make(map[string]bool)
 	for _, project := range cfg.GetProjects() {
-		trackedboxes[project.BoxName] = true
+		trackedislands[project.IslandName] = true
 	}
 
-	var orphanedboxes []string
-	for _, box := range boxes {
-		for _, name := range box.Names {
+	var orphanedislands []string
+	for _, island := range islands {
+		for _, name := range island.Names {
 			cleanName := strings.TrimPrefix(name, "/")
-			if strings.HasPrefix(cleanName, "coderaft_") && !trackedboxes[cleanName] {
-				orphanedboxes = append(orphanedboxes, cleanName)
+			if strings.HasPrefix(cleanName, "coderaft_") && !trackedislands[cleanName] {
+				orphanedislands = append(orphanedislands, cleanName)
 			}
 		}
 	}
 
-	if len(orphanedboxes) == 0 {
-		ui.Info("no orphaned boxes found.")
+	if len(orphanedislands) == 0 {
+		ui.Info("no orphaned islands found.")
 		return nil
 	}
 
-	ui.Info("found %d orphaned box(s):", len(orphanedboxes))
-	for _, boxName := range orphanedboxes {
-		ui.Item("%s", boxName)
+	ui.Info("found %d orphaned island(s):", len(orphanedislands))
+	for _, IslandName := range orphanedislands {
+		ui.Item("%s", IslandName)
 	}
 
 	if dryRunFlag {
 		ui.Blank()
-		ui.Info("dry run: would remove %d orphaned boxes", len(orphanedboxes))
+		ui.Info("dry run: would remove %d orphaned islands", len(orphanedislands))
 		return nil
 	}
 
 	if !forceFlag {
-		ui.Prompt("\nRemove these orphaned boxes? (y/N): ")
+		ui.Prompt("\nRemove these orphaned islands? (y/N): ")
 		reader := bufio.NewReader(os.Stdin)
 		response, err := reader.ReadString('\n')
 		if err != nil {
@@ -219,13 +219,13 @@ func cleanupOrphanedFromCleanup() error {
 	}
 
 	var removed, failed int
-	for _, boxName := range orphanedboxes {
-		ui.Status("removing %s...", boxName)
-		if err := dockerClient.RemoveBox(boxName); err != nil {
-			ui.Error("failed to remove %s: %v", boxName, err)
+	for _, IslandName := range orphanedislands {
+		ui.Status("removing %s...", IslandName)
+		if err := dockerClient.RemoveIsland(IslandName); err != nil {
+			ui.Error("failed to remove %s: %v", IslandName, err)
 			failed++
 		} else {
-			ui.Info("removed %s", boxName)
+			ui.Info("removed %s", IslandName)
 			removed++
 		}
 	}
@@ -233,7 +233,7 @@ func cleanupOrphanedFromCleanup() error {
 	ui.Blank()
 	ui.Summary("%d removed, %d failed", removed, failed)
 	if failed > 0 {
-		return fmt.Errorf("failed to remove %d box(s)", failed)
+		return fmt.Errorf("failed to remove %d island(s)", failed)
 	}
 
 	return nil
@@ -385,15 +385,15 @@ func showSystemStatus() error {
 	}
 
 	ui.Blank()
-	ui.Info("Coderaft Boxes:")
-	boxes, err := dockerClient.ListBoxes()
+	ui.Info("Coderaft islands:")
+	islands, err := dockerClient.ListIslands()
 	if err != nil {
-		ui.Error("failed to list boxes: %v", err)
+		ui.Error("failed to list islands: %v", err)
 	} else {
-		ui.Info("active boxes: %d", len(boxes))
-		for _, box := range boxes {
-			for _, name := range box.Names {
-				ui.Item("%s (%s)", strings.TrimPrefix(name, "/"), box.Status)
+		ui.Info("active islands: %d", len(islands))
+		for _, island := range islands {
+			for _, name := range island.Names {
+				ui.Item("%s (%s)", strings.TrimPrefix(name, "/"), island.Status)
 			}
 		}
 	}
@@ -407,7 +407,7 @@ func showSystemStatus() error {
 		projects := cfg.GetProjects()
 		ui.Info("tracked projects: %d", len(projects))
 		for name, project := range projects {
-			ui.Item("%s -> %s", name, project.BoxName)
+			ui.Item("%s -> %s", name, project.IslandName)
 		}
 	}
 
@@ -422,8 +422,8 @@ func showSystemStatus() error {
 
 func init() {
 	cleanupCmd.Flags().BoolVarP(&dryRunFlag, "dry-run", "n", false, "Show what would be cleaned without actually removing anything")
-	cleanupCmd.Flags().BoolVarP(&allFlag, "all", "a", false, "Clean up all unused resources (boxes, images, volumes, networks)")
-	cleanupCmd.Flags().BoolVar(&orphanedFlag, "orphaned", false, "Clean up orphaned coderaft boxes only")
+	cleanupCmd.Flags().BoolVarP(&allFlag, "all", "a", false, "Clean up all unused resources (islands, images, volumes, networks)")
+	cleanupCmd.Flags().BoolVar(&orphanedFlag, "orphaned", false, "Clean up orphaned coderaft islands only")
 	cleanupCmd.Flags().BoolVar(&imagesFlag, "images", false, "Clean up unused Docker images only")
 	cleanupCmd.Flags().BoolVar(&volumesFlag, "volumes", false, "Clean up unused Docker volumes only")
 	cleanupCmd.Flags().BoolVar(&networksFlag, "networks", false, "Clean up unused Docker networks only")

@@ -14,7 +14,7 @@ import (
 )
 
 func engineCmd() string {
-	if v := strings.TrimSpace(os.Getenv("DEVBOX_ENGINE")); v != "" {
+	if v := strings.TrimSpace(os.Getenv("CODERAFT_ENGINE")); v != "" {
 		return v
 	}
 	return "docker"
@@ -60,53 +60,53 @@ var upCmd = &cobra.Command{
 			return fmt.Errorf("failed to load global config: %w", err)
 		}
 
-		boxName := fmt.Sprintf("coderaft_%s", projectName)
+		IslandName := fmt.Sprintf("coderaft_%s", projectName)
 		baseImage := cfg.GetEffectiveBaseImage(&config.Project{Name: projectName, BaseImage: projectConfig.BaseImage}, projectConfig)
 
-		workspaceBox := "/workspace"
+		workspaceIsland := "/workspace"
 		if projectConfig.WorkingDir != "" {
-			workspaceBox = projectConfig.WorkingDir
+			workspaceIsland = projectConfig.WorkingDir
 		}
 
-		exists, err := dockerClient.BoxExists(boxName)
+		exists, err := dockerClient.IslandExists(IslandName)
 		if err != nil {
-			return fmt.Errorf("failed to check box existence: %w", err)
+			return fmt.Errorf("failed to check island existence: %w", err)
 		}
 
 		if exists {
-			status, err := dockerClient.GetBoxStatus(boxName)
+			status, err := dockerClient.GetIslandStatus(IslandName)
 			if err != nil {
-				return fmt.Errorf("failed to get box status: %w", err)
+				return fmt.Errorf("failed to get island status: %w", err)
 			}
 			if status != "running" {
-				if err := dockerClient.StartBox(boxName); err != nil {
-					return fmt.Errorf("failed to start existing box: %w", err)
+				if err := dockerClient.StartIsland(IslandName); err != nil {
+					return fmt.Errorf("failed to start existing island: %w", err)
 				}
 			}
 
-			if !dockerClient.IsBoxInitialized(boxName) {
-				if err := dockerClient.SetupCoderaftInBox(boxName, projectName); err != nil {
-					return fmt.Errorf("failed to setup coderaft in existing box: %w", err)
+			if !dockerClient.IsIslandInitialized(IslandName) {
+				if err := dockerClient.SetupCoderaftOnIsland(IslandName, projectName); err != nil {
+					return fmt.Errorf("failed to setup coderaft in existing island: %w", err)
 				}
 			}
 			ui.Success("environment is up")
 			ui.Detail("workspace", cwd)
-			ui.Detail("box", boxName)
+			ui.Detail("island", IslandName)
 			ui.Detail("image", baseImage)
 			ui.Info("hint: run 'coderaft shell %s' to enter the environment.", projectName)
 
 			if cfg.Settings != nil && cfg.Settings.AutoStopOnExit && !keepRunningUpFlag {
-				if idle, err := dockerClient.IsContainerIdle(boxName); err == nil && idle {
-					ui.Status("stopping box '%s' (auto-stop: idle)...", boxName)
-					if err := dockerClient.StopBox(boxName); err != nil {
-						ui.Warning("failed to stop box: %v", err)
+				if idle, err := dockerClient.IsContainerIdle(IslandName); err == nil && idle {
+					ui.Status("stopping island '%s' (auto-stop: idle)...", IslandName)
+					if err := dockerClient.StopIsland(IslandName); err != nil {
+						ui.Warning("failed to stop island: %v", err)
 					}
 				}
 			}
 			return nil
 		}
 
-		ui.Status("setting up box '%s' with image '%s'...", boxName, baseImage)
+		ui.Status("setting up island '%s' with image '%s'...", IslandName, baseImage)
 		if err := dockerClient.PullImage(baseImage); err != nil {
 			return fmt.Errorf("failed to pull base image: %w", err)
 		}
@@ -145,20 +145,20 @@ var upCmd = &cobra.Command{
 		}
 
 		optimizedSetup := NewOptimizedSetup(dockerClient, configManager)
-		if err := optimizedSetup.FastUp(projectConfig, projectName, boxName, baseImage, cwd, workspaceBox); err != nil {
+		if err := optimizedSetup.FastUp(projectConfig, projectName, IslandName, baseImage, cwd, workspaceIsland); err != nil {
 			return fmt.Errorf("failed to start environment: %w", err)
 		}
 
 		ui.Success("environment is up")
 		ui.Detail("workspace", cwd)
-		ui.Detail("box", boxName)
+		ui.Detail("island", IslandName)
 		ui.Detail("image", baseImage)
 		ui.Info("hint: run 'coderaft shell %s' to enter the environment.", projectName)
 
-		_ = WriteLockFileForBox(boxName, projectName, cwd, baseImage, "")
+		_ = WriteLockFileForIsland(IslandName, projectName, cwd, baseImage, "")
 
 		if cfg.Settings != nil && cfg.Settings.AutoApplyLock {
-			lockPath := filepath.Join(cwd, "devbox.lock.json")
+			lockPath := filepath.Join(cwd, "coderaft.lock.json")
 			if _, err := os.Stat(lockPath); err == nil {
 				if err := applyLockInline(projectName, lockPath); err != nil {
 					fmt.Printf("Warning: failed to auto-apply lockfile: %v\n", err)
@@ -167,10 +167,10 @@ var upCmd = &cobra.Command{
 		}
 
 		if cfg.Settings != nil && cfg.Settings.AutoStopOnExit && !keepRunningUpFlag {
-			if idle, err := dockerClient.IsContainerIdle(boxName); err == nil && idle {
-				ui.Status("stopping box '%s' (auto-stop: idle)...", boxName)
-				if err := dockerClient.StopBox(boxName); err != nil {
-					ui.Warning("failed to stop box: %v", err)
+			if idle, err := dockerClient.IsContainerIdle(IslandName); err == nil && idle {
+				ui.Status("stopping island '%s' (auto-stop: idle)...", IslandName)
+				if err := dockerClient.StopIsland(IslandName); err != nil {
+					ui.Warning("failed to stop island: %v", err)
 				}
 			}
 		}
@@ -179,8 +179,8 @@ var upCmd = &cobra.Command{
 }
 
 func init() {
-	upCmd.Flags().StringVar(&upDotfilesPath, "dotfiles", "", "Path to local dotfiles directory to mount into the box")
-	upCmd.Flags().BoolVar(&keepRunningUpFlag, "keep-running", false, "Keep the box running after 'up' finishes")
+	upCmd.Flags().StringVar(&upDotfilesPath, "dotfiles", "", "Path to local dotfiles directory to mount into the island")
+	upCmd.Flags().BoolVar(&keepRunningUpFlag, "keep-running", false, "Keep the island running after 'up' finishes")
 }
 
 func applyLockInline(projectName, lockPath string) error {
@@ -192,20 +192,20 @@ func applyLockInline(projectName, lockPath string) error {
 	if !ok {
 		return fmt.Errorf("project '%s' not registered", projectName)
 	}
-	exists, err := dockerClient.BoxExists(proj.BoxName)
+	exists, err := dockerClient.IslandExists(proj.IslandName)
 	if err != nil {
 		return err
 	}
 	if !exists {
-		return fmt.Errorf("box '%s' not found", proj.BoxName)
+		return fmt.Errorf("island '%s' not found", proj.IslandName)
 	}
-	status, err := dockerClient.GetBoxStatus(proj.BoxName)
+	status, err := dockerClient.GetIslandStatus(proj.IslandName)
 	if err != nil {
 		return err
 	}
 	if status != "running" {
-		if err := dockerClient.StartBox(proj.BoxName); err != nil {
-			return fmt.Errorf("failed to start box: %w", err)
+		if err := dockerClient.StartIsland(proj.IslandName); err != nil {
+			return fmt.Errorf("failed to start island: %w", err)
 		}
 	}
 
@@ -268,17 +268,17 @@ func applyLockInline(projectName, lockPath string) error {
 		cmds = append(cmds, fmt.Sprintf("pnpm config set registry %s -g", lf.Registries.PnpmRegistry))
 	}
 
-	if err := dockerClient.ExecuteSetupCommandsWithOutput(proj.BoxName, cmds, false); err != nil {
+	if err := dockerClient.ExecuteSetupCommandsWithOutput(proj.IslandName, cmds, false); err != nil {
 		return err
 	}
 
-	curApt, curPip, curNpm, curYarn, curPnpm := dockerClient.QueryPackagesParallel(proj.BoxName)
+	curApt, curPip, curNpm, curYarn, curPnpm := dockerClient.QueryPackagesParallel(proj.IslandName)
 	actions := buildReconcileActions(lockPackages{Apt: lf.Packages.Apt, Pip: lf.Packages.Pip, Npm: lf.Packages.Npm, Yarn: lf.Packages.Yarn, Pnpm: lf.Packages.Pnpm}, curApt, curPip, curNpm, curYarn, curPnpm)
 	if len(actions) > 0 {
-		if err := dockerClient.ExecuteSetupCommandsWithOutput(proj.BoxName, actions, true); err != nil {
+		if err := dockerClient.ExecuteSetupCommandsWithOutput(proj.IslandName, actions, true); err != nil {
 			return err
 		}
 	}
-	fmt.Println("Applied devbox.lock.json")
+	fmt.Println("Applied coderaft.lock.json")
 	return nil
 }

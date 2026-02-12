@@ -16,7 +16,7 @@ var (
 var listCmd = &cobra.Command{
 	Use:   "list",
 	Short: "List all coderaft projects and their status",
-	Long:  `Display all managed coderaft projects along with their box status.`,
+	Long:  `Display all managed coderaft projects along with their island status.`,
 	Args:  cobra.NoArgs,
 	RunE: func(cmd *cobra.Command, args []string) error {
 
@@ -32,23 +32,23 @@ var listCmd = &cobra.Command{
 			return nil
 		}
 
-		boxes, err := dockerClient.ListBoxes()
+		islands, err := dockerClient.ListIslands()
 		if err != nil {
-			return fmt.Errorf("failed to list boxes: %w", err)
+			return fmt.Errorf("failed to list islands: %w", err)
 		}
 
-		boxStatus := make(map[string]string)
-		for _, box := range boxes {
-			for _, name := range box.Names {
+		islandStatus := make(map[string]string)
+		for _, island := range islands {
+			for _, name := range island.Names {
 
 				cleanName := strings.TrimPrefix(name, "/")
-				boxStatus[cleanName] = box.Status
+				islandStatus[cleanName] = island.Status
 			}
 		}
 
 		ui.Header("coderaft projects")
 		if verboseFlag {
-			fmt.Printf("%-20s %-20s %-15s %-12s %s\n", "PROJECT", "BOX", "STATUS", "CONFIG", "WORKSPACE")
+			fmt.Printf("%-20s %-20s %-15s %-12s %s\n", "PROJECT", "island", "STATUS", "CONFIG", "WORKSPACE")
 			fmt.Printf("%-20s %-20s %-15s %-12s %s\n",
 				strings.Repeat("-", 20),
 				strings.Repeat("-", 20),
@@ -56,7 +56,7 @@ var listCmd = &cobra.Command{
 				strings.Repeat("-", 12),
 				strings.Repeat("-", 30))
 		} else {
-			fmt.Printf("%-20s %-20s %-15s %s\n", "PROJECT", "BOX", "STATUS", "WORKSPACE")
+			fmt.Printf("%-20s %-20s %-15s %s\n", "PROJECT", "island", "STATUS", "WORKSPACE")
 			fmt.Printf("%-20s %-20s %-15s %s\n",
 				strings.Repeat("-", 20),
 				strings.Repeat("-", 20),
@@ -66,8 +66,8 @@ var listCmd = &cobra.Command{
 
 		for _, project := range projects {
 			status := "not found"
-			if boxStatus[project.BoxName] != "" {
-				status = boxStatus[project.BoxName]
+			if islandStatus[project.IslandName] != "" {
+				status = islandStatus[project.IslandName]
 			}
 
 			configStatus := "none"
@@ -84,14 +84,14 @@ var listCmd = &cobra.Command{
 			if verboseFlag {
 				fmt.Printf("%-20s %-20s %-15s %-12s %s\n",
 					project.Name,
-					project.BoxName,
+					project.IslandName,
 					status,
 					configStatus,
 					project.WorkspacePath)
 			} else {
 				fmt.Printf("%-20s %-20s %-15s %s\n",
 					project.Name,
-					project.BoxName,
+					project.IslandName,
 					status,
 					project.WorkspacePath)
 			}

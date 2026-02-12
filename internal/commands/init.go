@@ -21,14 +21,14 @@ var (
 var initCmd = &cobra.Command{
 	Use:   "init <project>",
 	Short: "Initialize a new coderaft project",
-	Long: `Create a new coderaft project with its own Docker box.
-This will create a project directory and a corresponding Docker box.
+	Long: `Create a new coderaft project with its own Docker island.
+This will create a project directory and a corresponding Docker island.
 
 Examples:
   coderaft init myproject                    # Basic project
   coderaft init myproject --template python # Python development project
   coderaft init myproject --config-only     # Generate coderaft.json only
-  coderaft init myproject --generate-config # Create box and generate coderaft.json`,
+  coderaft init myproject --generate-config # Create island and generate coderaft.json`,
 	Args: cobra.ExactArgs(1),
 	RunE: func(cmd *cobra.Command, args []string) error {
 		projectName := args[0]
@@ -94,33 +94,33 @@ Examples:
 			}
 		}
 
-		boxName := fmt.Sprintf("coderaft_%s", projectName)
+		IslandName := fmt.Sprintf("coderaft_%s", projectName)
 
 		baseImage := cfg.GetEffectiveBaseImage(&config.Project{
 			Name:      projectName,
 			BaseImage: "ubuntu:22.04",
 		}, projectConfig)
 
-		workspaceBox := "/workspace"
+		workspaceIsland := "/workspace"
 		if projectConfig != nil && projectConfig.WorkingDir != "" {
-			workspaceBox = projectConfig.WorkingDir
+			workspaceIsland = projectConfig.WorkingDir
 		}
 
-		ui.Status("setting up box '%s' with image '%s'...", boxName, baseImage)
+		ui.Status("setting up island '%s' with image '%s'...", IslandName, baseImage)
 		if err := dockerClient.PullImage(baseImage); err != nil {
 			return fmt.Errorf("failed to pull base image: %w", err)
 		}
 
 		if forceFlag {
-			exists, err := dockerClient.BoxExists(boxName)
+			exists, err := dockerClient.IslandExists(IslandName)
 			if err != nil {
-				return fmt.Errorf("failed to check box existence: %w", err)
+				return fmt.Errorf("failed to check island existence: %w", err)
 			}
 			if exists {
-				ui.Status("removing existing box '%s'...", boxName)
-				dockerClient.StopBox(boxName)
-				if err := dockerClient.RemoveBox(boxName); err != nil {
-					return fmt.Errorf("failed to remove existing box: %w", err)
+				ui.Status("removing existing island '%s'...", IslandName)
+				dockerClient.StopIsland(IslandName)
+				if err := dockerClient.RemoveIsland(IslandName); err != nil {
+					return fmt.Errorf("failed to remove existing island: %w", err)
 				}
 			}
 		}
@@ -140,18 +140,18 @@ Examples:
 			}
 		}
 
-		boxID, err := dockerClient.CreateBoxWithConfig(boxName, baseImage, workspacePath, workspaceBox, configMap)
+		islandID, err := dockerClient.CreateIslandWithConfig(IslandName, baseImage, workspacePath, workspaceIsland, configMap)
 		if err != nil {
-			return fmt.Errorf("failed to create box: %w", err)
+			return fmt.Errorf("failed to create island: %w", err)
 		}
 
-		if err := dockerClient.StartBox(boxID); err != nil {
-			return fmt.Errorf("failed to start box: %w", err)
+		if err := dockerClient.StartIsland(islandID); err != nil {
+			return fmt.Errorf("failed to start island: %w", err)
 		}
 
-		ui.Status("starting box...")
-		if err := dockerClient.WaitForBox(boxName, 30*time.Second); err != nil {
-			return fmt.Errorf("box failed to start: %w", err)
+		ui.Status("starting island...")
+		if err := dockerClient.WaitForIsland(IslandName, 30*time.Second); err != nil {
+			return fmt.Errorf("island failed to start: %w", err)
 		}
 
 		if projectConfig != nil && len(projectConfig.SetupCommands) > 0 {
@@ -159,24 +159,24 @@ Examples:
 			systemUpdateCommands := []string{
 				"apt update -y",
 			}
-			if err := dockerClient.ExecuteSetupCommandsWithOutput(boxName, systemUpdateCommands, false); err != nil {
+			if err := dockerClient.ExecuteSetupCommandsWithOutput(IslandName, systemUpdateCommands, false); err != nil {
 				ui.Warning("apt update failed: %v", err)
 			}
 
 			ui.Status("installing template packages (%d commands)...", len(projectConfig.SetupCommands))
-			if err := dockerClient.ExecuteSetupCommandsWithOutput(boxName, projectConfig.SetupCommands, false); err != nil {
+			if err := dockerClient.ExecuteSetupCommandsWithOutput(IslandName, projectConfig.SetupCommands, false); err != nil {
 				return fmt.Errorf("failed to execute setup commands: %w", err)
 			}
 		}
 
-		ui.Status("setting up coderaft commands in box...")
-		if err := dockerClient.SetupCoderaftInBoxWithUpdate(boxName, projectName); err != nil {
-			return fmt.Errorf("failed to setup coderaft in box: %w", err)
+		ui.Status("setting up coderaft commands in island...")
+		if err := dockerClient.SetupCoderaftOnIslandWithUpdate(IslandName, projectName); err != nil {
+			return fmt.Errorf("failed to setup coderaft in island: %w", err)
 		}
 
 		project := &config.Project{
 			Name:          projectName,
-			BoxName:       boxName,
+			IslandName:       IslandName,
 			BaseImage:     baseImage,
 			WorkspacePath: workspacePath,
 			Status:        "running",
@@ -192,7 +192,7 @@ Examples:
 		ui.Blank()
 		ui.Success("project '%s' initialized", projectName)
 		ui.Detail("workspace", workspacePath)
-		ui.Detail("box", boxName)
+		ui.Detail("island", IslandName)
 		ui.Detail("image", baseImage)
 
 		if projectConfig != nil {
@@ -206,10 +206,10 @@ Examples:
 		}
 
 		if cfg.Settings != nil && cfg.Settings.AutoStopOnExit {
-			if idle, err := dockerClient.IsContainerIdle(boxName); err == nil && idle {
-				ui.Status("stopping box '%s' (auto-stop: idle)...", boxName)
-				if err := dockerClient.StopBox(boxName); err != nil {
-					ui.Warning("failed to stop box: %v", err)
+			if idle, err := dockerClient.IsContainerIdle(IslandName); err == nil && idle {
+				ui.Status("stopping island '%s' (auto-stop: idle)...", IslandName)
+				if err := dockerClient.StopIsland(IslandName); err != nil {
+					ui.Warning("failed to stop island: %v", err)
 				}
 			}
 		}
@@ -230,5 +230,5 @@ func init() {
 	initCmd.Flags().BoolVarP(&forceFlag, "force", "f", false, "Force initialization, overwriting existing project")
 	initCmd.Flags().StringVarP(&templateFlag, "template", "t", "", "Initialize from template (python, nodejs, go, web)")
 	initCmd.Flags().BoolVarP(&generateConfig, "generate-config", "g", false, "Generate coderaft.json configuration file")
-	initCmd.Flags().BoolVarP(&configOnlyFlag, "config-only", "c", false, "Generate configuration file only (don't create box)")
+	initCmd.Flags().BoolVarP(&configOnlyFlag, "config-only", "c", false, "Generate configuration file only (don't create island)")
 }

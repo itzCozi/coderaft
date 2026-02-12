@@ -16,7 +16,7 @@ import (
 type lockFile struct {
 	Version     int               `json:"version"`
 	Project     string            `json:"project"`
-	BoxName     string            `json:"box_name"`
+	IslandName     string            `json:"ISLAND_NAME"`
 	CreatedAt   string            `json:"created_at"`
 	BaseImage   lockImage         `json:"base_image"`
 	Container   lockContainer     `json:"container"`
@@ -89,20 +89,20 @@ var lockCmd = &cobra.Command{
 			return fmt.Errorf("project '%s' not found. Run 'coderaft init %s' first", projectName, projectName)
 		}
 
-		exists, err := dockerClient.BoxExists(proj.BoxName)
+		exists, err := dockerClient.IslandExists(proj.IslandName)
 		if err != nil {
 			return err
 		}
 		if !exists {
-			return fmt.Errorf("box '%s' does not exist. Start it with 'coderaft up %s'", proj.BoxName, projectName)
+			return fmt.Errorf("island '%s' does not exist. Start it with 'coderaft up %s'", proj.IslandName, projectName)
 		}
-		status, err := dockerClient.GetBoxStatus(proj.BoxName)
+		status, err := dockerClient.GetIslandStatus(proj.IslandName)
 		if err != nil {
 			return err
 		}
 		if status != "running" {
-			if err := dockerClient.StartBox(proj.BoxName); err != nil {
-				return fmt.Errorf("failed to start box '%s': %w", proj.BoxName, err)
+			if err := dockerClient.StartIsland(proj.IslandName); err != nil {
+				return fmt.Errorf("failed to start island '%s': %w", proj.IslandName, err)
 			}
 		}
 
@@ -110,7 +110,7 @@ var lockCmd = &cobra.Command{
 		digest, imgID, imgErr := dockerClient.GetImageDigestInfo(imgName)
 		if imgErr != nil || digest == "" {
 
-			cid, err := dockerClient.GetContainerID(proj.BoxName)
+			cid, err := dockerClient.GetContainerID(proj.IslandName)
 			if err == nil && cid != "" {
 				d2, id2, _ := dockerClient.GetImageDigestInfo(cid)
 				if d2 != "" || id2 != "" {
@@ -119,22 +119,22 @@ var lockCmd = &cobra.Command{
 			}
 		}
 
-		mounts, _ := dockerClient.GetMounts(proj.BoxName)
-		ports, _ := dockerClient.GetPortMappings(proj.BoxName)
+		mounts, _ := dockerClient.GetMounts(proj.IslandName)
+		ports, _ := dockerClient.GetPortMappings(proj.IslandName)
 
-		envMap, workdir, user, restart, labels, capabilities, resources, network := dockerClient.GetContainerMeta(proj.BoxName)
+		envMap, workdir, user, restart, labels, capabilities, resources, network := dockerClient.GetContainerMeta(proj.IslandName)
 
 		ui.Status("gathering package information...")
-		aptList, pipList, npmList, yarnList, pnpmList := dockerClient.QueryPackagesParallel(proj.BoxName)
+		aptList, pipList, npmList, yarnList, pnpmList := dockerClient.QueryPackagesParallel(proj.IslandName)
 
-		aptSnapshot, aptSources, aptRelease := dockerClient.GetAptSources(proj.BoxName)
-		pipIndex, pipExtras := dockerClient.GetPipRegistries(proj.BoxName)
-		npmReg, yarnReg, pnpmReg := dockerClient.GetNodeRegistries(proj.BoxName)
+		aptSnapshot, aptSources, aptRelease := dockerClient.GetAptSources(proj.IslandName)
+		pipIndex, pipExtras := dockerClient.GetPipRegistries(proj.IslandName)
+		npmReg, yarnReg, pnpmReg := dockerClient.GetNodeRegistries(proj.IslandName)
 
 		lf := lockFile{
 			Version:   1,
 			Project:   proj.Name,
-			BoxName:   proj.BoxName,
+			IslandName:   proj.IslandName,
 			CreatedAt: time.Now().UTC().Format(time.RFC3339),
 			BaseImage: lockImage{Name: imgName, Digest: digest, ID: imgID},
 			Container: lockContainer{
@@ -207,27 +207,27 @@ func WriteLockFileForProject(projectName string, outPath string) error {
 	}
 	proj, ok := cfg.GetProject(projectName)
 	if !ok {
-		return fmt.Errorf("project '%s' not found. Run 'devbox init %s' first", projectName, projectName)
+		return fmt.Errorf("project '%s' not found. Run 'coderaft init %s' first", projectName, projectName)
 	}
 
-	return WriteLockFileForBox(proj.BoxName, proj.Name, proj.WorkspacePath, proj.BaseImage, outPath)
+	return WriteLockFileForIsland(proj.IslandName, proj.Name, proj.WorkspacePath, proj.BaseImage, outPath)
 }
 
-func WriteLockFileForBox(boxName, projectName, workspacePath, baseImage, outPath string) error {
-	exists, err := dockerClient.BoxExists(boxName)
+func WriteLockFileForIsland(IslandName, projectName, workspacePath, baseImage, outPath string) error {
+	exists, err := dockerClient.IslandExists(IslandName)
 	if err != nil {
 		return err
 	}
 	if !exists {
-		return fmt.Errorf("box '%s' does not exist. Start it first", boxName)
+		return fmt.Errorf("island '%s' does not exist. Start it first", IslandName)
 	}
-	status, err := dockerClient.GetBoxStatus(boxName)
+	status, err := dockerClient.GetIslandStatus(IslandName)
 	if err != nil {
 		return err
 	}
 	if status != "running" {
-		if err := dockerClient.StartBox(boxName); err != nil {
-			return fmt.Errorf("failed to start box '%s': %w", boxName, err)
+		if err := dockerClient.StartIsland(IslandName); err != nil {
+			return fmt.Errorf("failed to start island '%s': %w", IslandName, err)
 		}
 	}
 
@@ -235,7 +235,7 @@ func WriteLockFileForBox(boxName, projectName, workspacePath, baseImage, outPath
 	digest, imgID, imgErr := dockerClient.GetImageDigestInfo(imgName)
 	if imgErr != nil || strings.TrimSpace(digest) == "" {
 
-		cid, err := dockerClient.GetContainerID(boxName)
+		cid, err := dockerClient.GetContainerID(IslandName)
 		if err == nil && cid != "" {
 			d2, id2, _ := dockerClient.GetImageDigestInfo(cid)
 			if d2 != "" || id2 != "" {
@@ -244,22 +244,22 @@ func WriteLockFileForBox(boxName, projectName, workspacePath, baseImage, outPath
 		}
 	}
 
-	mounts, _ := dockerClient.GetMounts(boxName)
-	ports, _ := dockerClient.GetPortMappings(boxName)
+	mounts, _ := dockerClient.GetMounts(IslandName)
+	ports, _ := dockerClient.GetPortMappings(IslandName)
 
-	envMap, workdir, user, restart, labels, capabilities, resources, network := dockerClient.GetContainerMeta(boxName)
+	envMap, workdir, user, restart, labels, capabilities, resources, network := dockerClient.GetContainerMeta(IslandName)
 
 	fmt.Printf("Gathering package information in parallel...\n")
-	aptList, pipList, npmList, yarnList, pnpmList := dockerClient.QueryPackagesParallel(boxName)
+	aptList, pipList, npmList, yarnList, pnpmList := dockerClient.QueryPackagesParallel(IslandName)
 
-	aptSnapshot, aptSources, aptRelease := dockerClient.GetAptSources(boxName)
-	pipIndex, pipExtras := dockerClient.GetPipRegistries(boxName)
-	npmReg, yarnReg, pnpmReg := dockerClient.GetNodeRegistries(boxName)
+	aptSnapshot, aptSources, aptRelease := dockerClient.GetAptSources(IslandName)
+	pipIndex, pipExtras := dockerClient.GetPipRegistries(IslandName)
+	npmReg, yarnReg, pnpmReg := dockerClient.GetNodeRegistries(IslandName)
 
 	lf := lockFile{
 		Version:   1,
 		Project:   projectName,
-		BoxName:   boxName,
+		IslandName:   IslandName,
 		CreatedAt: time.Now().UTC().Format(time.RFC3339),
 		BaseImage: lockImage{Name: imgName, Digest: digest, ID: imgID},
 		Container: lockContainer{
@@ -304,7 +304,7 @@ func WriteLockFileForBox(boxName, projectName, workspacePath, baseImage, outPath
 
 	finalOut := strings.TrimSpace(outPath)
 	if finalOut == "" {
-		finalOut = filepath.Join(workspacePath, "devbox.lock.json")
+		finalOut = filepath.Join(workspacePath, "coderaft.lock.json")
 	}
 
 	b, err := json.MarshalIndent(lf, "", "  ")

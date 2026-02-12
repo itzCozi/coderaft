@@ -175,7 +175,7 @@ func showProjectConfig(projectName string) error {
 
 	ui.Info("global project settings:")
 	ui.Detail("name", project.Name)
-	ui.Detail("box name", project.BoxName)
+	ui.Detail("island name", project.IslandName)
 	ui.Detail("base image", project.BaseImage)
 	ui.Detail("workspace", project.WorkspacePath)
 	ui.Detail("status", project.Status)

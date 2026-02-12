@@ -22,7 +22,7 @@ coderaft init my-python-app --template python
 This command:
 - Creates a new project called `my-python-app`
 - Uses the Python template (includes Python 3, pip, and common tools)
-- Sets up a Docker box (container) with Ubuntu 22.04
+- Sets up a Docker island with Ubuntu 22.04
 - Creates a workspace directory at `~/coderaft/my-python-app/`
 
 ## Enter Your Development Environment
@@ -32,13 +32,13 @@ This command:
 coderaft shell my-python-app
 ```
 
-You're now inside an isolated Ubuntu box! Notice how your prompt changes to indicate you're in the coderaft environment.
-By default, the box will stop automatically when you exit the shell. To keep it running after you exit, pass `--keep-running`.
+You're now inside an isolated Ubuntu Island! Notice how your prompt changes to indicate you're in the coderaft environment.
+By default, the Island will stop automatically when you exit the shell. To keep it running after you exit, pass `--keep-running`.
 
 ## Explore the Environment
 ---
 
-Inside the box, you can:
+Inside the Island, you can:
 
 ```bash
 # Check what's available
@@ -107,10 +107,10 @@ coderaft shell go-service  # Go environment
 When you're done with a project:
 
 ```bash
-# Stop and remove the box (keeps your files)
+# Stop and remove the Island (keeps your files)
 coderaft destroy my-python-app
 
-# Or just stop the box without removing it
+# Or just stop the Island without removing it
 coderaft stop my-python-app
 
 # Your files are still in ~/coderaft/my-python-app/
@@ -125,11 +125,11 @@ coderaft init my-python-app --template python
 
 By default, all coderaft environments have access to the host's Docker daemon, allowing you to:
 
-- Build and manage Docker boxes/containers from within your coderaft environment
+- Build and manage Docker islandes/containers from within your coderaft environment
 - Run Docker commands without additional configuration
-- Execute Docker Compose for multi-box (multi-container) applications
+- Execute Docker Compose for multi-Island (multi-container) applications
 
-This works by mounting the host's Docker socket (`/var/run/docker.sock`) in your coderaft box (container) and installing the Docker CLI tools automatically.
+This works by mounting the host's Docker socket (`/var/run/docker.sock`) in your coderaft island and installing the Docker CLI tools automatically.
 
 ## Next Steps
 ---

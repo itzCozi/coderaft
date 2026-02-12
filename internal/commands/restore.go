@@ -55,36 +55,36 @@ var restoreCmd = &cobra.Command{
 			imageRef = imgID
 		}
 
-		exists, err := dockerClient.BoxExists(proj.BoxName)
+		exists, err := dockerClient.IslandExists(proj.IslandName)
 		if err == nil && exists {
 			if !forceFlag {
-				return fmt.Errorf("box '%s' already exists. Use --force to overwrite", proj.BoxName)
+				return fmt.Errorf("island '%s' already exists. Use --force to overwrite", proj.IslandName)
 			}
-			_ = dockerClient.StopBox(proj.BoxName)
-			if err := dockerClient.RemoveBox(proj.BoxName); err != nil {
-				return fmt.Errorf("failed to remove existing box: %w", err)
+			_ = dockerClient.StopIsland(proj.IslandName)
+			if err := dockerClient.RemoveIsland(proj.IslandName); err != nil {
+				return fmt.Errorf("failed to remove existing island: %w", err)
 			}
 		}
 
-		workspaceBox := "/workspace"
+		workspaceIsland := "/workspace"
 		if pcfg, err := configManager.LoadProjectConfig(proj.WorkspacePath); err == nil && pcfg != nil && strings.TrimSpace(pcfg.WorkingDir) != "" {
-			workspaceBox = pcfg.WorkingDir
+			workspaceIsland = pcfg.WorkingDir
 		}
 
-		boxID, err := dockerClient.CreateBoxWithConfig(proj.BoxName, imageRef, proj.WorkspacePath, workspaceBox, nil)
+		islandID, err := dockerClient.CreateIslandWithConfig(proj.IslandName, imageRef, proj.WorkspacePath, workspaceIsland, nil)
 		if err != nil {
-			return fmt.Errorf("failed to create box from image: %w", err)
+			return fmt.Errorf("failed to create island from image: %w", err)
 		}
-		if err := dockerClient.StartBox(boxID); err != nil {
-			return fmt.Errorf("failed to start restored box: %w", err)
+		if err := dockerClient.StartIsland(islandID); err != nil {
+			return fmt.Errorf("failed to start restored island: %w", err)
 		}
 
-		ui.Success("restore complete, box '%s' recreated from backup.", proj.BoxName)
+		ui.Success("restore complete, island '%s' recreated from backup.", proj.IslandName)
 		return nil
 	},
 }
 
 func init() {
 	rootCmd.AddCommand(restoreCmd)
-	restoreCmd.Flags().BoolVarP(&forceFlag, "force", "f", false, "Overwrite existing box if present")
+	restoreCmd.Flags().BoolVarP(&forceFlag, "force", "f", false, "Overwrite existing island if present")
 }

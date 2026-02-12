@@ -16,7 +16,7 @@ import (
 type verifyLockFile struct {
 	Version    int            `json:"version"`
 	Project    string         `json:"project"`
-	BoxName    string         `json:"box_name"`
+	IslandName    string         `json:"ISLAND_NAME"`
 	Packages   lockPackages   `json:"packages"`
 	Registries lockRegistries `json:"registries"`
 	AptSources lockAptSources `json:"apt_sources"`
@@ -24,7 +24,7 @@ type verifyLockFile struct {
 
 var verifyCmd = &cobra.Command{
 	Use:   "verify <project>",
-	Short: "Verify current box matches coderaft.lock.json exactly",
+	Short: "Verify current island matches coderaft.lock.json exactly",
 	Args:  cobra.ExactArgs(1),
 	RunE: func(cmd *cobra.Command, args []string) error {
 		projectName := args[0]
@@ -48,26 +48,26 @@ var verifyCmd = &cobra.Command{
 			return fmt.Errorf("invalid lockfile: %w", err)
 		}
 
-		exists, err := dockerClient.BoxExists(proj.BoxName)
+		exists, err := dockerClient.IslandExists(proj.IslandName)
 		if err != nil {
 			return err
 		}
 		if !exists {
-			return fmt.Errorf("box '%s' not found; run 'coderaft up %s' first", proj.BoxName, projectName)
+			return fmt.Errorf("island '%s' not found; run 'coderaft up %s' first", proj.IslandName, projectName)
 		}
-		status, err := dockerClient.GetBoxStatus(proj.BoxName)
+		status, err := dockerClient.GetIslandStatus(proj.IslandName)
 		if err != nil {
 			return err
 		}
 		if status != "running" {
-			if err := dockerClient.StartBox(proj.BoxName); err != nil {
-				return fmt.Errorf("failed to start box: %w", err)
+			if err := dockerClient.StartIsland(proj.IslandName); err != nil {
+				return fmt.Errorf("failed to start island: %w", err)
 			}
 		}
 
-		aptSnapshot, aptSources, aptRelease := dockerClient.GetAptSources(proj.BoxName)
-		npmReg, yarnReg, pnpmReg := dockerClient.GetNodeRegistries(proj.BoxName)
-		pipIndex, pipExtras := dockerClient.GetPipRegistries(proj.BoxName)
+		aptSnapshot, aptSources, aptRelease := dockerClient.GetAptSources(proj.IslandName)
+		npmReg, yarnReg, pnpmReg := dockerClient.GetNodeRegistries(proj.IslandName)
+		pipIndex, pipExtras := dockerClient.GetPipRegistries(proj.IslandName)
 
 		var drifts []string
 
@@ -102,7 +102,7 @@ var verifyCmd = &cobra.Command{
 			drifts = append(drifts, fmt.Sprintf("pnpm registry mismatch: lock=%s current=%s", lf.Registries.PnpmRegistry, pnpmReg))
 		}
 
-		aptList, pipList, npmList, yarnList, pnpmList := dockerClient.QueryPackagesParallel(proj.BoxName)
+		aptList, pipList, npmList, yarnList, pnpmList := dockerClient.QueryPackagesParallel(proj.IslandName)
 		if !stringSetEqual(lf.Packages.Apt, aptList) {
 			drifts = append(drifts, "APT packages drifted")
 		}

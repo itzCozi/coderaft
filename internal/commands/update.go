@@ -15,8 +15,8 @@ import (
 
 var updateCmd = &cobra.Command{
 	Use:   "update [project]",
-	Short: "Pull latest base image(s) and rebuild box(es)",
-	Long:  "Update environments by pulling the latest base images and rebuilding the project boxes using current configuration.",
+	Short: "Pull latest base image(s) and rebuild island(es)",
+	Long:  "Update environments by pulling the latest base images and rebuilding the project islands using current configuration.",
 	Args:  cobra.MaximumNArgs(1),
 	RunE: func(cmd *cobra.Command, args []string) error {
 		if len(args) == 1 {
@@ -50,22 +50,22 @@ func updateSingleProject(projectName string) error {
 		return fmt.Errorf("failed to pull base image %s: %w", baseImage, err)
 	}
 
-	existsBox, err := dockerClient.BoxExists(project.BoxName)
+	existsIsland, err := dockerClient.IslandExists(project.IslandName)
 	if err != nil {
-		return fmt.Errorf("failed to check box existence: %w", err)
+		return fmt.Errorf("failed to check island existence: %w", err)
 	}
-	if existsBox {
-		ui.Status("stopping and removing existing box '%s'...", project.BoxName)
+	if existsIsland {
+		ui.Status("stopping and removing existing island '%s'...", project.IslandName)
 
-		_ = dockerClient.StopBox(project.BoxName)
-		if err := dockerClient.RemoveBox(project.BoxName); err != nil {
-			return fmt.Errorf("failed to remove existing box: %w", err)
+		_ = dockerClient.StopIsland(project.IslandName)
+		if err := dockerClient.RemoveIsland(project.IslandName); err != nil {
+			return fmt.Errorf("failed to remove existing island: %w", err)
 		}
 	}
 
-	workspaceBox := "/workspace"
+	workspaceIsland := "/workspace"
 	if projectConfig != nil && projectConfig.WorkingDir != "" {
-		workspaceBox = projectConfig.WorkingDir
+		workspaceIsland = projectConfig.WorkingDir
 	}
 
 	var configMap map[string]interface{}
@@ -75,25 +75,25 @@ func updateSingleProject(projectName string) error {
 		}
 	}
 
-	ui.Status("recreating box '%s' with image '%s'...", project.BoxName, baseImage)
-	boxID, err := dockerClient.CreateBoxWithConfig(project.BoxName, baseImage, project.WorkspacePath, workspaceBox, configMap)
+	ui.Status("recreating island '%s' with image '%s'...", project.IslandName, baseImage)
+	islandID, err := dockerClient.CreateIslandWithConfig(project.IslandName, baseImage, project.WorkspacePath, workspaceIsland, configMap)
 	if err != nil {
-		return fmt.Errorf("failed to create box: %w", err)
+		return fmt.Errorf("failed to create island: %w", err)
 	}
 
-	if err := dockerClient.StartBox(boxID); err != nil {
-		return fmt.Errorf("failed to start box: %w", err)
+	if err := dockerClient.StartIsland(islandID); err != nil {
+		return fmt.Errorf("failed to start island: %w", err)
 	}
 
-	if err := dockerClient.WaitForBox(project.BoxName, 30*time.Second); err != nil {
-		return fmt.Errorf("box failed to become ready: %w", err)
+	if err := dockerClient.WaitForIsland(project.IslandName, 30*time.Second); err != nil {
+		return fmt.Errorf("island failed to become ready: %w", err)
 	}
 
 	updateCommands := []string{
 		"apt update -y",
 		"apt full-upgrade -y",
 	}
-	if err := dockerClient.ExecuteSetupCommandsWithOutput(project.BoxName, updateCommands, false); err != nil {
+	if err := dockerClient.ExecuteSetupCommandsWithOutput(project.IslandName, updateCommands, false); err != nil {
 		ui.Warning("failed to update system packages: %v", err)
 	}
 
@@ -112,7 +112,7 @@ func updateSingleProject(projectName string) error {
 					cmds = append(cmds, cmd)
 				}
 				if len(cmds) > 0 {
-					if err := dockerClient.ExecuteSetupCommandsWithOutput(project.BoxName, cmds, false); err != nil {
+					if err := dockerClient.ExecuteSetupCommandsWithOutput(project.IslandName, cmds, false); err != nil {
 						ui.Warning("failed to replay coderaft.lock commands: %v", err)
 					}
 				}
@@ -121,12 +121,12 @@ func updateSingleProject(projectName string) error {
 	}
 
 	if projectConfig != nil && len(projectConfig.SetupCommands) > 0 {
-		if err := dockerClient.ExecuteSetupCommandsWithOutput(project.BoxName, projectConfig.SetupCommands, false); err != nil {
+		if err := dockerClient.ExecuteSetupCommandsWithOutput(project.IslandName, projectConfig.SetupCommands, false); err != nil {
 			ui.Warning("failed to execute setup commands: %v", err)
 		}
 	}
 
-	if err := dockerClient.SetupCoderaftInBoxWithUpdate(project.BoxName, projectName); err != nil {
+	if err := dockerClient.SetupCoderaftOnIslandWithUpdate(project.IslandName, projectName); err != nil {
 		ui.Warning("failed to setup coderaft environment: %v", err)
 	}
 

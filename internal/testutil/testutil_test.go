@@ -23,7 +23,7 @@ func TestCreateTestProject(t *testing.T) {
 
 	AssertNotNil(t, project)
 	AssertEqual(t, projectName, project.Name)
-	AssertEqual(t, projectName+"-box", project.BoxName)
+	AssertEqual(t, projectName+"-island", project.IslandName)
 	AssertEqual(t, "ubuntu:22.04", project.BaseImage)
 	AssertEqual(t, "stopped", project.Status)
 }

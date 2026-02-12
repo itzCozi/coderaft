@@ -15,13 +15,13 @@ import (
 )
 
 type backupManifest struct {
-	Version      int                   `json:"version"`
-	Project      string                `json:"project"`
-	BoxName      string                `json:"box_name"`
-	CreatedAt    string                `json:"created_at"`
-	ImageTag     string                `json:"image_tag"`
+	Version        int                   `json:"version"`
+	Project        string                `json:"project"`
+	IslandName     string                `json:"ISLAND_NAME"`
+	CreatedAt      string                `json:"created_at"`
+	ImageTag       string                `json:"image_tag"`
 	CoderaftConfig *config.ProjectConfig `json:"coderaft_config,omitempty"`
-	LockFileJSON json.RawMessage       `json:"lock_file_json,omitempty"`
+	LockFileJSON   json.RawMessage       `json:"lock_file_json,omitempty"`
 }
 
 var (
@@ -30,7 +30,7 @@ var (
 
 var backupCmd = &cobra.Command{
 	Use:   "backup <project>",
-	Short: "Backup the project's coderaft environment (container state + config)",
+	Short: "Backup the project's coderaft environment (island state + config)",
 	Args:  cobra.ExactArgs(1),
 	RunE: func(cmd *cobra.Command, args []string) error {
 		projectName := args[0]
@@ -44,12 +44,12 @@ var backupCmd = &cobra.Command{
 			return fmt.Errorf("project '%s' not found", projectName)
 		}
 
-		exists, err := dockerClient.BoxExists(proj.BoxName)
+		exists, err := dockerClient.IslandExists(proj.IslandName)
 		if err != nil {
 			return err
 		}
 		if !exists {
-			return fmt.Errorf("box '%s' does not exist", proj.BoxName)
+			return fmt.Errorf("island '%s' does not exist", proj.IslandName)
 		}
 
 		ts := time.Now().UTC().Format("20060102-150405")
@@ -63,10 +63,10 @@ var backupCmd = &cobra.Command{
 		}
 
 		imageTag := fmt.Sprintf("coderaft/%s:backup-%s", projectName, ts)
-		ui.Status("creating image from box '%s'...", proj.BoxName)
-		imgID, err := dockerClient.CommitContainer(proj.BoxName, imageTag)
+		ui.Status("creating image from island '%s'...", proj.IslandName)
+		imgID, err := dockerClient.CommitContainer(proj.IslandName, imageTag)
 		if err != nil {
-			return fmt.Errorf("failed to commit container: %w", err)
+			return fmt.Errorf("failed to commit island: %w", err)
 		}
 		_ = imgID
 
@@ -86,13 +86,13 @@ var backupCmd = &cobra.Command{
 		}
 
 		manifest := backupManifest{
-			Version:      1,
-			Project:      proj.Name,
-			BoxName:      proj.BoxName,
-			CreatedAt:    time.Now().UTC().Format(time.RFC3339),
-			ImageTag:     imageTag,
+			Version:        1,
+			Project:        proj.Name,
+			IslandName:     proj.IslandName,
+			CreatedAt:      time.Now().UTC().Format(time.RFC3339),
+			ImageTag:       imageTag,
 			CoderaftConfig: pcfg,
-			LockFileJSON: lockRaw,
+			LockFileJSON:   lockRaw,
 		}
 		manPath := filepath.Join(outDir, "metadata.json")
 		b, _ := json.MarshalIndent(manifest, "", "  ")

@@ -22,7 +22,7 @@ var (
 var rootCmd = &cobra.Command{
 	Use:   "coderaft",
 	Short: "Isolated development environments for anything",
-	Long:  `coderaft creates isolated development environments, contained in a project's Docker box. Each project operates in its own disposable environment, while your code remains neatly organized in a simple, flat folder on the host machine.`,
+	Long:  `coderaft creates isolated development environments, contained in a project's Docker island. Each project operates in its own disposable environment, while your code remains neatly organized in a simple, flat folder on the host machine.`,
 	PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
 
 		if runtime.GOOS != "linux" && runtime.GOOS != "darwin" && runtime.GOOS != "windows" {

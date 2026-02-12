@@ -177,7 +177,7 @@ func TestProjectConfig(t *testing.T) {
 func TestProject(t *testing.T) {
 	project := &Project{
 		Name:          "test-project",
-		BoxName:       "test-project-box",
+		IslandName:       "test-project-island",
 		BaseImage:     "ubuntu:22.04",
 		WorkspacePath: "/home/user/coderaft/test-project",
 		Status:        "running",
@@ -199,8 +199,8 @@ func TestProject(t *testing.T) {
 		t.Errorf("Expected name %q, got %q", project.Name, p.Name)
 	}
 
-	if p.BoxName != project.BoxName {
-		t.Errorf("Expected box name %q, got %q", project.BoxName, p.BoxName)
+	if p.IslandName != project.IslandName {
+		t.Errorf("Expected island name %q, got %q", project.IslandName, p.IslandName)
 	}
 
 	if p.Status != project.Status {

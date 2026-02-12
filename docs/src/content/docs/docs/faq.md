@@ -9,16 +9,16 @@ Below are answers to the most common questions. If you're stuck, also check out 
 ---
 
 ##### What is coderaft?
-Coderaft creates isolated development environments using Docker (called "boxes"). Your code stays on the host while tools and dependencies live inside a box.
+Coderaft creates isolated development environments using Docker (called "Islands"). Your code stays on the host while tools and dependencies live inside a Island.
 
 ##### What platforms are supported?
 Official support targets Debian/Ubuntu Linux. On Windows, use WSL2 with Ubuntu. macOS is not officially supported.
 
 ##### Where are my project files stored?
-On the host in a simple folder (e.g., `~/coderaft/<project>`). Inside the box, they're mounted at `/workspace` by default.
+On the host in a simple folder (e.g., `~/coderaft/<project>`). Inside the Island, they're mounted at `/workspace` by default.
 
 ##### Does coderaft require root?
-Docker usually requires membership in the `docker` group. Coderaft runs its Docker commands on the host; inside the box it often runs as root for setup convenience.
+Docker usually requires membership in the `docker` group. Coderaft runs its Docker commands on the host; inside the Island it often runs as root for setup convenience.
 
 ##### Do I need Docker Desktop or just Docker Engine?
 You need a working Docker daemon accessible from Linux. On native Linux, install Docker Engine. On Windows, run inside WSL2 (Ubuntu) and either enable Docker Desktop's WSL integration or install Docker in the WSL distro. Coderaft checks `docker version` before running.
@@ -27,7 +27,7 @@ You need a working Docker daemon accessible from Linux. On native Linux, install
 Global config lives at `~/.coderaft/config.json`. It tracks projects and settings like default base image and auto‑stop. A project‑local config file is `coderaft.json` in your workspace (optional but recommended).
 
 ##### What project name characters are allowed?
-Alphanumeric, hyphen, and underscore only: `^[a-zA-Z0-9_-]+$`. Names become part of the box name (e.g., `coderaft_my-project`).
+Alphanumeric, hyphen, and underscore only: `^[a-zA-Z0-9_-]+$`. Names become part of the Island name (e.g., `coderaft_my-project`).
 
 ## Usage
 ---
@@ -41,19 +41,19 @@ Use `coderaft shell <project>` for an interactive shell, or `coderaft run <proje
 ##### Where is the configuration file?
 In your project directory as `coderaft.json`. You can generate one with `coderaft init <project> --generate-config` or customize templates.
 
-##### Can I keep my box running?
+##### Can I keep my Island running?
 By default, global setting `auto_stop_on_exit` is enabled which prefers not restarting containers automatically. You can specify `"restart": "unless-stopped"` in `coderaft.json` to keep it running, or toggle the global setting.
 
 ##### How do I expose ports?
-Add mappings like `"ports": ["3000:3000", "8000:8000"]` in `coderaft.json`. Recreate or restart the box to apply changes.
+Add mappings like `"ports": ["3000:3000", "8000:8000"]` in `coderaft.json`. Recreate or restart the Island to apply changes.
 
 ##### How do I mount extra folders?
-Use `"volumes"` in `coderaft.json`, for example: `"volumes": ["/var/run/docker.sock:/var/run/docker.sock", "/path/on/host:/path/in/box"]`.
+Use `"volumes"` in `coderaft.json`, for example: `"volumes": ["/var/run/docker.sock:/var/run/docker.sock", "/path/on/host:/path/in/Island"]`.
 
 ##### What does `coderaft up` do?
 From a folder that contains `coderaft.json`, `coderaft up` starts the environment defined by that file so new teammates can run it without `init`. Use `--keep-running` to avoid auto‑stop, and `--dotfiles <path>` to mount local dotfiles.
 
-##### How do I prevent the box from stopping after I exit?
+##### How do I prevent the Island from stopping after I exit?
 Use `--keep-running` with `coderaft shell`, `coderaft run`, or `coderaft up`. Or set `"restart": "unless-stopped"` in `coderaft.json`.
 
 ##### How do I share my setup with teammates?
@@ -65,11 +65,11 @@ Commit `coderaft.json` to your repo. Teammates clone the repo and run `coderaft 
 ##### What templates are available?
 Built-in templates: `python`, `nodejs`, `go`, and `web`. You can also create custom templates in `~/.coderaft/templates/` as JSON files.
 
-##### Can I install Docker tools inside the box?
+##### Can I install Docker tools inside the Island?
 Yes. By default, coderaft mounts the Docker socket and many templates install Docker CLI, enabling Docker‑in‑Docker workflows.
 
 ##### How do setup commands work?
-`setup_commands` run inside the box after creation. Use them to install packages and tools. For example:
+`setup_commands` run inside the Island after creation. Use them to install packages and tools. For example:
 
 ```
 {
@@ -84,13 +84,13 @@ Yes. By default, coderaft mounts the Docker socket and many templates install Do
 Save a JSON file in `~/.coderaft/templates/<name>.json` with a `config` object that mirrors `coderaft.json` fields. List available templates with `coderaft config templates`, and use it via `coderaft init <project> --template <name>`.
 
 ##### Are package installs recorded anywhere?
-Yes. Inside the box, coderaft wraps common package managers (apt, pip/pip3, npm/yarn/pnpm/corepack) and appends successful install/remove commands to `/workspace/coderaft.lock`. You can replay them during updates. To change or disable it, set the `CODERAFT_LOCKFILE` env var in `coderaft.json` (empty to disable, or set a custom path).
+Yes. Inside the Island, coderaft wraps common package managers (apt, pip/pip3, npm/yarn/pnpm/corepack) and appends successful install/remove commands to `/workspace/coderaft.lock`. You can replay them during updates. To change or disable it, set the `CODERAFT_LOCKFILE` env var in `coderaft.json` (empty to disable, or set a custom path).
 
 ## Management
 ---
 
 ##### How do I list or remove projects?
-Use `coderaft list` to list, and `coderaft destroy <project>` to remove the box and clean up tracking. Your host files remain unless you delete them manually.
+Use `coderaft list` to list, and `coderaft destroy <project>` to remove the Island and clean up tracking. Your host files remain unless you delete them manually.
 
 ##### How do I update the base image or config?
 Edit `coderaft.json` (e.g., `base_image`, ports, volumes). Then `coderaft destroy <project>` and `coderaft init <project>` to recreate with the new config.
@@ -99,13 +99,13 @@ Edit `coderaft.json` (e.g., `base_image`, ports, volumes). Then `coderaft destro
 In `~/.coderaft/config.json`. It tracks projects and global settings like default base image and auto‑update/auto‑stop behavior.
 
 ##### How do I update all environments to the latest base image?
-Run `coderaft update` to update all, or `coderaft update <project>` for one. This pulls the latest base image, recreates the box, and re-runs recorded/setup steps.
+Run `coderaft update` to update all, or `coderaft update <project>` for one. This pulls the latest base image, recreates the Island, and re-runs recorded/setup steps.
 
 ##### How do I rebuild everything from scratch?
-`coderaft maintenance --rebuild` destroys and recreates all managed boxes using your current configs.
+`coderaft maintenance --rebuild` destroys and recreates all managed Islands using your current configs.
 
-##### How do I clean up orphaned boxes?
-If a box exists but isn't tracked, run `coderaft destroy --cleanup-orphaned` to remove untracked `coderaft_*` containers.
+##### How do I clean up orphaned Islands?
+If a Island exists but isn't tracked, run `coderaft destroy --cleanup-orphaned` to remove untracked `coderaft_*` containers.
 
 ##### How do I see more details in the list output?
 Use `coderaft list --verbose` to include config presence, base image overrides, ports, and setup command counts.
@@ -119,7 +119,7 @@ Edit `~/.coderaft/config.json` under `settings` (e.g., `default_base_image`, `au
 ## Advanced configuration
 ---
 
-##### How do I mount my dotfiles into the box?
+##### How do I mount my dotfiles into the Island?
 Add a `dotfiles` entry in `coderaft.json` or pass `--dotfiles <path>` to `coderaft up`. Coderaft mounts the directory at `/dotfiles` and symlinks common files like `.gitconfig`, `.vimrc`, `.bashrc`, and `.config/*` into the root user's home.
 
 ##### How do I run as a non‑root user or change the shell/working directory?

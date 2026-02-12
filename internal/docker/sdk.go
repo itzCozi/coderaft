@@ -106,7 +106,7 @@ func (s *sdkClient) commitContainer(ctx context.Context, containerID, ref string
 		Reference: ref,
 	})
 	if err != nil {
-		return "", fmt.Errorf("container commit failed: %w", err)
+		return "", fmt.Errorf("island commit failed: %w", err)
 	}
 	return resp.ID, nil
 }
@@ -161,7 +161,7 @@ func (s *sdkClient) containerCreate(
 
 	resp, err := s.cli.ContainerCreate(ctx, containerConfig, hostConfig, networkConfig, nil, name)
 	if err != nil {
-		return "", fmt.Errorf("failed to create container: %w", err)
+		return "", fmt.Errorf("failed to create island: %w", err)
 	}
 	return resp.ID, nil
 }
@@ -280,7 +280,7 @@ type pidsStatsJSON struct {
 func (s *sdkClient) containerStats(ctx context.Context, containerID string) (*ContainerStats, error) {
 	resp, err := s.cli.ContainerStats(ctx, containerID, false)
 	if err != nil {
-		return nil, fmt.Errorf("failed to get container stats: %w", err)
+		return nil, fmt.Errorf("failed to get island stats: %w", err)
 	}
 	defer resp.Body.Close()
 

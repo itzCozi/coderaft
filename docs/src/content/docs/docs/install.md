@@ -56,7 +56,7 @@ sudo make install
 ---
 
 - **Project files**: `~/coderaft/<project>/` (on host)
-- **Box workspace**: `/workspace/` (inside box)
+- **Island workspace**: `/workspace/` (inside Island)
 - **Configuration**: `~/.coderaft/config.json`
 
 ## Next Steps

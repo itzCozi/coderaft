@@ -14,18 +14,18 @@ import (
 
 var destroyCmd = &cobra.Command{
 	Use:   "destroy <project>",
-	Short: "Stop and remove a project box",
-	Long: `Stop and remove the Docker box for the specified project.
+	Short: "Stop and remove a project island",
+	Long: `Stop and remove the Docker island for the specified project.
 Removes empty project directories automatically.
 
 Special usage:
-  coderaft destroy --cleanup-orphaned  Remove boxes not tracked in config`,
+  coderaft destroy --cleanup-orphaned  Remove islands not tracked in config`,
 	Args: cobra.ExactArgs(1),
 	RunE: func(cmd *cobra.Command, args []string) error {
 		projectName := args[0]
 
 		if projectName == "--cleanup-orphaned" {
-			return cleanupOrphanedboxes()
+			return cleanupOrphanedislands()
 		}
 
 		if err := validateProjectName(projectName); err != nil {
@@ -43,7 +43,7 @@ Special usage:
 		}
 
 		if !forceFlag {
-			ui.Info("this will destroy the box '%s' for project '%s'.", project.BoxName, projectName)
+			ui.Info("this will destroy the island '%s' for project '%s'.", project.IslandName, projectName)
 			ui.Info("empty project directories will be automatically removed.")
 			ui.Prompt("are you sure? (y/N): ")
 
@@ -60,20 +60,20 @@ Special usage:
 			}
 		}
 
-		exists, err = dockerClient.BoxExists(project.BoxName)
+		exists, err = dockerClient.IslandExists(project.IslandName)
 		if err != nil {
-			return fmt.Errorf("failed to check box status: %w", err)
+			return fmt.Errorf("failed to check island status: %w", err)
 		}
 
 		if exists {
 
-			ui.Status("stopping and removing box '%s'...", project.BoxName)
-			if err := dockerClient.RemoveBox(project.BoxName); err != nil {
-				ui.Warning("failed to remove box: %v", err)
+			ui.Status("stopping and removing island '%s'...", project.IslandName)
+			if err := dockerClient.RemoveIsland(project.IslandName); err != nil {
+				ui.Warning("failed to remove island: %v", err)
 
 			}
 		} else {
-			ui.Info("box '%s' not found (already removed)", project.BoxName)
+			ui.Info("island '%s' not found (already removed)", project.IslandName)
 		}
 
 		cfg.RemoveProject(projectName)
@@ -122,47 +122,47 @@ func isDirEmpty(dirPath string) (bool, error) {
 	return false, fmt.Errorf("failed to read directory names: %w", err)
 }
 
-func cleanupOrphanedboxes() error {
-	ui.Status("cleaning up orphaned coderaft boxes...")
+func cleanupOrphanedislands() error {
+	ui.Status("cleaning up orphaned coderaft islands...")
 
 	cfg, err := configManager.Load()
 	if err != nil {
 		return fmt.Errorf("failed to load configuration: %w", err)
 	}
 
-	boxes, err := dockerClient.ListBoxes()
+	islands, err := dockerClient.ListIslands()
 	if err != nil {
-		return fmt.Errorf("failed to list boxes: %w", err)
+		return fmt.Errorf("failed to list islands: %w", err)
 	}
 
-	trackedBoxes := make(map[string]bool)
+	trackedislands := make(map[string]bool)
 	for _, project := range cfg.GetProjects() {
-		trackedBoxes[project.BoxName] = true
+		trackedislands[project.IslandName] = true
 	}
 
-	var orphanedBoxes []string
-	for _, box := range boxes {
-		for _, name := range box.Names {
+	var orphanedislands []string
+	for _, island := range islands {
+		for _, name := range island.Names {
 			cleanName := strings.TrimPrefix(name, "/")
-			if !trackedBoxes[cleanName] {
-				orphanedBoxes = append(orphanedBoxes, cleanName)
+			if !trackedislands[cleanName] {
+				orphanedislands = append(orphanedislands, cleanName)
 			}
 		}
 	}
 
-	if len(orphanedBoxes) == 0 {
-		ui.Info("no orphaned boxes found.")
+	if len(orphanedislands) == 0 {
+		ui.Info("no orphaned islands found.")
 		return nil
 	}
 
-	ui.Info("found %d orphaned coderaft box(s):", len(orphanedBoxes))
-	for _, boxName := range orphanedBoxes {
-		ui.Item(boxName)
+	ui.Info("found %d orphaned coderaft island(s):", len(orphanedislands))
+	for _, IslandName := range orphanedislands {
+		ui.Item(IslandName)
 	}
 
 	if !forceFlag {
 		ui.Blank()
-		ui.Prompt("remove these orphaned boxes? (y/N): ")
+		ui.Prompt("remove these orphaned islands? (y/N): ")
 		reader := bufio.NewReader(os.Stdin)
 		response, err := reader.ReadString('\n')
 		if err != nil {
@@ -177,13 +177,13 @@ func cleanupOrphanedboxes() error {
 	}
 
 	var removed, failed int
-	for _, boxName := range orphanedBoxes {
-		ui.Status("removing %s...", boxName)
-		if err := dockerClient.RemoveBox(boxName); err != nil {
-			ui.Error("failed to remove %s: %v", boxName, err)
+	for _, IslandName := range orphanedislands {
+		ui.Status("removing %s...", IslandName)
+		if err := dockerClient.RemoveIsland(IslandName); err != nil {
+			ui.Error("failed to remove %s: %v", IslandName, err)
 			failed++
 		} else {
-			ui.Info("removed %s", boxName)
+			ui.Info("removed %s", IslandName)
 			removed++
 		}
 	}
@@ -191,7 +191,7 @@ func cleanupOrphanedboxes() error {
 	ui.Blank()
 	ui.Summary("cleanup: %d removed, %d failed", removed, failed)
 	if failed > 0 {
-		return fmt.Errorf("failed to remove %d box(s)", failed)
+		return fmt.Errorf("failed to remove %d island(s)", failed)
 	}
 
 	return nil

@@ -23,22 +23,22 @@ var (
 
 var maintenanceCmd = &cobra.Command{
 	Use:   "maintenance [flags]",
-	Short: "Perform maintenance tasks on coderaft projects and boxes",
+	Short: "Perform maintenance tasks on coderaft projects and islands",
 	Long: `Perform various maintenance tasks to keep your coderaft environment healthy:
 
-- Update system packages in boxes
+- Update system packages in islands
 - Check health status of all projects
-- Rebuild boxes from latest base images
-- Restart stopped or problematic boxes
+- Rebuild islands from latest base images
+- Restart stopped or problematic islands
 - Auto-repair common issues
 - System status checks
 
 Examples:
   coderaft maintenance                     # Interactive maintenance menu
-  coderaft maintenance --update            # Update all boxes
+  coderaft maintenance --update            # Update all islands
   coderaft maintenance --health-check      # Check health of all projects
-  coderaft maintenance --restart           # Restart all stopped boxes
-  coderaft maintenance --rebuild           # Rebuild all boxes
+  coderaft maintenance --restart           # Restart all stopped islands
+  coderaft maintenance --rebuild           # Rebuild all islands
   coderaft maintenance --status            # Show detailed status
   coderaft maintenance --auto-repair       # Auto-fix common issues`,
 	Args: cobra.NoArgs,
@@ -59,15 +59,15 @@ Examples:
 		}
 
 		if updateFlag {
-			maintenanceTasks = append(maintenanceTasks, updateAllboxes)
+			maintenanceTasks = append(maintenanceTasks, updateAllislands)
 		}
 
 		if restartFlag {
-			maintenanceTasks = append(maintenanceTasks, restartStoppedboxes)
+			maintenanceTasks = append(maintenanceTasks, restartStoppedislands)
 		}
 
 		if rebuildFlag {
-			maintenanceTasks = append(maintenanceTasks, rebuildAllboxes)
+			maintenanceTasks = append(maintenanceTasks, rebuildAllislands)
 		}
 
 		if autoRepairFlag {
@@ -95,9 +95,9 @@ func runInteractiveMaintenance() error {
 	ui.Info("Available options:")
 	ui.Info("  1. Check system status")
 	ui.Info("  2. Health check all projects")
-	ui.Info("  3. Update system packages in all boxes")
-	ui.Info("  4. Restart stopped boxes")
-	ui.Info("  5. Rebuild all boxes from latest images")
+	ui.Info("  3. Update system packages in all islands")
+	ui.Info("  4. Restart stopped islands")
+	ui.Info("  5. Rebuild all islands from latest images")
 	ui.Info("  6. Auto-repair common issues")
 	ui.Info("  7. Full maintenance (2-4)")
 	ui.Info("  q. Quit")
@@ -120,11 +120,11 @@ func runInteractiveMaintenance() error {
 		case "2":
 			return performHealthCheck()
 		case "3":
-			return updateAllboxes()
+			return updateAllislands()
 		case "4":
-			return restartStoppedboxes()
+			return restartStoppedislands()
 		case "5":
-			return rebuildAllboxes()
+			return rebuildAllislands()
 		case "6":
 			return autoRepairIssues()
 		case "7":
@@ -132,8 +132,8 @@ func runInteractiveMaintenance() error {
 			ui.Status("running full maintenance...")
 			tasks := []func() error{
 				performHealthCheck,
-				updateAllboxes,
-				restartStoppedboxes,
+				updateAllislands,
+				restartStoppedislands,
 			}
 			for _, task := range tasks {
 				if err := task(); err != nil {
@@ -172,33 +172,33 @@ func performStatusCheck() error {
 	ui.Blank()
 	ui.Info("projects: %d total", len(projects))
 
-	boxes, err := dockerClient.ListBoxes()
+	islands, err := dockerClient.ListIslands()
 	if err != nil {
-		ui.Error("failed to list boxes: %v", err)
-		return fmt.Errorf("failed to list docker boxes: %w", err)
+		ui.Error("failed to list islands: %v", err)
+		return fmt.Errorf("failed to list docker islands: %w", err)
 	}
 
-	boxStatus := make(map[string]string)
-	for _, box := range boxes {
-		for _, name := range box.Names {
+	islandStatus := make(map[string]string)
+	for _, island := range islands {
+		for _, name := range island.Names {
 			cleanName := strings.TrimPrefix(name, "/")
-			boxStatus[cleanName] = box.Status
+			islandStatus[cleanName] = island.Status
 		}
 	}
 
 	var running, stopped, missing int
 	ui.Blank()
-	ui.Info("box status:")
+	ui.Info("island status:")
 	for projectName, project := range projects {
-		status := boxStatus[project.BoxName]
+		status := islandStatus[project.IslandName]
 		if status == "" {
-			ui.Item("%s -> %s (missing)", projectName, project.BoxName)
+			ui.Item("%s -> %s (missing)", projectName, project.IslandName)
 			missing++
 		} else if strings.Contains(status, "Up") {
-			ui.Item("%s -> %s (running)", projectName, project.BoxName)
+			ui.Item("%s -> %s (running)", projectName, project.IslandName)
 			running++
 		} else {
-			ui.Item("%s -> %s (stopped)", projectName, project.BoxName)
+			ui.Item("%s -> %s (stopped)", projectName, project.IslandName)
 			stopped++
 		}
 	}
@@ -229,16 +229,16 @@ func performHealthCheck() error {
 		return nil
 	}
 
-	boxes, err := dockerClient.ListBoxes()
+	islands, err := dockerClient.ListIslands()
 	if err != nil {
-		return fmt.Errorf("failed to list boxes: %w", err)
+		return fmt.Errorf("failed to list islands: %w", err)
 	}
 
-	boxStatus := make(map[string]string)
-	for _, box := range boxes {
-		for _, name := range box.Names {
+	islandStatus := make(map[string]string)
+	for _, island := range islands {
+		for _, name := range island.Names {
 			cleanName := strings.TrimPrefix(name, "/")
-			boxStatus[cleanName] = box.Status
+			islandStatus[cleanName] = island.Status
 		}
 	}
 
@@ -248,15 +248,15 @@ func performHealthCheck() error {
 	ui.Info("Health Report:")
 
 	for projectName, project := range projects {
-		status := boxStatus[project.BoxName]
+		status := islandStatus[project.IslandName]
 		if status == "" {
-			ui.Item("%s: box missing", projectName)
+			ui.Item("%s: island missing", projectName)
 			missing++
 			continue
 		}
 
 		if !strings.Contains(status, "Up") {
-			ui.Item("%s: box stopped (%s)", projectName, status)
+			ui.Item("%s: island stopped (%s)", projectName, status)
 			unhealthy++
 			continue
 		}
@@ -267,8 +267,8 @@ func performHealthCheck() error {
 			continue
 		}
 
-		if err := dockerClient.RunDockerCommand([]string{"exec", project.BoxName, "echo", "health-check"}); err != nil {
-			ui.Item("%s: box not responsive", projectName)
+		if err := dockerClient.RunDockerCommand([]string{"exec", project.IslandName, "echo", "health-check"}); err != nil {
+			ui.Item("%s: island not responsive", projectName)
 			unhealthy++
 			continue
 		}
@@ -288,8 +288,8 @@ func performHealthCheck() error {
 	return nil
 }
 
-func updateAllboxes() error {
-	ui.Status("updating system packages in all boxes...")
+func updateAllislands() error {
+	ui.Status("updating system packages in all islands...")
 
 	cfg, err := configManager.Load()
 	if err != nil {
@@ -308,7 +308,7 @@ func updateAllboxes() error {
 		ui.Blank()
 		ui.Status("updating %s...", projectName)
 
-		status, err := dockerClient.GetBoxStatus(project.BoxName)
+		status, err := dockerClient.GetIslandStatus(project.IslandName)
 		if err != nil {
 			ui.Error("failed to check status for %s: %v", projectName, err)
 			failed++
@@ -316,14 +316,14 @@ func updateAllboxes() error {
 		}
 
 		if status == "not found" {
-			ui.Warning("box %s not found, skipping", project.BoxName)
+			ui.Warning("island %s not found, skipping", project.IslandName)
 			continue
 		}
 
 		if status != "running" {
-			ui.Status("starting %s...", project.BoxName)
-			if err := dockerClient.StartBox(project.BoxName); err != nil {
-				ui.Error("failed to start %s: %v", project.BoxName, err)
+			ui.Status("starting %s...", project.IslandName)
+			if err := dockerClient.StartIsland(project.IslandName); err != nil {
+				ui.Error("failed to start %s: %v", project.IslandName, err)
 				failed++
 				continue
 			}
@@ -338,7 +338,7 @@ func updateAllboxes() error {
 			"apt autoclean",
 		}
 
-		if err := dockerClient.ExecuteSetupCommandsWithOutput(project.BoxName, updateCommands, false); err != nil {
+		if err := dockerClient.ExecuteSetupCommandsWithOutput(project.IslandName, updateCommands, false); err != nil {
 			ui.Error("failed to update %s: %v", projectName, err)
 			failed++
 		} else {
@@ -350,14 +350,14 @@ func updateAllboxes() error {
 	ui.Blank()
 	ui.Summary("%d updated, %d failed", updated, failed)
 	if failed > 0 {
-		return fmt.Errorf("failed to update %d box(s)", failed)
+		return fmt.Errorf("failed to update %d island(s)", failed)
 	}
 
 	return nil
 }
 
-func restartStoppedboxes() error {
-	ui.Status("restarting stopped boxes...")
+func restartStoppedislands() error {
+	ui.Status("restarting stopped islands...")
 
 	cfg, err := configManager.Load()
 	if err != nil {
@@ -373,7 +373,7 @@ func restartStoppedboxes() error {
 	var restarted, failed int
 
 	for projectName, project := range projects {
-		status, err := dockerClient.GetBoxStatus(project.BoxName)
+		status, err := dockerClient.GetIslandStatus(project.IslandName)
 		if err != nil {
 			ui.Error("failed to check status for %s: %v", projectName, err)
 			failed++
@@ -381,13 +381,13 @@ func restartStoppedboxes() error {
 		}
 
 		if status == "not found" {
-			ui.Warning("box %s not found, skipping", project.BoxName)
+			ui.Warning("island %s not found, skipping", project.IslandName)
 			continue
 		}
 
 		if status != "running" {
 			ui.Status("starting %s...", projectName)
-			if err := dockerClient.StartBox(project.BoxName); err != nil {
+			if err := dockerClient.StartIsland(project.IslandName); err != nil {
 				ui.Error("failed to start %s: %v", projectName, err)
 				failed++
 			} else {
@@ -402,17 +402,17 @@ func restartStoppedboxes() error {
 	ui.Blank()
 	ui.Summary("%d restarted, %d failed", restarted, failed)
 	if failed > 0 {
-		return fmt.Errorf("failed to restart %d box(s)", failed)
+		return fmt.Errorf("failed to restart %d island(s)", failed)
 	}
 
 	return nil
 }
 
-func rebuildAllboxes() error {
-	ui.Status("rebuilding all boxes from latest images...")
+func rebuildAllislands() error {
+	ui.Status("rebuilding all islands from latest images...")
 
 	if !forceFlag {
-		ui.Prompt("This will destroy and recreate all boxes. Continue? (y/N): ")
+		ui.Prompt("This will destroy and recreate all islands. Continue? (y/N): ")
 		reader := bufio.NewReader(os.Stdin)
 		response, err := reader.ReadString('\n')
 		if err != nil {
@@ -443,21 +443,21 @@ func rebuildAllboxes() error {
 		ui.Blank()
 		ui.Status("rebuilding %s...", projectName)
 
-		if exists, err := dockerClient.BoxExists(project.BoxName); err != nil {
-			ui.Error("failed to check if %s exists: %v", project.BoxName, err)
+		if exists, err := dockerClient.IslandExists(project.IslandName); err != nil {
+			ui.Error("failed to check if %s exists: %v", project.IslandName, err)
 			failed++
 			continue
 		} else if exists {
-			ui.Status("stopping and removing existing box...")
-			dockerClient.StopBox(project.BoxName)
-			if err := dockerClient.RemoveBox(project.BoxName); err != nil {
-				ui.Error("failed to remove %s: %v", project.BoxName, err)
+			ui.Status("stopping and removing existing island...")
+			dockerClient.StopIsland(project.IslandName)
+			if err := dockerClient.RemoveIsland(project.IslandName); err != nil {
+				ui.Error("failed to remove %s: %v", project.IslandName, err)
 				failed++
 				continue
 			}
 		}
 
-		ui.Status("recreating box...")
+		ui.Status("recreating island...")
 
 		projectConfig, err := configManager.LoadProjectConfig(project.WorkspacePath)
 		if err != nil {
@@ -471,26 +471,26 @@ func rebuildAllboxes() error {
 			continue
 		}
 
-		workspaceBox := "/workspace"
+		workspaceIsland := "/workspace"
 		if projectConfig != nil && projectConfig.WorkingDir != "" {
-			workspaceBox = projectConfig.WorkingDir
+			workspaceIsland = projectConfig.WorkingDir
 		}
 
-		boxID, err := dockerClient.CreateBox(project.BoxName, baseImage, project.WorkspacePath, workspaceBox)
+		islandID, err := dockerClient.CreateIsland(project.IslandName, baseImage, project.WorkspacePath, workspaceIsland)
 		if err != nil {
-			ui.Error("failed to create %s: %v", project.BoxName, err)
+			ui.Error("failed to create %s: %v", project.IslandName, err)
 			failed++
 			continue
 		}
 
-		if err := dockerClient.StartBox(boxID); err != nil {
-			ui.Error("failed to start %s: %v", project.BoxName, err)
+		if err := dockerClient.StartIsland(islandID); err != nil {
+			ui.Error("failed to start %s: %v", project.IslandName, err)
 			failed++
 			continue
 		}
 
-		if err := dockerClient.WaitForBox(project.BoxName, 30*time.Second); err != nil {
-			ui.Error("box %s failed to start: %v", project.BoxName, err)
+		if err := dockerClient.WaitForIsland(project.IslandName, 30*time.Second); err != nil {
+			ui.Error("island %s failed to start: %v", project.IslandName, err)
 			failed++
 			continue
 		}
@@ -499,17 +499,17 @@ func rebuildAllboxes() error {
 			"apt update -y",
 			"apt full-upgrade -y",
 		}
-		if err := dockerClient.ExecuteSetupCommandsWithOutput(project.BoxName, updateCommands, false); err != nil {
+		if err := dockerClient.ExecuteSetupCommandsWithOutput(project.IslandName, updateCommands, false); err != nil {
 			ui.Warning("failed to update system packages: %v", err)
 		}
 
 		if projectConfig != nil && len(projectConfig.SetupCommands) > 0 {
-			if err := dockerClient.ExecuteSetupCommandsWithOutput(project.BoxName, projectConfig.SetupCommands, false); err != nil {
+			if err := dockerClient.ExecuteSetupCommandsWithOutput(project.IslandName, projectConfig.SetupCommands, false); err != nil {
 				ui.Warning("failed to execute setup commands: %v", err)
 			}
 		}
 
-		if err := dockerClient.SetupCoderaftInBoxWithUpdate(project.BoxName, projectName); err != nil {
+		if err := dockerClient.SetupCoderaftOnIslandWithUpdate(project.IslandName, projectName); err != nil {
 			ui.Warning("failed to setup coderaft environment: %v", err)
 		}
 
@@ -520,7 +520,7 @@ func rebuildAllboxes() error {
 	ui.Blank()
 	ui.Summary("%d rebuilt, %d failed", rebuilt, failed)
 	if failed > 0 {
-		return fmt.Errorf("failed to rebuild %d box(s)", failed)
+		return fmt.Errorf("failed to rebuild %d island(s)", failed)
 	}
 
 	return nil
@@ -558,46 +558,46 @@ func autoRepairIssues() error {
 			issuesFound = true
 		}
 
-		status, err := dockerClient.GetBoxStatus(project.BoxName)
+		status, err := dockerClient.GetIslandStatus(project.IslandName)
 		if err != nil {
-			ui.Error("failed to check box status: %v", err)
+			ui.Error("failed to check island status: %v", err)
 			failed++
 			continue
 		}
 
 		if status == "not found" {
-			ui.Status("recreating missing box...")
+			ui.Status("recreating missing island...")
 
 			projectConfig, _ := configManager.LoadProjectConfig(project.WorkspacePath)
 			baseImage := cfg.GetEffectiveBaseImage(project, projectConfig)
 
-			workspaceBox := "/workspace"
+			workspaceIsland := "/workspace"
 			if projectConfig != nil && projectConfig.WorkingDir != "" {
-				workspaceBox = projectConfig.WorkingDir
+				workspaceIsland = projectConfig.WorkingDir
 			}
 
-			boxID, err := dockerClient.CreateBox(project.BoxName, baseImage, project.WorkspacePath, workspaceBox)
+			islandID, err := dockerClient.CreateIsland(project.IslandName, baseImage, project.WorkspacePath, workspaceIsland)
 			if err != nil {
-				ui.Error("failed to recreate box: %v", err)
+				ui.Error("failed to recreate island: %v", err)
 				failed++
 				continue
 			}
 
-			if err := dockerClient.StartBox(boxID); err != nil {
-				ui.Error("failed to start box: %v", err)
+			if err := dockerClient.StartIsland(islandID); err != nil {
+				ui.Error("failed to start island: %v", err)
 				failed++
 				continue
 			}
 
-			if err := dockerClient.SetupCoderaftInBoxWithUpdate(project.BoxName, projectName); err != nil {
+			if err := dockerClient.SetupCoderaftOnIslandWithUpdate(project.IslandName, projectName); err != nil {
 				ui.Warning("failed to setup coderaft environment: %v", err)
 			}
 
 			issuesFound = true
 		} else if status != "running" {
-			ui.Status("starting stopped box...")
-			if err := dockerClient.StartBox(project.BoxName); err != nil {
-				ui.Error("failed to start box: %v", err)
+			ui.Status("starting stopped island...")
+			if err := dockerClient.StartIsland(project.IslandName); err != nil {
+				ui.Error("failed to start island: %v", err)
 				failed++
 				continue
 			}
@@ -605,11 +605,11 @@ func autoRepairIssues() error {
 		}
 
 		if status != "not found" {
-			if err := dockerClient.RunDockerCommand([]string{"exec", project.BoxName, "echo", "test"}); err != nil {
-				ui.Status("box unresponsive, restarting...")
-				dockerClient.StopBox(project.BoxName)
-				if err := dockerClient.StartBox(project.BoxName); err != nil {
-					ui.Error("failed to restart box: %v", err)
+			if err := dockerClient.RunDockerCommand([]string{"exec", project.IslandName, "echo", "test"}); err != nil {
+				ui.Status("island unresponsive, restarting...")
+				dockerClient.StopIsland(project.IslandName)
+				if err := dockerClient.StartIsland(project.IslandName); err != nil {
+					ui.Error("failed to restart island: %v", err)
 					failed++
 					continue
 				}
@@ -635,10 +635,10 @@ func autoRepairIssues() error {
 }
 
 func init() {
-	maintenanceCmd.Flags().BoolVar(&updateFlag, "update", false, "Update system packages in all boxes")
+	maintenanceCmd.Flags().BoolVar(&updateFlag, "update", false, "Update system packages in all islands")
 	maintenanceCmd.Flags().BoolVar(&healthCheckFlag, "health-check", false, "Perform health check on all projects")
-	maintenanceCmd.Flags().BoolVar(&rebuildFlag, "rebuild", false, "Rebuild all boxes from latest base images")
-	maintenanceCmd.Flags().BoolVar(&restartFlag, "restart", false, "Restart stopped boxes")
+	maintenanceCmd.Flags().BoolVar(&rebuildFlag, "rebuild", false, "Rebuild all islands from latest base images")
+	maintenanceCmd.Flags().BoolVar(&restartFlag, "restart", false, "Restart stopped islands")
 	maintenanceCmd.Flags().BoolVar(&statusCheckFlag, "status", false, "Show detailed system status")
 	maintenanceCmd.Flags().BoolVar(&autoRepairFlag, "auto-repair", false, "Automatically repair common issues")
 	maintenanceCmd.Flags().BoolVarP(&forceFlag, "force", "f", false, "Force operations without confirmation prompts")

@@ -18,7 +18,7 @@ coderaft cleanup
 
 This opens an interactive menu with the following options:
 
-1. **Clean up orphaned coderaft boxes** - Remove boxes not tracked in config
+1. **Clean up orphaned coderaft Islands** - Remove Islands not tracked in config
 2. **Remove unused Docker images** - Remove dangling and unused images
 3. **Remove unused Docker volumes** - Remove unused volumes
 4. **Remove unused Docker networks** - Remove unused networks
@@ -30,7 +30,7 @@ This opens an interactive menu with the following options:
 
 ```bash
 # Specific cleanup tasks
-coderaft cleanup --orphaned           # Remove orphaned boxes only
+coderaft cleanup --orphaned           # Remove orphaned Islands only
 coderaft cleanup --images             # Remove unused images only
 coderaft cleanup --volumes            # Remove unused volumes only
 coderaft cleanup --networks           # Remove unused networks only
@@ -48,7 +48,7 @@ coderaft cleanup --force              # Skip confirmation prompts
 # See what would be cleaned without making changes
 coderaft cleanup --dry-run --all
 
-# Clean only orphaned boxes
+# Clean only orphaned Islands
 coderaft cleanup --orphaned
 
 # Comprehensive cleanup with confirmation
@@ -73,9 +73,9 @@ This opens an interactive menu with these options:
 
 1. **Check system status** - Show Docker status, projects, and disk usage
 2. **Perform health check** - Check health of all projects
-3. **Update system packages** - Update packages in all boxes
-4. **Restart stopped boxes** - Start any stopped coderaft boxes
-5. **Rebuild all boxes** - Recreate boxes from latest base images
+3. **Update system packages** - Update packages in all Islands
+4. **Restart stopped Islands** - Start any stopped coderaft Islands
+5. **Rebuild all Islands** - Recreate Islands from latest base images
 6. **Auto-repair common issues** - Automatically fix detected problems
 7. **Full maintenance** - Combines health check, updates, and restarts
 
@@ -85,9 +85,9 @@ This opens an interactive menu with these options:
 # Individual maintenance tasks
 coderaft maintenance --status         # Show detailed system status
 coderaft maintenance --health-check   # Check health of all projects
-coderaft maintenance --update         # Update all boxes
-coderaft maintenance --restart        # Restart stopped boxes
-coderaft maintenance --rebuild        # Rebuild all boxes
+coderaft maintenance --update         # Update all Islands
+coderaft maintenance --restart        # Restart stopped Islands
+coderaft maintenance --rebuild        # Rebuild all Islands
 coderaft maintenance --auto-repair    # Auto-fix common issues
 
 # Control flags
@@ -100,10 +100,10 @@ coderaft maintenance --force          # Skip confirmation prompts
 # Check system health
 coderaft maintenance --health-check
 
-# Update all boxes
+# Update all Islands
 coderaft maintenance --update
 
-# Rebuild all boxes (with confirmation)
+# Rebuild all Islands (with confirmation)
 coderaft maintenance --rebuild
 
 # Quick full maintenance without prompts
@@ -113,13 +113,13 @@ coderaft maintenance --force --health-check --update --restart
 ## Update Command
 ---
 
-Use the `coderaft update` command to rebuild environment boxes from the latest base images. This is the recommended way to apply upstream image updates or configuration changes that affect the base image or setup commands.
+Use the `coderaft update` command to rebuild environment Islands from the latest base images. This is the recommended way to apply upstream image updates or configuration changes that affect the base image or setup commands.
 
 ##### Why use `coderaft update`?
 
 - Pulls the newest base image(s)
-- Recreates the box with your current `coderaft.json` configuration
-- Automatically runs a full system update inside the box
+- Recreates the Island with your current `coderaft.json` configuration
+- Automatically runs a full system update inside the Island
 - Re-runs your `setup_commands` to ensure tools are present
 - Preserves your project files on the host at `~/coderaft/<project>/`
 
@@ -135,8 +135,8 @@ coderaft update
 
 ##### When to use maintenance vs update
 
-- `coderaft maintenance --update`: Update system packages inside existing boxes
-- `coderaft update`: Rebuild boxes from the latest base images and re-apply configuration
+- `coderaft maintenance --update`: Update system packages inside existing Islands
+- `coderaft update`: Rebuild Islands from the latest base images and re-apply configuration
 
 If you're changing `base_image` in `coderaft.json` or want to ensure you are using the latest upstream image, use `coderaft update`.
 
@@ -145,15 +145,15 @@ If you're changing `base_image` in `coderaft.json` or want to ensure you are usi
 
 The health check system monitors:
 
-- **Box Status**: Whether boxes are running or stopped
-- **Box Responsiveness**: Whether boxes respond to commands
+- **Island Status**: Whether Islands are running or stopped
+- **Island Responsiveness**: Whether Islands respond to commands
 - **Workspace Directories**: Whether project directories exist
 - **Configuration Files**: Whether coderaft.json files are valid
 
 Health check results show:
-- ✅ **Healthy**: Box running and responsive
-- ⚠️ **Unhealthy**: Box stopped or unresponsive
-- ❌ **Missing**: Box or workspace missing
+- ✅ **Healthy**: Island running and responsive
+- ⚠️ **Unhealthy**: Island stopped or unresponsive
+- ❌ **Missing**: Island or workspace missing
 
 ## Auto-Repair
 ---
@@ -161,9 +161,9 @@ Health check results show:
 The auto-repair feature automatically fixes common issues:
 
 - **Missing workspace directories**: Creates missing project directories
-- **Missing boxes**: Recreates boxes from configuration
-- **Stopped boxes**: Starts stopped boxes
-- **Unresponsive boxes**: Restarts boxes that don't respond
+- **Missing Islands**: Recreates Islands from configuration
+- **Stopped Islands**: Starts stopped Islands
+- **Unresponsive Islands**: Restarts Islands that don't respond
 
 ## System Updates
 ---
@@ -174,21 +174,21 @@ The update feature:
 3. Runs `apt autoremove -y` to remove unnecessary packages
 4. Runs `apt autoclean` to clean package cache
 
-Updates are applied to all tracked boxes that are running or can be started.
+Updates are applied to all tracked Islands that are running or can be started.
 
-## Box Rebuilding
+## Island Rebuilding
 ---
 
 The rebuild feature:
-1. Stops and removes existing boxes
+1. Stops and removes existing Islands
 2. Pulls latest base images
-3. Recreates boxes with current configuration
+3. Recreates Islands with current configuration
 4. Runs system updates
 5. Executes setup commands from coderaft.json
 6. Sets up coderaft environment
 
 :::caution
-Rebuilding preserves your project files but recreates the box environment.
+Rebuilding preserves your project files but recreates the Island environment.
 :::
 
 ## Monitoring
@@ -206,26 +206,26 @@ coderaft maintenance --status
 docker system df
 ```
 
-##### Box Health
+##### Island Health
 ```bash
 # Check all project health
 coderaft maintenance --health-check
 
-# Check specific box
+# Check specific Island
 docker inspect coderaft_myproject
 
-# View box logs
+# View Island logs
 docker logs coderaft_myproject
 ```
 
 ##### Resource Usage
 ```bash
-# Live box stats
+# Live Island stats
 docker stats
 
 # Disk usage by type
 docker system df -v
 
-# List all coderaft boxes
+# List all coderaft Islands
 docker ps -a --filter "name=coderaft_"
 ```

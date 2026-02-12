@@ -15,7 +15,7 @@ import (
 type applyLockFile struct {
 	Version    int            `json:"version"`
 	Project    string         `json:"project"`
-	BoxName    string         `json:"box_name"`
+	IslandName    string         `json:"ISLAND_NAME"`
 	Packages   lockPackages   `json:"packages"`
 	Registries lockRegistries `json:"registries"`
 	AptSources lockAptSources `json:"apt_sources"`
@@ -48,20 +48,20 @@ var applyCmd = &cobra.Command{
 			return fmt.Errorf("invalid lockfile: %w", err)
 		}
 
-		exists, err := dockerClient.BoxExists(proj.BoxName)
+		exists, err := dockerClient.IslandExists(proj.IslandName)
 		if err != nil {
 			return err
 		}
 		if !exists {
-			return fmt.Errorf("box '%s' not found; run 'coderaft up %s' first", proj.BoxName, projectName)
+			return fmt.Errorf("island '%s' not found; run 'coderaft up %s' first", proj.IslandName, projectName)
 		}
-		status, err := dockerClient.GetBoxStatus(proj.BoxName)
+		status, err := dockerClient.GetIslandStatus(proj.IslandName)
 		if err != nil {
 			return err
 		}
 		if status != "running" {
-			if err := dockerClient.StartBox(proj.BoxName); err != nil {
-				return fmt.Errorf("failed to start box: %w", err)
+			if err := dockerClient.StartIsland(proj.IslandName); err != nil {
+				return fmt.Errorf("failed to start island: %w", err)
 			}
 		}
 
@@ -113,15 +113,15 @@ var applyCmd = &cobra.Command{
 			applyCmds = append(applyCmds, fmt.Sprintf("pnpm config set registry %s -g", lf.Registries.PnpmRegistry))
 		}
 
-		if err := dockerClient.ExecuteSetupCommandsWithOutput(proj.BoxName, applyCmds, false); err != nil {
+		if err := dockerClient.ExecuteSetupCommandsWithOutput(proj.IslandName, applyCmds, false); err != nil {
 			return fmt.Errorf("failed applying registries/sources: %w", err)
 		}
 
-		curApt, curPip, curNpm, curYarn, curPnpm := dockerClient.QueryPackagesParallel(proj.BoxName)
+		curApt, curPip, curNpm, curYarn, curPnpm := dockerClient.QueryPackagesParallel(proj.IslandName)
 
 		actions := buildReconcileActions(lf.Packages, curApt, curPip, curNpm, curYarn, curPnpm)
 		if len(actions) > 0 {
-			if err := dockerClient.ExecuteSetupCommandsWithOutput(proj.BoxName, actions, true); err != nil {
+			if err := dockerClient.ExecuteSetupCommandsWithOutput(proj.IslandName, actions, true); err != nil {
 				return fmt.Errorf("failed to reconcile packages: %w", err)
 			}
 		}

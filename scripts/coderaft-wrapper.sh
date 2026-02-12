@@ -3,7 +3,7 @@
 
 
 
-BOX_NAME="${CODERAFT_BOX_NAME:-unknown}"
+ISLAND_NAME="${CODERAFT_ISLAND_NAME:-unknown}"
 PROJECT_NAME="${CODERAFT_PROJECT_NAME:-unknown}"
 
 case "$1" in
@@ -12,44 +12,44 @@ case "$1" in
         exit 0
         ;;
     "status"|"info")
-        echo "📊 Coderaft Box Status"
+        echo "📊 Coderaft Island Status"
         echo "Project: $PROJECT_NAME"
-        echo "Box: $BOX_NAME"
+        echo "Island: $ISLAND_NAME"
         echo "Workspace: /workspace"
         echo "Host: $(cat /etc/hostname)"
         echo "User: $(whoami)"
         echo "Working Directory: $(pwd)"
         echo ""
-        echo "💡 Available coderaft commands inside box:"
+        echo "💡 Available coderaft commands on island:"
         echo "  coderaft exit     - Exit the shell"
-        echo "  coderaft status   - Show box information"
+        echo "  coderaft status   - Show island information"
         echo "  coderaft help     - Show this help"
         ;;
     "help"|"--help"|"-h")
-        echo "🚀 Coderaft box Commands"
+        echo "🚀 Coderaft Island Commands"
         echo ""
-        echo "Available commands inside the box:"
+        echo "Available commands on the island:"
         echo "  coderaft exit         - Exit the coderaft shell"
-        echo "  coderaft status       - Show box and project information"
+        echo "  coderaft status       - Show island and project information"
         echo "  coderaft help         - Show this help message"
         echo ""
         echo "📁 Your project files are in: /workspace"
-        echo "🐧 You're in an Ubuntu box with full package management"
+        echo "🐧 You're on an Ubuntu island with full package management"
         echo ""
         echo "Examples:"
         echo "  coderaft exit                    # Exit to host"
-        echo "  coderaft status                  # Check box info"
+        echo "  coderaft status                  # Check island info"
         echo ""
         echo "💡 Tip: Files in /workspace are shared with your host system"
         ;;
     "host")
         echo "⚠️  The 'coderaft host' command is not yet available."
-        echo "To run commands on the host, exit the box first with 'coderaft exit'."
+        echo "To run commands on the host, exit the island first with 'coderaft exit'."
         exit 1
         ;;
     "version")
-        echo "coderaft box wrapper v1.0"
-        echo "Box: $BOX_NAME"
+        echo "coderaft island wrapper v1.0"
+        echo "Island: $ISLAND_NAME"
         echo "Project: $PROJECT_NAME"
         ;;
     "")
@@ -58,7 +58,7 @@ case "$1" in
         ;;
     *)
         echo "❌ Unknown coderaft command: $1"
-        echo "💡 Use 'coderaft help' to see available commands inside the box"
+        echo "💡 Use 'coderaft help' to see available commands on the island"
         echo ""
         echo "Available commands:"
         echo "  exit, status, help, version"

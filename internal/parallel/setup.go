@@ -17,26 +17,26 @@ import (
 type ExecFunc func(ctx context.Context, containerID string, cmd []string, showOutput bool) (stdout, stderr string, exitCode int, err error)
 
 type SetupCommandExecutor struct {
-	boxName    string
+	islandName    string
 	workerPool *WorkerPool
 	showOutput bool
 	execFunc   ExecFunc
 }
 
-func NewSetupCommandExecutor(boxName string, showOutput bool, maxWorkers int) *SetupCommandExecutor {
+func NewSetupCommandExecutor(islandName string, showOutput bool, maxWorkers int) *SetupCommandExecutor {
 	if maxWorkers <= 0 {
 		maxWorkers = 3
 	}
 
 	return &SetupCommandExecutor{
-		boxName:    boxName,
+		islandName:    islandName,
 		workerPool: NewWorkerPool(maxWorkers, 10*time.Minute),
 		showOutput: showOutput,
 	}
 }
 
-func NewSetupCommandExecutorWithSDK(boxName string, showOutput bool, maxWorkers int, execFn ExecFunc) *SetupCommandExecutor {
-	e := NewSetupCommandExecutor(boxName, showOutput, maxWorkers)
+func NewSetupCommandExecutorWithSDK(islandName string, showOutput bool, maxWorkers int, execFn ExecFunc) *SetupCommandExecutor {
+	e := NewSetupCommandExecutor(islandName, showOutput, maxWorkers)
 	e.execFunc = execFn
 	return e
 }
@@ -196,7 +196,7 @@ func (sce *SetupCommandExecutor) executeCommand(command string, step, total int,
 
 	if sce.execFunc != nil {
 		ctx := context.Background()
-		stdout, stderr, exitCode, err := sce.execFunc(ctx, sce.boxName, []string{"bash", "-c", wrapped}, sce.showOutput)
+		stdout, stderr, exitCode, err := sce.execFunc(ctx, sce.islandName, []string{"bash", "-c", wrapped}, sce.showOutput)
 		if err != nil {
 			return fmt.Errorf("command failed: %s: %w", command, err)
 		}
@@ -211,7 +211,7 @@ func (sce *SetupCommandExecutor) executeCommand(command string, step, total int,
 		return nil
 	}
 
-	cmd := exec.Command("docker", "exec", sce.boxName, "bash", "-c", wrapped)
+	cmd := exec.Command("docker", "exec", sce.islandName, "bash", "-c", wrapped)
 
 	if sce.showOutput {
 		cmd.Stdout = os.Stdout
@@ -241,20 +241,20 @@ func (sce *SetupCommandExecutor) executeCommand(command string, step, total int,
 }
 
 type PackageQueryExecutor struct {
-	boxName    string
+	islandName    string
 	workerPool *WorkerPool
 	execFunc   ExecFunc
 }
 
-func NewPackageQueryExecutor(boxName string) *PackageQueryExecutor {
+func NewPackageQueryExecutor(islandName string) *PackageQueryExecutor {
 	return &PackageQueryExecutor{
-		boxName:    boxName,
+		islandName:    islandName,
 		workerPool: NewWorkerPool(5, 2*time.Minute),
 	}
 }
 
-func NewPackageQueryExecutorWithSDK(boxName string, execFn ExecFunc) *PackageQueryExecutor {
-	e := NewPackageQueryExecutor(boxName)
+func NewPackageQueryExecutorWithSDK(islandName string, execFn ExecFunc) *PackageQueryExecutor {
+	e := NewPackageQueryExecutor(islandName)
 	e.execFunc = execFn
 	return e
 }
@@ -306,14 +306,14 @@ func (pqe *PackageQueryExecutor) createQueryTask(command string) StringTask {
 
 		if pqe.execFunc != nil {
 			ctx := context.Background()
-			stdout, _, _, err := pqe.execFunc(ctx, pqe.boxName, []string{"bash", "-c", command}, false)
+			stdout, _, _, err := pqe.execFunc(ctx, pqe.islandName, []string{"bash", "-c", command}, false)
 			if err != nil {
 				return "", fmt.Errorf("query failed: %w", err)
 			}
 			return stdout, nil
 		}
 
-		cmd := exec.Command("docker", "exec", pqe.boxName, "bash", "-c", command)
+		cmd := exec.Command("docker", "exec", pqe.islandName, "bash", "-c", command)
 
 		var stdout, stderr bytes.Buffer
 		cmd.Stdout = &stdout

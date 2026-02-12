@@ -73,7 +73,7 @@ func TestStringTasks(t *testing.T) {
 
 func TestSetupCommandExecutor(t *testing.T) {
 
-	executor := NewSetupCommandExecutor("test-box", false, 2)
+	executor := NewSetupCommandExecutor("test-island", false, 2)
 
 	commands := []string{
 		"apt install -y git",

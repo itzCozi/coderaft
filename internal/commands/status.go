@@ -13,7 +13,7 @@ import (
 var statusCmd = &cobra.Command{
 	Use:   "status [project]",
 	Short: "Show detailed status for a coderaft project",
-	Long:  "Displays container state, resource usage, uptime, ports, mounts, and other diagnostics for the project's box.",
+	Long:  "Displays island state, resource usage, uptime, ports, mounts, and other diagnostics for the project's island.",
 	Args:  cobra.MaximumNArgs(1),
 	RunE: func(cmd *cobra.Command, args []string) error {
 		var projectName string
@@ -21,16 +21,16 @@ var statusCmd = &cobra.Command{
 			projectName = args[0]
 		} else {
 
-			boxes, err := dockerClient.ListBoxes()
+			islands, err := dockerClient.ListIslands()
 			if err != nil {
-				return fmt.Errorf("failed to list boxes: %w", err)
+				return fmt.Errorf("failed to list islands: %w", err)
 			}
-			if len(boxes) == 0 {
-				ui.Info("no coderaft containers found.")
+			if len(islands) == 0 {
+				ui.Info("no coderaft islands found.")
 				return nil
 			}
-			ui.Header("coderaft containers")
-			for _, b := range boxes {
+			ui.Header("coderaft islands")
+			for _, b := range islands {
 				name := ""
 				if len(b.Names) > 0 {
 					name = b.Names[0]
@@ -56,33 +56,33 @@ var statusCmd = &cobra.Command{
 			return fmt.Errorf("project '%s' not found", projectName)
 		}
 
-		box := project.BoxName
-		if box == "" {
-			box = fmt.Sprintf("coderaft_%s", projectName)
+		island := project.IslandName
+		if island == "" {
+			island = fmt.Sprintf("coderaft_%s", projectName)
 		}
 
-		exists, err := dockerClient.BoxExists(box)
+		exists, err := dockerClient.IslandExists(island)
 		if err != nil {
-			return fmt.Errorf("failed to check if box exists: %w", err)
+			return fmt.Errorf("failed to check if island exists: %w", err)
 		}
 		if !exists {
 			ui.Detail("project", projectName)
-			ui.Detail("box", fmt.Sprintf("%s (not found)", box))
+			ui.Detail("island", fmt.Sprintf("%s (not found)", island))
 			return nil
 		}
 
-		status, err := dockerClient.GetBoxStatus(box)
+		status, err := dockerClient.GetIslandStatus(island)
 		if err != nil {
-			return fmt.Errorf("failed to get box status: %w", err)
+			return fmt.Errorf("failed to get island status: %w", err)
 		}
-		stats, _ := dockerClient.GetContainerStats(box)
-		uptime, _ := dockerClient.GetUptime(box)
-		ports, _ := dockerClient.GetPortMappings(box)
-		mounts, _ := dockerClient.GetMounts(box)
+		stats, _ := dockerClient.GetContainerStats(island)
+		uptime, _ := dockerClient.GetUptime(island)
+		ports, _ := dockerClient.GetPortMappings(island)
+		mounts, _ := dockerClient.GetMounts(island)
 
 		ui.Header("coderaft status")
 		ui.Detail("project", projectName)
-		ui.Detail("box", box)
+		ui.Detail("island", island)
 		ui.Detail("image", project.BaseImage)
 		ui.Detail("state", status)
 		if uptime > 0 {

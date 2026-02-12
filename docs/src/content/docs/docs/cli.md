@@ -54,16 +54,16 @@ coderaft up [--dotfiles <path>] [--keep-running]
 ```
 
 **Options:**
-- `--dotfiles <path>`: Mount a local dotfiles directory into common locations inside the box
-- `--keep-running`: Keep the box running after setup completes (overrides auto-stop-on-idle)
+- `--dotfiles <path>`: Mount a local dotfiles directory into common locations inside the Island
+- `--keep-running`: Keep the Island running after setup completes (overrides auto-stop-on-idle)
 
 **Behavior:**
 - Reads `./coderaft.json`
-- Creates/starts a box named `coderaft_<name>` where `<name>` comes from `coderaft.json`'s `name` (or the folder name)
+- Creates/starts a Island named `coderaft_<name>` where `<name>` comes from `coderaft.json`'s `name` (or the folder name)
 - Applies ports, env, and volumes from configuration
 - Runs a system update, then `setup_commands`
 - Installs the coderaft wrapper for nice shell UX
- - Records package installations you perform inside the box to `coderaft.lock` (apt/pip/npm/yarn/pnpm). On rebuilds, these commands are replayed to reproduce the environment.
+ - Records package installations you perform inside the Island to `coderaft.lock` (apt/pip/npm/yarn/pnpm). On rebuilds, these commands are replayed to reproduce the environment.
  - If global setting `auto_stop_on_exit` is enabled (default), `coderaft up` stops the container right away if it is idle (no exposed ports and only the init process running). Use `--keep-running` to leave it running.
  - When `auto_stop_on_exit` is enabled and your `coderaft.json` does not specify a `restart` policy, coderaft uses `--restart no` to prevent the container from auto-restarting after being stopped.
 
@@ -80,7 +80,7 @@ coderaft up --dotfiles ~/.dotfiles
 
 ### `coderaft init`
 
-Create a new coderaft project with its own Docker box (container).
+Create a new coderaft project with its own Docker island.
 
 **Syntax:**
 ```bash
@@ -91,7 +91,7 @@ coderaft init <project> [flags]
 - `--force, -f`: Force initialization, overwriting existing project
 - `--template, -t <template>`: Initialize from template (python, nodejs, go, web)
 - `--generate-config, -g`: Generate coderaft.json configuration file
-- `--config-only, -c`: Generate configuration file only (don't create box)
+- `--config-only, -c`: Generate configuration file only (don't create Island)
 
 **Examples:**
 ```bash
@@ -121,7 +121,7 @@ coderaft init webapp --generate-config
 
 ### `coderaft shell`
 
-Open an interactive bash shell in the project's box.
+Open an interactive bash shell in the project's Island.
 
 **Syntax:**
 ```bash
@@ -133,23 +133,23 @@ coderaft shell <project> [--keep-running]
 # Enter project environment
 coderaft shell myproject
 
-# Start stopped box and enter shell
+# Start stopped Island and enter shell
 coderaft shell python-app
 ```
 
 **Notes:**
-- Automatically starts the box if stopped
+- Automatically starts the Island if stopped
 - Sets working directory to `/workspace`
 - Your project files are available at `/workspace`
 - Exit with `exit`, `logout`, or `Ctrl+D`
-- By default, the box stops automatically after you exit the shell when global setting `auto_stop_on_exit` is enabled (default)
-- Use `--keep-running` to keep the box running after you exit the shell
+- By default, the Island stops automatically after you exit the shell when global setting `auto_stop_on_exit` is enabled (default)
+- Use `--keep-running` to keep the Island running after you exit the shell
 
 ---
 
 ### `coderaft run`
 
-Run an arbitrary command inside the project's box.
+Run an arbitrary command inside the project's Island.
 
 **Syntax:**
 ```bash
@@ -174,15 +174,15 @@ coderaft run myproject bash /workspace/setup.sh
 **Notes:**
 - Commands run in `/workspace` by default
 - Use quotes for complex commands with pipes, redirects, etc.
-- Box starts automatically if stopped
-- By default, the box stops automatically after the command finishes when global setting `auto_stop_on_exit` is enabled (default)
-- Use `--keep-running` to keep the box running after the command finishes
+- Island starts automatically if stopped
+- By default, the Island stops automatically after the command finishes when global setting `auto_stop_on_exit` is enabled (default)
+- Use `--keep-running` to keep the Island running after the command finishes
 
 ---
 
 ### `coderaft stop`
 
-Stop a project's box if it's running.
+Stop a project's Island if it's running.
 
 **Syntax:**
 ```bash
@@ -191,22 +191,22 @@ coderaft stop <project>
 
 **Examples:**
 ```bash
-# Stop a running box
+# Stop a running Island
 coderaft stop myproject
 
-# Stop another project's box
+# Stop another project's Island
 coderaft stop webapp
 ```
 
 **Notes:**
-- Safe to run if the box is already stopped (no-op)
+- Safe to run if the Island is already stopped (no-op)
 - Complements the default auto-stop behavior after `shell` and `run`
 
 ---
 
 ### `coderaft destroy`
 
-Stop and remove the project's box.
+Stop and remove the project's Island.
 
 **Syntax:**
 ```bash
@@ -227,14 +227,14 @@ coderaft destroy myproject --force
 
 **Notes:**
 - Preserves project files in `~/coderaft/<project>/`
-- Box can be recreated with `coderaft init`
+- Island can be recreated with `coderaft init`
 - Use `rm -rf ~/coderaft/<project>/` to remove files
 
 ---
 
 ### `coderaft list`
 
-Show all managed projects and their box status.
+Show all managed projects and their Island status.
 
 **Syntax:**
 ```bash
@@ -256,7 +256,7 @@ coderaft list --verbose
 **Output Format:**
 ```
 CODERAFT PROJECTS
-PROJECT              BOX                  STATUS          CONFIG       WORKSPACE
+PROJECT              Island                  STATUS          CONFIG       WORKSPACE
 --------------------  --------------------  ---------------  ------------  ------------------------------
 myproject            coderaft_myproject     Up 2 hours      coderaft.json  /home/user/coderaft/myproject
 webapp               coderaft_webapp        Exited          none         /home/user/coderaft/webapp
@@ -268,7 +268,7 @@ Total projects: 2
 
 ### `coderaft lock`
 
-Generate a comprehensive environment snapshot as `coderaft.lock.json` for a project. This is ideal for sharing/auditing the exact box image, container configuration, and globally installed packages.
+Generate a comprehensive environment snapshot as `coderaft.lock.json` for a project. This is ideal for sharing/auditing the exact Island image, container configuration, and globally installed packages.
 
 **Syntax:**
 ```bash
@@ -279,7 +279,7 @@ coderaft lock <project> [-o, --output <path>]
 - `-o, --output <path>`: Write the lock file to a custom path. Defaults to `<workspace>/coderaft.lock.json`.
 
 **Behavior:**
-- Ensures the project's box is running (starts it if needed).
+- Ensures the project's Island is running (starts it if needed).
 - Inspects the container and its image to capture:
   - Base image: name, digest (if available), image ID
   - Container config: working_dir, user, restart policy, network, ports, volumes, labels, environment, capabilities, resources (cpus/memory)
@@ -309,7 +309,7 @@ coderaft lock myproject -o ./env/coderaft.lock.json
 {
   "version": 1,
   "project": "myproject",
-  "box_name": "coderaft_myproject",
+  "island_name": "coderaft_myproject",
   "created_at": "2025-09-18T20:41:51Z",
   "base_image": {
     "name": "ubuntu:22.04",
@@ -359,7 +359,7 @@ coderaft lock myproject -o ./env/coderaft.lock.json
 
 ### `coderaft verify`
 
-Validate that the running box matches the `coderaft.lock.json` exactly. Fails fast on any drift.
+Validate that the running Island matches the `coderaft.lock.json` exactly. Fails fast on any drift.
 
 **Syntax:**
 ```bash
@@ -382,7 +382,7 @@ coderaft verify myproject
 
 ### `coderaft apply`
 
-Apply the `coderaft.lock.json` to the running box: configure registries and apt sources, then reconcile package sets to match the lock.
+Apply the `coderaft.lock.json` to the running Island: configure registries and apt sources, then reconcile package sets to match the lock.
 
 **Syntax:**
 ```bash
@@ -589,7 +589,7 @@ coderaft cleanup --all --force
 
 ### `coderaft maintenance`
 
-Perform maintenance tasks on coderaft projects and boxes.
+Perform maintenance tasks on coderaft projects and Islands.
 
 **Syntax:**
 ```bash
@@ -599,9 +599,9 @@ coderaft maintenance [flags]
 **Options:**
 - `--status`: Show detailed system status
 - `--health-check`: Check health of all projects
-- `--update`: Update all boxes
-- `--restart`: Restart stopped boxes
-- `--rebuild`: Rebuild all boxes
+- `--update`: Update all Islands
+- `--restart`: Restart stopped Islands
+- `--rebuild`: Rebuild all Islands
 - `--auto-repair`: Auto-fix common issues
 - `--force`: Skip confirmation prompts
 
@@ -629,9 +629,9 @@ coderaft maintenance --force --rebuild
 
 ### `coderaft update`
 
-Pull the latest base image(s) and rebuild environment box(es).
+Pull the latest base image(s) and rebuild environment Island(es).
 
-This command replaces boxes to ensure they are based on the newest upstream images, while preserving your workspace files on the host.
+This command replaces Islands to ensure they are based on the newest upstream images, while preserving your workspace files on the host.
 
 **Syntax:**
 ```bash
@@ -641,7 +641,7 @@ coderaft update [project]
 **Behavior:**
 - When a project is specified, only that environment is updated
 - With no project, all registered projects are updated
-- Pulls the latest base image, recreates the box with current coderaft.json config, and re-runs setup commands
+- Pulls the latest base image, recreates the Island with current coderaft.json config, and re-runs setup commands
  - Replays package install commands from `coderaft.lock` to restore your previously installed packages
 
 **Options:**
@@ -657,10 +657,10 @@ coderaft update
 ```
 
 **Notes:**
-- Your files remain in ~/coderaft/<project>/ and are re-mounted into the new box
+- Your files remain in ~/coderaft/<project>/ and are re-mounted into the new Island
 - If the project has a coderaft.json, its settings (ports, env, volumes, etc.) are applied on rebuild
-- System packages inside the box are updated as part of the rebuild
- - If the box exists, it will be stopped and replaced; if missing, it will be created
+- System packages inside the Island are updated as part of the rebuild
+ - If the Island exists, it will be stopped and replaced; if missing, it will be created
 
 ## Exit Codes
 
@@ -702,7 +702,7 @@ When you create a project, coderaft sets up:
 └── ...
 ```
 
-**Inside Box:**
+**Inside Island:**
 ```
 /workspace/                 # Mounted from ~/coderaft/<project>/
 ├── coderaft.json            # Same files as host
@@ -782,14 +782,14 @@ coderaft templates show <TAB>     # Shows: available-template-names
 
 ---
 
-Coderaft creates boxes (Docker containers) with these characteristics:
+Coderaft creates Islands (Docker containers) with these characteristics:
 
 - **Name**: `coderaft_<project>`
 - **Base Image**: `ubuntu:22.04` (configurable)
 - **Working Directory**: `/workspace`
 - **Mount**: `~/coderaft/<project>` → `/workspace`
 - **Restart Policy**: `unless-stopped` (or `no` when `auto_stop_on_exit` is enabled and no explicit policy is set)
-- **Command**: `sleep infinity` (keeps box alive)
+- **Command**: `sleep infinity` (keeps Island alive)
 
 **Docker Commands Equivalent:**
 ```bash

@@ -30,7 +30,7 @@ func CreateTestConfig() *config.Config {
 func CreateTestProject(name string) *config.Project {
 	return &config.Project{
 		Name:          name,
-		BoxName:       name + "-box",
+		IslandName:       name + "-island",
 		BaseImage:     "ubuntu:22.04",
 		WorkspacePath: filepath.Join("/home/user/coderaft", name),
 		Status:        "stopped",

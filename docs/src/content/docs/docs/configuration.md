@@ -77,16 +77,16 @@ Each project can have a `coderaft.json` file in its workspace directory that def
 Key fields you may use: `name`, `base_image`, `setup_commands`, `environment`, `ports`, `volumes`, `dotfiles`, `working_dir`. Advanced options like `capabilities`, `labels`, `network`, `restart`, `resources`, and `health_check` are supported but optional.
 
 :::note
-Regardless of configuration, coderaft always runs `apt update -y && apt full-upgrade -y` first when initializing any box to ensure the system is up to date. Your `setup_commands` will run after this system update.
+Regardless of configuration, coderaft always runs `apt update -y && apt full-upgrade -y` first when initializing any Island to ensure the system is up to date. Your `setup_commands` will run after this system update.
 :::
 
 ## Reproducible Installs
 ---
 
-Coderaft automatically records package manager installs you run inside the box to `/workspace/coderaft.lock` (which is your project folder on the host).
+Coderaft automatically records package manager installs you run inside the Island to `/workspace/coderaft.lock` (which is your project folder on the host).
 
 Lock file paths:
-- Inside box: `/workspace/coderaft.lock`
+- Inside Island: `/workspace/coderaft.lock`
 - On host: `~/coderaft/<project>/coderaft.lock`
 
 The following commands are tracked when they succeed:
@@ -130,7 +130,7 @@ This writes a JSON snapshot (by default to `<workspace>/coderaft.lock.json`) tha
 Usage notes:
 - Commit `coderaft.lock.json` to your repository to share environment details with teammates.
 - This file is an authoritative snapshot for auditing/sharing. The current execution path for rebuilds remains `coderaft.json` + the simple `coderaft.lock` replay file. You can now also use:
-  - `coderaft verify <project>` to validate a box matches the lock (fails fast on drift)
+  - `coderaft verify <project>` to validate a Island matches the lock (fails fast on drift)
   - `coderaft apply <project>` to configure registries/sources and reconcile package sets to the lock
 - Local app dependencies (e.g. non-global Node packages in your repo) are intentionally not included; rely on your project’s own lockfiles (package-lock.json, yarn.lock, pnpm-lock.yaml, requirements.txt/poetry.lock, etc.).
 
@@ -163,7 +163,7 @@ This reads `./coderaft.json` and starts the environment without requiring prior 
 
 ### Dotfile Injection
 
-You can mount your personal dotfiles into the box to keep your editor/shell preferences:
+You can mount your personal dotfiles into the Island to keep your editor/shell preferences:
 
 ```bash
 # One-off via flag
@@ -276,7 +276,7 @@ Global settings are stored in `~/.coderaft/config.json`:
 |--------|------|---------|-------------|
 | `default_base_image` | string | `ubuntu:22.04` | Default base image for new projects |
 | `auto_update` | boolean | `true` | Whether to run updates during initialization |
-| `auto_stop_on_exit` | boolean | `true` | If enabled, coderaft stops a project's box automatically after exiting an interactive shell or finishing a one-off `run` command. Override per-invocation with `--keep-running`. |
+| `auto_stop_on_exit` | boolean | `true` | If enabled, coderaft stops a project's Island automatically after exiting an interactive shell or finishing a one-off `run` command. Override per-invocation with `--keep-running`. |
 
 When `auto_stop_on_exit` is enabled:
 - `coderaft up` will also stop the container if it is idle right after setup (no ports exposed and only the init process running), unless `--keep-running` is passed.
@@ -309,7 +309,7 @@ coderaft init old-project --template nodejs
 ---
 
 - Invalid JSON in `coderaft.json` will show parsing errors
-- Missing required fields are validated before box creation
+- Missing required fields are validated before Island creation
 - Invalid port/volume formats are caught during validation
 - Failed setup commands stop initialization with clear error messages
 

@@ -45,7 +45,7 @@ func TestConfigManager_LoadAndSave(t *testing.T) {
 
 	testProject := &Project{
 		Name:          "test-project",
-		BoxName:       "test-project-box",
+		IslandName:       "test-project-island",
 		BaseImage:     "ubuntu:22.04",
 		WorkspacePath: "/home/user/coderaft/test-project",
 		Status:        "stopped",
@@ -79,8 +79,8 @@ func TestConfigManager_LoadAndSave(t *testing.T) {
 		t.Errorf("Expected project name %q, got %q", testProject.Name, loadedProject.Name)
 	}
 
-	if loadedProject.BoxName != testProject.BoxName {
-		t.Errorf("Expected box name %q, got %q", testProject.BoxName, loadedProject.BoxName)
+	if loadedProject.IslandName != testProject.IslandName {
+		t.Errorf("Expected island name %q, got %q", testProject.IslandName, loadedProject.IslandName)
 	}
 }
 
@@ -209,11 +209,11 @@ func TestConfig_GetProject(t *testing.T) {
 		Projects: map[string]*Project{
 			"project1": {
 				Name:    "project1",
-				BoxName: "project1-box",
+				IslandName: "project1-island",
 			},
 			"project2": {
 				Name:    "project2",
-				BoxName: "project2-box",
+				IslandName: "project2-island",
 			},
 		},
 	}

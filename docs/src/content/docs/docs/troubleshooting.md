@@ -67,22 +67,22 @@ sudo usermod -aG docker $USER
 sudo coderaft init myproject
 ```
 
-## Box Issues
+## Island Issues
 ---
 
-##### "Box not found" or "No such box"
+##### "Island not found" or "No such Island"
 
-**Problem**: Box was manually deleted or doesn't exist.
+**Problem**: Island was manually deleted or doesn't exist.
 
 **Solutions**:
 ```bash
-# Check what boxes exist
+# Check what Islands exist
 docker ps -a --filter "name=coderaft_"
 
 # List coderaft projects
 coderaft list
 
-# Recreate missing box
+# Recreate missing Island
 coderaft destroy myproject  # Clean up tracking
 coderaft init myproject     # Recreate
 
@@ -90,28 +90,28 @@ coderaft init myproject     # Recreate
 coderaft init myproject --force
 ```
 
-##### "Box won't start"
+##### "Island won't start"
 
-**Problem**: Box fails to start or immediately exits.
+**Problem**: Island fails to start or immediately exits.
 
 **Diagnosis**:
 ```bash
-# Check box status
+# Check Island status
 docker ps -a --filter "name=coderaft_myproject"
 
-# Check box logs
+# Check Island logs
 docker logs coderaft_myproject
 
-# Inspect box configuration
+# Inspect Island configuration
 docker inspect coderaft_myproject
 ```
 
 **Solutions**:
 ```bash
-# Try restarting box
+# Try restarting Island
 docker start coderaft_myproject
 
-# If still fails, recreate box
+# If still fails, recreate Island
 coderaft destroy myproject
 coderaft init myproject
 
@@ -119,16 +119,16 @@ coderaft init myproject
 sudo systemctl restart docker
 ```
 
-##### "Box stops immediately after starting"
+##### "Island stops immediately after starting"
 
-**Problem**: Box keeps exiting instead of staying running.
+**Problem**: Island keeps exiting instead of staying running.
 
 **Solutions**:
 ```bash
-# Check what command box is running
+# Check what command Island is running
 docker inspect coderaft_myproject | grep -A 5 '"Cmd"'
 
-# Box should run 'sleep infinity'
+# Island should run 'sleep infinity'
 # If not, recreate:
 coderaft destroy myproject
 coderaft init myproject
@@ -140,9 +140,9 @@ docker stats --no-stream
 ## File Access Issues
 ---
 
-##### "Files not showing up in box"
+##### "Files not showing up in Island"
 
-**Problem**: Files created on host don't appear in `/workspace/` inside box.
+**Problem**: Files created on host don't appear in `/workspace/` inside Island.
 
 **Diagnosis**:
 ```bash
@@ -157,18 +157,18 @@ docker inspect coderaft_myproject | grep -A 10 '"Mounts"'
 # Verify workspace directory exists
 ls -la ~/coderaft/myproject/
 
-# Create file on host and check in box
+# Create file on host and check in Island
 echo "test" > ~/coderaft/myproject/test.txt
 coderaft run myproject cat /workspace/test.txt
 
-# If mount is wrong, recreate box
+# If mount is wrong, recreate Island
 coderaft destroy myproject
 coderaft init myproject
 ```
 
 ##### "Permission denied accessing files"
 
-**Problem**: Can't read/write files in box workspace.
+**Problem**: Can't read/write files in Island workspace.
 
 **Solutions**:
 ```bash
@@ -178,11 +178,11 @@ ls -la ~/coderaft/myproject/
 # Fix ownership if needed
 sudo chown -R $USER:$USER ~/coderaft/myproject/
 
-# Check box user
+# Check Island user
 coderaft run myproject whoami
 coderaft run myproject id
 
-# If running as different user, use sudo inside box
+# If running as different user, use sudo inside Island
 coderaft run myproject "sudo chown -R root:root /workspace/"
 ```
 
@@ -206,27 +206,27 @@ sudo kill -9 <PID>
 # Or use different port in coderaft.json
 # Change "5000:5000" to "5001:5000"
 
-# Recreate box with new config
+# Recreate Island with new config
 coderaft destroy myproject
 coderaft init myproject
 ```
 
 ##### "Can't access web application from host"
 
-**Problem**: Web app running in box but not accessible from host.
+**Problem**: Web app running in Island but not accessible from host.
 
 **Solutions**:
 ```bash
 # Ensure app binds to 0.0.0.0, not localhost
 # In your app: app.run(host='0.0.0.0', port=5000)
 
-# Check port mapping in box
+# Check port mapping in Island
 docker port coderaft_myproject
 
 # Verify ports in coderaft.json
 cat ~/coderaft/myproject/coderaft.json
 
-# Test from inside box
+# Test from inside Island
 coderaft run myproject "curl http://localhost:5000"
 
 # Test from host
@@ -261,7 +261,7 @@ coderaft config validate myproject
 
 **Diagnosis**:
 ```bash
-# Check box logs during init
+# Check Island logs during init
 docker logs coderaft_myproject
 
 # Test commands manually
@@ -295,9 +295,9 @@ pip3 install flask          # Should work
 ## Performance Issues
 ---
 
-##### "Box startup is slow"
+##### "Island startup is slow"
 
-**Problem**: Takes a long time to start boxes or run commands.
+**Problem**: Takes a long time to start Islands or run commands.
 
 **Solutions**:
 ```bash
@@ -327,7 +327,7 @@ docker system df -v
 coderaft cleanup --all
 docker system prune -a
 
-# Check individual boxes
+# Check individual Islands
 docker exec coderaft_myproject du -sh /var/cache/apt
 coderaft run myproject "apt autoclean"
 ```
@@ -340,10 +340,10 @@ coderaft run myproject "apt autoclean"
 If everything is broken, start fresh:
 
 ```bash
-# Stop all coderaft boxes
+# Stop all coderaft Islands
 docker stop $(docker ps -q --filter "name=coderaft_")
 
-# Remove all coderaft boxes
+# Remove all coderaft Islands
 docker rm $(docker ps -aq --filter "name=coderaft_")
 
 # Clean up Docker resources
@@ -359,15 +359,15 @@ rm -rf ~/.coderaft/
 curl -fsSL https://raw.githubusercontent.com/itzcozi/coderaft/main/install.sh | bash
 ```
 
-##### "Recover project after box deletion"
+##### "Recover project after Island deletion"
 
-If box was deleted but files remain:
+If Island was deleted but files remain:
 
 ```bash
 # Check if files exist
 ls ~/coderaft/myproject/
 
-# Recreate box
+# Recreate Island
 coderaft init myproject
 
 # If you had custom configuration
@@ -414,7 +414,7 @@ docker info
 coderaft --version
 coderaft list --verbose
 
-# Box information (if applicable)
+# Island information (if applicable)
 docker logs coderaft_myproject
 docker inspect coderaft_myproject
 
@@ -427,7 +427,7 @@ cat ~/coderaft/myproject/coderaft.json
 
 Useful log locations:
 - Docker daemon: `journalctl -u docker.service`
-- Box logs: `docker logs coderaft_<project>`
+- Island logs: `docker logs coderaft_<project>`
 - System messages: `/var/log/syslog`
 
 ##### Common Commands for Diagnosis
@@ -436,7 +436,7 @@ Useful log locations:
 # Check Docker daemon
 sudo systemctl status docker
 
-# List all boxes
+# List all Islands
 docker ps -a
 
 # Check Docker disk usage

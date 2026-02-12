@@ -22,7 +22,7 @@ type devContainer struct {
 
 var devcontainerCmd = &cobra.Command{
 	Use:   "devcontainer",
-	Short: "Generate VS Code devcontainer.json from devbox.json",
+	Short: "Generate VS Code devcontainer.json from coderaft.json",
 	Args:  cobra.NoArgs,
 }
 
@@ -38,10 +38,10 @@ var devcontainerGenerateCmd = &cobra.Command{
 
 		pcfg, err := configManager.LoadProjectConfig(cwd)
 		if err != nil {
-			return fmt.Errorf("failed to load devbox project config: %w", err)
+			return fmt.Errorf("failed to load coderaft project config: %w", err)
 		}
 		if pcfg == nil {
-			return fmt.Errorf("no devbox project config found in %s (devbox.json | devbox.project.json | .devbox.json)", cwd)
+			return fmt.Errorf("no coderaft project config found in %s (coderaft.json | coderaft.project.json | .coderaft.json)", cwd)
 		}
 
 		dc := devContainer{
@@ -108,7 +108,7 @@ var devcontainerGenerateCmd = &cobra.Command{
 		}
 
 		fmt.Printf("Wrote %s\n", outPath)
-		fmt.Println("Open the folder in VS Code and use 'Reopen in Container' to start a consistent dev environment.")
+		fmt.Println("Open the folder in VS Code and use 'Reopen in Container' to start a consistent dev island.")
 		return nil
 	},
 }

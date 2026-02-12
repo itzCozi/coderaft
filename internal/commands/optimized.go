@@ -22,12 +22,12 @@ type OptimizedSetup struct {
 
 type DockerClientInterface interface {
 	PullImage(image string) error
-	CreateBoxWithConfig(name, image, workspaceHost, workspaceBox string, projectConfig interface{}) (string, error)
-	StartBox(boxID string) error
-	WaitForBox(boxName string, timeout time.Duration) error
-	SetupCoderaftInBoxWithUpdate(boxName, projectName string) error
-	ExecuteSetupCommandsWithOutput(boxName string, commands []string, showOutput bool) error
-	QueryPackagesParallel(boxName string) (aptList, pipList, npmList, yarnList, pnpmList []string)
+	CreateIslandWithConfig(name, image, workspaceHost, workspaceIsland string, projectConfig interface{}) (string, error)
+	StartIsland(islandID string) error
+	WaitForIsland(IslandName string, timeout time.Duration) error
+	SetupCoderaftOnIslandWithUpdate(IslandName, projectName string) error
+	ExecuteSetupCommandsWithOutput(IslandName string, commands []string, showOutput bool) error
+	QueryPackagesParallel(IslandName string) (aptList, pipList, npmList, yarnList, pnpmList []string)
 	ImageExists(ref string) bool
 	SDKExecFunc() func(ctx context.Context, containerID string, cmd []string, showOutput bool) (string, string, int, error)
 }
@@ -40,10 +40,10 @@ func NewOptimizedSetup(dockerClient DockerClientInterface, configManager *config
 	}
 }
 
-func (optSetup *OptimizedSetup) OptimizedSystemUpdate(boxName string) error {
+func (optSetup *OptimizedSetup) OptimizedSystemUpdate(IslandName string) error {
 	ui.Status("performing optimized system update...")
 
-	executor := parallel.NewSetupCommandExecutorWithSDK(boxName, false, 2, optSetup.dockerClient.SDKExecFunc())
+	executor := parallel.NewSetupCommandExecutorWithSDK(IslandName, false, 2, optSetup.dockerClient.SDKExecFunc())
 
 	groups := []parallel.CommandGroup{
 		{
@@ -68,18 +68,18 @@ func (optSetup *OptimizedSetup) OptimizedSystemUpdate(boxName string) error {
 }
 
 func (optSetup *OptimizedSetup) FastInit(projectName string, projectConfig *config.ProjectConfig, cfg *config.Config, workspacePath string, forceFlag bool) error {
-	boxName := fmt.Sprintf("coderaft_%s", projectName)
+	IslandName := fmt.Sprintf("coderaft_%s", projectName)
 	baseImage := cfg.GetEffectiveBaseImage(&config.Project{
 		Name:      projectName,
 		BaseImage: "ubuntu:22.04",
 	}, projectConfig)
 
-	workspaceBox := "/workspace"
+	workspaceIsland := "/workspace"
 	if projectConfig != nil && projectConfig.WorkingDir != "" {
-		workspaceBox = projectConfig.WorkingDir
+		workspaceIsland = projectConfig.WorkingDir
 	}
 
-	ui.Status("fast initialization of '%s'...", boxName)
+	ui.Status("fast initialization of '%s'...", IslandName)
 
 	effectiveImage := baseImage
 	if projectConfig != nil && len(projectConfig.SetupCommands) > 0 {
@@ -88,7 +88,7 @@ func (optSetup *OptimizedSetup) FastInit(projectName string, projectConfig *conf
 			SetupCommands: projectConfig.SetupCommands,
 			Environment:   projectConfig.Environment,
 			Labels:        projectConfig.Labels,
-			WorkingDir:    workspaceBox,
+			WorkingDir:    workspaceIsland,
 			Shell:         projectConfig.Shell,
 			User:          projectConfig.User,
 			ProjectName:   projectName,
@@ -112,50 +112,50 @@ func (optSetup *OptimizedSetup) FastInit(projectName string, projectConfig *conf
 	}
 
 	if forceFlag {
-		ui.Status("force flag detected, recreating box...")
+		ui.Status("force flag detected, recreating island...")
 	}
 
-	ui.Status("creating box...")
+	ui.Status("creating island...")
 	configMap := make(map[string]interface{})
 
-	boxID, err := optSetup.dockerClient.CreateBoxWithConfig(boxName, effectiveImage, workspacePath, workspaceBox, configMap)
+	islandID, err := optSetup.dockerClient.CreateIslandWithConfig(IslandName, effectiveImage, workspacePath, workspaceIsland, configMap)
 	if err != nil {
-		return fmt.Errorf("failed to create box: %w", err)
+		return fmt.Errorf("failed to create island: %w", err)
 	}
 
-	ui.Status("starting box...")
-	if err := optSetup.dockerClient.StartBox(boxID); err != nil {
-		return fmt.Errorf("failed to start box: %w", err)
+	ui.Status("starting island...")
+	if err := optSetup.dockerClient.StartIsland(islandID); err != nil {
+		return fmt.Errorf("failed to start island: %w", err)
 	}
 
-	ui.Status("waiting for box to be ready...")
-	if err := optSetup.dockerClient.WaitForBox(boxName, 30*time.Second); err != nil {
-		return fmt.Errorf("box failed to start: %w", err)
+	ui.Status("waiting for island to be ready...")
+	if err := optSetup.dockerClient.WaitForIsland(IslandName, 30*time.Second); err != nil {
+		return fmt.Errorf("island failed to start: %w", err)
 	}
 
 	ui.Status("setting up coderaft commands...")
-	if err := optSetup.dockerClient.SetupCoderaftInBoxWithUpdate(boxName, projectName); err != nil {
-		return fmt.Errorf("failed to setup coderaft in box: %w", err)
+	if err := optSetup.dockerClient.SetupCoderaftOnIslandWithUpdate(IslandName, projectName); err != nil {
+		return fmt.Errorf("failed to setup coderaft in island: %w", err)
 	}
 
 	if effectiveImage == baseImage && projectConfig != nil && len(projectConfig.SetupCommands) > 0 {
 
-		if err := optSetup.OptimizedSystemUpdate(boxName); err != nil {
+		if err := optSetup.OptimizedSystemUpdate(IslandName); err != nil {
 			ui.Warning("system update failed: %v", err)
 		}
 
 		ui.Status("installing packages (%d commands)...", len(projectConfig.SetupCommands))
-		if err := optSetup.dockerClient.ExecuteSetupCommandsWithOutput(boxName, projectConfig.SetupCommands, false); err != nil {
+		if err := optSetup.dockerClient.ExecuteSetupCommandsWithOutput(IslandName, projectConfig.SetupCommands, false); err != nil {
 			return fmt.Errorf("failed to execute setup commands: %w", err)
 		}
 
-		_ = WriteLockFileForBox(boxName, projectName, workspacePath, baseImage, "")
+		_ = WriteLockFileForIsland(IslandName, projectName, workspacePath, baseImage, "")
 	}
 
 	return nil
 }
 
-func (optSetup *OptimizedSetup) FastUp(projectConfig *config.ProjectConfig, projectName, boxName, baseImage, cwd, workspaceBox string) error {
+func (optSetup *OptimizedSetup) FastUp(projectConfig *config.ProjectConfig, projectName, IslandName, baseImage, cwd, workspaceIsland string) error {
 	ui.Status("fast startup of environment...")
 
 	effectiveImage := baseImage
@@ -165,7 +165,7 @@ func (optSetup *OptimizedSetup) FastUp(projectConfig *config.ProjectConfig, proj
 			SetupCommands: projectConfig.SetupCommands,
 			Environment:   projectConfig.Environment,
 			Labels:        projectConfig.Labels,
-			WorkingDir:    workspaceBox,
+			WorkingDir:    workspaceIsland,
 			Shell:         projectConfig.Shell,
 			User:          projectConfig.User,
 			ProjectName:   projectName,
@@ -181,50 +181,50 @@ func (optSetup *OptimizedSetup) FastUp(projectConfig *config.ProjectConfig, proj
 
 	configMap := make(map[string]interface{})
 
-	ui.Status("creating optimized box...")
-	boxID, err := optSetup.dockerClient.CreateBoxWithConfig(boxName, effectiveImage, cwd, workspaceBox, configMap)
+	ui.Status("creating optimized island...")
+	islandID, err := optSetup.dockerClient.CreateIslandWithConfig(IslandName, effectiveImage, cwd, workspaceIsland, configMap)
 	if err != nil {
-		return fmt.Errorf("failed to create box: %w", err)
+		return fmt.Errorf("failed to create island: %w", err)
 	}
 
-	if err := optSetup.dockerClient.StartBox(boxID); err != nil {
-		return fmt.Errorf("failed to start box: %w", err)
+	if err := optSetup.dockerClient.StartIsland(islandID); err != nil {
+		return fmt.Errorf("failed to start island: %w", err)
 	}
 
-	ui.Status("waiting for box startup...")
-	if err := optSetup.dockerClient.WaitForBox(boxName, 30*time.Second); err != nil {
-		return fmt.Errorf("box failed to start: %w", err)
+	ui.Status("waiting for island startup...")
+	if err := optSetup.dockerClient.WaitForIsland(IslandName, 30*time.Second); err != nil {
+		return fmt.Errorf("island failed to start: %w", err)
 	}
 
-	if err := optSetup.dockerClient.SetupCoderaftInBoxWithUpdate(boxName, projectName); err != nil {
-		return fmt.Errorf("failed to setup coderaft in box: %w", err)
+	if err := optSetup.dockerClient.SetupCoderaftOnIslandWithUpdate(IslandName, projectName); err != nil {
+		return fmt.Errorf("failed to setup coderaft in island: %w", err)
 	}
 
 	lockfilePath := filepath.Join(cwd, "coderaft.lock")
 	if _, err := os.Stat(lockfilePath); err == nil {
 		ui.Status("processing lock file...")
-		if err := optSetup.processLockFile(boxName, lockfilePath); err != nil {
+		if err := optSetup.processLockFile(IslandName, lockfilePath); err != nil {
 			return fmt.Errorf("failed to process lock file: %w", err)
 		}
 	}
 
 	if effectiveImage == baseImage && projectConfig != nil && len(projectConfig.SetupCommands) > 0 {
-		if err := optSetup.OptimizedSystemUpdate(boxName); err != nil {
+		if err := optSetup.OptimizedSystemUpdate(IslandName); err != nil {
 			ui.Warning("system update failed: %v", err)
 		}
 
 		ui.Status("installing packages (%d commands)...", len(projectConfig.SetupCommands))
-		if err := optSetup.dockerClient.ExecuteSetupCommandsWithOutput(boxName, projectConfig.SetupCommands, false); err != nil {
+		if err := optSetup.dockerClient.ExecuteSetupCommandsWithOutput(IslandName, projectConfig.SetupCommands, false); err != nil {
 			return fmt.Errorf("failed to execute setup commands: %w", err)
 		}
 
-		_ = WriteLockFileForBox(boxName, projectName, cwd, baseImage, "")
+		_ = WriteLockFileForIsland(IslandName, projectName, cwd, baseImage, "")
 	}
 
 	return nil
 }
 
-func (optSetup *OptimizedSetup) processLockFile(boxName, lockfilePath string) error {
+func (optSetup *OptimizedSetup) processLockFile(IslandName, lockfilePath string) error {
 	data, err := os.ReadFile(lockfilePath)
 	if err != nil {
 		return err
@@ -242,7 +242,7 @@ func (optSetup *OptimizedSetup) processLockFile(boxName, lockfilePath string) er
 
 	if len(cmds) > 0 {
 		ui.Status("replaying %d commands from lock file...", len(cmds))
-		return optSetup.dockerClient.ExecuteSetupCommandsWithOutput(boxName, cmds, false)
+		return optSetup.dockerClient.ExecuteSetupCommandsWithOutput(IslandName, cmds, false)
 	}
 
 	return nil
@@ -253,10 +253,10 @@ func (optSetup *OptimizedSetup) PrewarmImage(image string) error {
 	return optSetup.dockerClient.PullImage(image)
 }
 
-func (optSetup *OptimizedSetup) OptimizeEnvironment(boxName string) error {
+func (optSetup *OptimizedSetup) OptimizeEnvironment(IslandName string) error {
 	ui.Status("optimizing environment...")
 
-	executor := parallel.NewSetupCommandExecutorWithSDK(boxName, false, 3, optSetup.dockerClient.SDKExecFunc())
+	executor := parallel.NewSetupCommandExecutorWithSDK(IslandName, false, 3, optSetup.dockerClient.SDKExecFunc())
 
 	optimizationGroups := []parallel.CommandGroup{
 		{

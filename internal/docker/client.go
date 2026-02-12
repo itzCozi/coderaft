@@ -96,11 +96,11 @@ func (c *Client) PullImage(ref string) error {
 	return nil
 }
 
-func (c *Client) CreateBox(name, image, workspaceHost, workspaceBox string) (string, error) {
-	return c.CreateBoxWithConfig(name, image, workspaceHost, workspaceBox, nil)
+func (c *Client) CreateIsland(name, image, workspaceHost, workspaceIsland string) (string, error) {
+	return c.CreateIslandWithConfig(name, image, workspaceHost, workspaceIsland, nil)
 }
 
-func (c *Client) CreateBoxWithConfig(name, image, workspaceHost, workspaceBox string, projectConfig interface{}) (string, error) {
+func (c *Client) CreateIslandWithConfig(name, image, workspaceHost, workspaceIsland string, projectConfig interface{}) (string, error) {
 	ctx := context.Background()
 
 	var config map[string]interface{}
@@ -110,38 +110,38 @@ func (c *Client) CreateBoxWithConfig(name, image, workspaceHost, workspaceBox st
 		}
 	}
 
-	boxID, err := c.sdk.containerCreate(ctx, name, image, workspaceHost, workspaceBox, config)
+	islandID, err := c.sdk.containerCreate(ctx, name, image, workspaceHost, workspaceIsland, config)
 	if err != nil {
-		return "", fmt.Errorf("failed to create box: %w", err)
+		return "", fmt.Errorf("failed to create island: %w", err)
 	}
-	return boxID, nil
+	return islandID, nil
 }
 
-func (c *Client) ExecuteSetupCommands(boxName string, commands []string) error {
-	return c.ExecuteSetupCommandsWithOutput(boxName, commands, true)
+func (c *Client) ExecuteSetupCommands(islandName string, commands []string) error {
+	return c.ExecuteSetupCommandsWithOutput(islandName, commands, true)
 }
 
-func (c *Client) ExecuteSetupCommandsWithOutput(boxName string, commands []string, showOutput bool) error {
+func (c *Client) ExecuteSetupCommandsWithOutput(islandName string, commands []string, showOutput bool) error {
 	if len(commands) == 0 {
 		return nil
 	}
 
 	if showOutput {
-		ui.Status("executing setup commands in box '%s'...", boxName)
+		ui.Status("executing setup commands on island '%s'...", islandName)
 	}
 
 	config := parallel.LoadConfig()
 	if config.EnableParallel {
 
-		executor := parallel.NewSetupCommandExecutorWithSDK(boxName, showOutput, config.SetupCommandWorkers, c.SDKExecFunc())
+		executor := parallel.NewSetupCommandExecutorWithSDK(islandName, showOutput, config.SetupCommandWorkers, c.SDKExecFunc())
 		if err := executor.ExecuteParallel(commands); err != nil {
 
 			ui.Warning("parallel execution failed, falling back to sequential: %v", err)
-			return c.ExecuteSetupCommandsSequential(boxName, commands, showOutput)
+			return c.ExecuteSetupCommandsSequential(islandName, commands, showOutput)
 		}
 	} else {
 
-		return c.ExecuteSetupCommandsSequential(boxName, commands, showOutput)
+		return c.ExecuteSetupCommandsSequential(islandName, commands, showOutput)
 	}
 
 	if showOutput {
@@ -150,13 +150,13 @@ func (c *Client) ExecuteSetupCommandsWithOutput(boxName string, commands []strin
 	return nil
 }
 
-func (c *Client) ExecuteSetupCommandsSequential(boxName string, commands []string, showOutput bool) error {
+func (c *Client) ExecuteSetupCommandsSequential(islandName string, commands []string, showOutput bool) error {
 	if len(commands) == 0 {
 		return nil
 	}
 
 	if showOutput {
-		ui.Status("executing setup commands in box '%s'...", boxName)
+		ui.Status("executing setup commands on island '%s'...", islandName)
 	}
 
 	batchSize := 10
@@ -186,7 +186,7 @@ func (c *Client) ExecuteSetupCommandsSequential(boxName string, commands []strin
 
 		cmd := []string{"bash", "-lc", scriptBuilder.String()}
 		ctx := context.Background()
-		result, err := c.sdk.containerExec(ctx, boxName, cmd, showOutput)
+		result, err := c.sdk.containerExec(ctx, islandName, cmd, showOutput)
 		if err != nil {
 			return fmt.Errorf("setup command batch failed (steps %d-%d): %w", i+1, end, err)
 		}
@@ -205,26 +205,26 @@ func (c *Client) ExecuteSetupCommandsSequential(boxName string, commands []strin
 	return nil
 }
 
-func (c *Client) QueryPackagesParallel(boxName string) (aptList, pipList, npmList, yarnList, pnpmList []string) {
+func (c *Client) QueryPackagesParallel(islandName string) (aptList, pipList, npmList, yarnList, pnpmList []string) {
 	config := parallel.LoadConfig()
 	if !config.EnableParallel {
 
-		return c.queryPackagesSequential(boxName)
+		return c.queryPackagesSequential(islandName)
 	}
 
-	executor := parallel.NewPackageQueryExecutorWithSDK(boxName, c.SDKExecFunc())
+	executor := parallel.NewPackageQueryExecutorWithSDK(islandName, c.SDKExecFunc())
 
 	packageLists, err := executor.QueryAllPackages()
 	if err != nil {
 		ui.Warning("parallel package query failed, falling back to sequential: %v", err)
 
-		return c.queryPackagesSequential(boxName)
+		return c.queryPackagesSequential(islandName)
 	}
 
 	return packageLists["apt"], packageLists["pip"], packageLists["npm"], packageLists["yarn"], packageLists["pnpm"]
 }
 
-func (c *Client) queryPackagesSequential(boxName string) (aptList, pipList, npmList, yarnList, pnpmList []string) {
+func (c *Client) queryPackagesSequential(islandName string) (aptList, pipList, npmList, yarnList, pnpmList []string) {
 	type query struct {
 		name    string
 		command string
@@ -243,7 +243,7 @@ func (c *Client) queryPackagesSequential(boxName string) (aptList, pipList, npmL
 	ctx := context.Background()
 
 	for _, q := range queries {
-		result, err := c.sdk.containerExec(ctx, boxName, []string{"bash", "-c", q.command}, false)
+		result, err := c.sdk.containerExec(ctx, islandName, []string{"bash", "-c", q.command}, false)
 		if err != nil {
 			ui.Warning("sequential query for %s failed: %v", q.name, err)
 			continue
@@ -259,25 +259,25 @@ func (c *Client) queryPackagesSequential(boxName string) (aptList, pipList, npmL
 	return results["apt"], results["pip"], results["npm"], results["yarn"], results["pnpm"]
 }
 
-func (c *Client) StartBox(boxID string) error {
+func (c *Client) StartIsland(islandID string) error {
 	ctx := context.Background()
-	if err := c.sdk.containerStart(ctx, boxID); err != nil {
-		return fmt.Errorf("failed to start box: %w", err)
+	if err := c.sdk.containerStart(ctx, islandID); err != nil {
+		return fmt.Errorf("failed to start island: %w", err)
 	}
 	return nil
 }
 
-func (c *Client) SetupCoderaftInBox(boxName, projectName string) error {
-	return c.setupCoderaftInBoxWithOptions(boxName, projectName, false)
+func (c *Client) SetupCoderaftOnIsland(islandName, projectName string) error {
+	return c.setupCoderaftOnIslandWithOptions(islandName, projectName, false)
 }
 
-func (c *Client) SetupCoderaftInBoxWithUpdate(boxName, projectName string) error {
-	return c.setupCoderaftInBoxWithOptions(boxName, projectName, true)
+func (c *Client) SetupCoderaftOnIslandWithUpdate(islandName, projectName string) error {
+	return c.setupCoderaftOnIslandWithOptions(islandName, projectName, true)
 }
 
-func (c *Client) IsBoxInitialized(boxName string) bool {
+func (c *Client) IsIslandInitialized(islandName string) bool {
 	ctx := context.Background()
-	result, err := c.sdk.containerExec(ctx, boxName, []string{"test", "-f", "/etc/coderaft-initialized"}, false)
+	result, err := c.sdk.containerExec(ctx, islandName, []string{"test", "-f", "/etc/coderaft-initialized"}, false)
 	return err == nil && result != nil && result.ExitCode == 0
 }
 
@@ -287,58 +287,58 @@ func (c *Client) ImageExists(ref string) bool {
 	return err == nil && exists
 }
 
-func (c *Client) setupCoderaftInBoxWithOptions(boxName, projectName string, forceUpdate bool) error {
+func (c *Client) setupCoderaftOnIslandWithOptions(islandName, projectName string, forceUpdate bool) error {
 
 	ctx := context.Background()
 
 	wrapperScript := `#!/bin/bash
 
 # coderaft-wrapper.sh
-# This script provides coderaft commands inside the box
+# This script provides coderaft commands on the island
 
-BOX_NAME="` + boxName + `"
+ISLAND_NAME="` + islandName + `"
 PROJECT_NAME="` + projectName + `"
 
 case "$1" in
 	"status"|"info")
-		echo "Coderaft box status"
+		echo "Coderaft island status"
         echo "Project: $PROJECT_NAME"
-        echo "Box: $BOX_NAME"
+        echo "Island: $ISLAND_NAME"
         echo "Workspace: /workspace"
         echo "Host: $(cat /etc/hostname)"
         echo "User: $(whoami)"
         echo "Working Directory: $(pwd)"
         echo ""
-	echo "hint: available coderaft commands inside box:"
+	echo "hint: available coderaft commands on island:"
         echo "  coderaft exit     - Exit the shell"
-        echo "  coderaft status   - Show box information"
+        echo "  coderaft status   - Show island information"
         echo "  coderaft help     - Show this help"
         ;;
 	"help"|"--help"|"-h")
-		echo "Coderaft box commands"
+		echo "Coderaft island commands"
         echo ""
-        echo "Available commands inside the box:"
+        echo "Available commands on the island:"
         echo "  coderaft exit         - Exit the coderaft shell"
-        echo "  coderaft status       - Show box and project information"
+        echo "  coderaft status       - Show island and project information"
         echo "  coderaft help         - Show this help message"
         echo ""
 	echo "Your project files are in: /workspace"
-	echo "You are in an Ubuntu box with full package management"
+	echo "You are on an Ubuntu island with full package management"
         echo ""
         echo "Examples:"
         echo "  coderaft exit                    # Exit to host"
-        echo "  coderaft status                  # Check box info"
+        echo "  coderaft status                  # Check island info"
         echo ""
 	echo "hint: Files in /workspace are shared with your host system"
         ;;
     "host")
 		echo "error: the 'coderaft host' command is not yet available"
-		echo "hint: Exit the box with 'coderaft exit' and run commands on the host directly"
+		echo "hint: Exit the island with 'Exit the island with 'coderaft exit' and run commands on the host directly"
 		exit 1
         ;;
     "version")
-        echo "coderaft box wrapper v1.0"
-        echo "Box: $BOX_NAME"
+        echo "Coderaft island wrapper v1.0"
+        echo "Island: $ISLAND_NAME"
         echo "Project: $PROJECT_NAME"
         ;;
 	"")
@@ -347,7 +347,7 @@ case "$1" in
         ;;
     *)
 		echo "error: unknown coderaft command: $1"
-		echo "hint: Use \"coderaft help\" to see available commands inside the box"
+		echo "hint: Use \"coderaft help\" to see available commands on the island"
         echo ""
         echo "Available commands:"
         echo "  exit, status, help, version"
@@ -381,7 +381,7 @@ if [ -t 1 ]; then
 	echo "Welcome to coderaft project: ` + projectName + `"
 	echo "Your files are in: /workspace"
 	echo "hint: Type 'coderaft help' for available commands"
-	echo "hint: Type 'coderaft exit' to leave the box"
+	echo "hint: Type 'coderaft exit' to leave the island"
     echo ""
 fi
 
@@ -508,18 +508,18 @@ corepack(){ _coderaft_wrap_and_record "$COREPACK_BIN" corepack "$@"; }
 BASHRC_EOF
 `
 
-	result, err := c.sdk.containerExec(ctx, boxName, []string{"bash", "-c", setupScript}, false)
+	result, err := c.sdk.containerExec(ctx, islandName, []string{"bash", "-c", setupScript}, false)
 	if err != nil {
-		return fmt.Errorf("failed to setup coderaft in box: %w", err)
+		return fmt.Errorf("failed to setup coderaft on island: %w", err)
 	}
 	if result != nil && result.ExitCode != 0 {
-		return fmt.Errorf("failed to setup coderaft in box: exit code %d: %s", result.ExitCode, result.Stderr)
+		return fmt.Errorf("failed to setup coderaft on island: exit code %d: %s", result.ExitCode, result.Stderr)
 	}
 
 	return nil
 }
 
-func (c *Client) StopBox(boxName string) error {
+func (c *Client) StopIsland(islandName string) error {
 
 	timeoutSec := 2
 	if v := strings.TrimSpace(os.Getenv("CODERAFT_STOP_TIMEOUT")); v != "" {
@@ -528,49 +528,49 @@ func (c *Client) StopBox(boxName string) error {
 		}
 	}
 	ctx := context.Background()
-	if err := c.sdk.containerStop(ctx, boxName, timeoutSec); err != nil {
-		return fmt.Errorf("failed to stop box: %w", err)
+	if err := c.sdk.containerStop(ctx, islandName, timeoutSec); err != nil {
+		return fmt.Errorf("failed to stop island: %w", err)
 	}
 	return nil
 }
 
-func (c *Client) RemoveBox(boxName string) error {
+func (c *Client) RemoveIsland(islandName string) error {
 	ctx := context.Background()
-	if err := c.sdk.containerRemove(ctx, boxName); err != nil {
-		return fmt.Errorf("failed to remove box: %w", err)
+	if err := c.sdk.containerRemove(ctx, islandName); err != nil {
+		return fmt.Errorf("failed to remove island: %w", err)
 	}
 	return nil
 }
 
-func (c *Client) BoxExists(boxName string) (bool, error) {
+func (c *Client) IslandExists(islandName string) (bool, error) {
 	ctx := context.Background()
-	_, err := c.sdk.containerInspect(ctx, boxName)
+	_, err := c.sdk.containerInspect(ctx, islandName)
 	if err != nil {
 		if dockerclient.IsErrNotFound(err) {
 			return false, nil
 		}
-		return false, fmt.Errorf("failed to inspect box: %w", err)
+		return false, fmt.Errorf("failed to inspect island: %w", err)
 	}
 	return true, nil
 }
 
-func (c *Client) GetBoxStatus(boxName string) (string, error) {
+func (c *Client) GetIslandStatus(islandName string) (string, error) {
 	ctx := context.Background()
-	inspect, err := c.sdk.containerInspect(ctx, boxName)
+	inspect, err := c.sdk.containerInspect(ctx, islandName)
 	if err != nil {
 		if dockerclient.IsErrNotFound(err) {
 			return "not found", nil
 		}
-		return "", fmt.Errorf("failed to inspect box: %w", err)
+		return "", fmt.Errorf("failed to inspect island: %w", err)
 	}
 	return inspect.State.Status, nil
 }
 
-func AttachShell(boxName string) error {
+func AttachShell(islandName string) error {
 
 	cmd := exec.Command(dockerCmd(), "exec", "-it",
-		"-e", fmt.Sprintf("CODERAFT_BOX_NAME=%s", boxName),
-		boxName, "/bin/bash", "-c",
+		"-e", fmt.Sprintf("CODERAFT_ISLAND_NAME=%s", islandName),
+		islandName, "/bin/bash", "-c",
 		"export PS1='coderaft(\\$PROJECT_NAME):\\w\\$ '; exec /bin/bash")
 	cmd.Stdin = os.Stdin
 	cmd.Stdout = os.Stdout
@@ -582,10 +582,10 @@ func AttachShell(boxName string) error {
 	return nil
 }
 
-func RunCommand(boxName string, command []string) error {
+func RunCommand(islandName string, command []string) error {
 	cmdStr := strings.Join(command, " ")
 	wrapped := ". /root/.bashrc >/dev/null 2>&1 || true; " + cmdStr
-	args := []string{"exec", "-it", boxName, "bash", "-lc", wrapped}
+	args := []string{"exec", "-it", islandName, "bash", "-lc", wrapped}
 	cmd := exec.Command(dockerCmd(), args...)
 	cmd.Stdin = os.Stdin
 	cmd.Stdout = os.Stdout
@@ -597,19 +597,19 @@ func RunCommand(boxName string, command []string) error {
 	return nil
 }
 
-func (c *Client) WaitForBox(boxName string, timeout time.Duration) error {
+func (c *Client) WaitForIsland(islandName string, timeout time.Duration) error {
 	start := time.Now()
 
 	pollInterval := 25 * time.Millisecond
 	maxInterval := 500 * time.Millisecond
 	for {
 		if time.Since(start) > timeout {
-			return fmt.Errorf("timeout waiting for box to be ready")
+			return fmt.Errorf("timeout waiting for island to be ready")
 		}
 
-		status, err := c.GetBoxStatus(boxName)
+		status, err := c.GetIslandStatus(islandName)
 		if err != nil {
-			return fmt.Errorf("failed to get box status: %w", err)
+			return fmt.Errorf("failed to get island status: %w", err)
 		}
 
 		if status == "running" {
@@ -624,26 +624,26 @@ func (c *Client) WaitForBox(boxName string, timeout time.Duration) error {
 	}
 }
 
-type BoxInfo struct {
+type IslandInfo struct {
 	Names  []string
 	Status string
 	Image  string
 }
 
-func (c *Client) ListBoxes() ([]BoxInfo, error) {
+func (c *Client) ListIslands() ([]IslandInfo, error) {
 	ctx := context.Background()
 	containers, err := c.sdk.containerList(ctx, true)
 	if err != nil {
-		return nil, fmt.Errorf("failed to list boxes: %w", err)
+		return nil, fmt.Errorf("failed to list islands: %w", err)
 	}
 
-	var boxes []BoxInfo
+	var islands []IslandInfo
 	for _, ctr := range containers {
 		for _, name := range ctr.Names {
 
 			cleanName := strings.TrimPrefix(name, "/")
 			if strings.HasPrefix(cleanName, "coderaft_") {
-				boxes = append(boxes, BoxInfo{
+				islands = append(islands, IslandInfo{
 					Names:  []string{cleanName},
 					Status: ctr.Status,
 					Image:  ctr.Image,
@@ -652,7 +652,7 @@ func (c *Client) ListBoxes() ([]BoxInfo, error) {
 			}
 		}
 	}
-	return boxes, nil
+	return islands, nil
 }
 
 func (c *Client) RunDockerCommand(args []string) error {
@@ -706,25 +706,25 @@ func (c *Client) LoadImage(tarPath string) (string, error) {
 	return c.sdk.loadImage(ctx, f)
 }
 
-func (c *Client) GetContainerStats(boxName string) (*ContainerStats, error) {
+func (c *Client) GetContainerStats(islandName string) (*ContainerStats, error) {
 	ctx := context.Background()
-	return c.sdk.containerStats(ctx, boxName)
+	return c.sdk.containerStats(ctx, islandName)
 }
 
-func (c *Client) GetContainerID(boxName string) (string, error) {
+func (c *Client) GetContainerID(islandName string) (string, error) {
 	ctx := context.Background()
-	inspect, err := c.sdk.containerInspect(ctx, boxName)
+	inspect, err := c.sdk.containerInspect(ctx, islandName)
 	if err != nil {
-		return "", fmt.Errorf("failed to get container ID: %w", err)
+		return "", fmt.Errorf("failed to get island ID: %w", err)
 	}
 	return inspect.ID, nil
 }
 
-func (c *Client) GetUptime(boxName string) (time.Duration, error) {
+func (c *Client) GetUptime(islandName string) (time.Duration, error) {
 	ctx := context.Background()
-	inspect, err := c.sdk.containerInspect(ctx, boxName)
+	inspect, err := c.sdk.containerInspect(ctx, islandName)
 	if err != nil {
-		return 0, fmt.Errorf("failed to inspect container: %w", err)
+		return 0, fmt.Errorf("failed to inspect island: %w", err)
 	}
 	if inspect.State == nil || !inspect.State.Running {
 		return 0, nil
@@ -740,9 +740,9 @@ func (c *Client) GetUptime(boxName string) (time.Duration, error) {
 	return time.Since(t), nil
 }
 
-func (c *Client) GetPortMappings(boxName string) ([]string, error) {
+func (c *Client) GetPortMappings(islandName string) ([]string, error) {
 	ctx := context.Background()
-	inspect, err := c.sdk.containerInspect(ctx, boxName)
+	inspect, err := c.sdk.containerInspect(ctx, islandName)
 	if err != nil {
 		return []string{}, nil
 	}
@@ -757,9 +757,9 @@ func (c *Client) GetPortMappings(boxName string) ([]string, error) {
 	return ports, nil
 }
 
-func (c *Client) GetMounts(boxName string) ([]string, error) {
+func (c *Client) GetMounts(islandName string) ([]string, error) {
 	ctx := context.Background()
-	inspect, err := c.sdk.containerInspect(ctx, boxName)
+	inspect, err := c.sdk.containerInspect(ctx, islandName)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get mounts: %w", err)
 	}
@@ -770,12 +770,12 @@ func (c *Client) GetMounts(boxName string) ([]string, error) {
 	return mounts, nil
 }
 
-func (c *Client) IsContainerIdle(boxName string) (bool, error) {
-	stats, err := c.GetContainerStats(boxName)
+func (c *Client) IsContainerIdle(islandName string) (bool, error) {
+	stats, err := c.GetContainerStats(islandName)
 	if err != nil {
 		return false, err
 	}
-	ports, err := c.GetPortMappings(boxName)
+	ports, err := c.GetPortMappings(islandName)
 	if err != nil {
 		return false, err
 	}
@@ -786,10 +786,10 @@ func (c *Client) IsContainerIdle(boxName string) (bool, error) {
 	return len(ports) == 0 && pids <= 1, nil
 }
 
-func (c *Client) ExecCapture(boxName, command string) (string, string, error) {
+func (c *Client) ExecCapture(islandName, command string) (string, string, error) {
 	wrapped := ". /root/.bashrc >/dev/null 2>&1 || true; set -o pipefail; " + command
 	ctx := context.Background()
-	result, err := c.sdk.containerExec(ctx, boxName, []string{"bash", "-lc", wrapped}, false)
+	result, err := c.sdk.containerExec(ctx, islandName, []string{"bash", "-lc", wrapped}, false)
 	if err != nil {
 		return "", "", fmt.Errorf("exec failed: %w", err)
 	}
@@ -799,9 +799,9 @@ func (c *Client) ExecCapture(boxName, command string) (string, string, error) {
 	return result.Stdout, result.Stderr, nil
 }
 
-func (c *Client) GetAptSources(boxName string) (snapshotURL string, sources []string, release string) {
+func (c *Client) GetAptSources(islandName string) (snapshotURL string, sources []string, release string) {
 
-	out, _, err := c.ExecCapture(boxName, "cat /etc/apt/sources.list 2>/dev/null; echo; cat /etc/apt/sources.list.d/*.list 2>/dev/null || true")
+	out, _, err := c.ExecCapture(islandName, "cat /etc/apt/sources.list 2>/dev/null; echo; cat /etc/apt/sources.list.d/*.list 2>/dev/null || true")
 	if err == nil {
 		scanner := bufio.NewScanner(strings.NewReader(out))
 		for scanner.Scan() {
@@ -823,15 +823,15 @@ func (c *Client) GetAptSources(boxName string) (snapshotURL string, sources []st
 		}
 	}
 
-	if relOut, _, err2 := c.ExecCapture(boxName, ". /etc/os-release 2>/dev/null; echo $VERSION_CODENAME"); err2 == nil {
+	if relOut, _, err2 := c.ExecCapture(islandName, ". /etc/os-release 2>/dev/null; echo $VERSION_CODENAME"); err2 == nil {
 		release = strings.TrimSpace(relOut)
 	}
 	return
 }
 
-func (c *Client) GetPipRegistries(boxName string) (indexURL string, extra []string) {
+func (c *Client) GetPipRegistries(islandName string) (indexURL string, extra []string) {
 
-	out, _, err := c.ExecCapture(boxName, "(pip3 config debug || pip config debug) 2>/dev/null | sed -n 's/^ *index-url *= *//p; s/^ *extra-index-url *= *//p'")
+	out, _, err := c.ExecCapture(islandName, "(pip3 config debug || pip config debug) 2>/dev/null | sed -n 's/^ *index-url *= *//p; s/^ *extra-index-url *= *//p'")
 	if err == nil && strings.TrimSpace(out) != "" {
 
 		lines := strings.Split(strings.TrimSpace(out), "\n")
@@ -849,7 +849,7 @@ func (c *Client) GetPipRegistries(boxName string) (indexURL string, extra []stri
 	}
 	if indexURL == "" {
 
-		if conf, _, err2 := c.ExecCapture(boxName, "grep -hE '^(index-url|extra-index-url)' /etc/pip.conf ~/.pip/pip.conf 2>/dev/null || true"); err2 == nil {
+		if conf, _, err2 := c.ExecCapture(islandName, "grep -hE '^(index-url|extra-index-url)' /etc/pip.conf ~/.pip/pip.conf 2>/dev/null || true"); err2 == nil {
 			for _, line := range strings.Split(conf, "\n") {
 				line = strings.TrimSpace(line)
 				if strings.HasPrefix(line, "index-url") && indexURL == "" {
@@ -868,14 +868,14 @@ func (c *Client) GetPipRegistries(boxName string) (indexURL string, extra []stri
 	return
 }
 
-func (c *Client) GetNodeRegistries(boxName string) (npmReg, yarnReg, pnpmReg string) {
-	if out, _, err := c.ExecCapture(boxName, "npm config get registry 2>/dev/null || true"); err == nil {
+func (c *Client) GetNodeRegistries(islandName string) (npmReg, yarnReg, pnpmReg string) {
+	if out, _, err := c.ExecCapture(islandName, "npm config get registry 2>/dev/null || true"); err == nil {
 		npmReg = strings.TrimSpace(out)
 	}
-	if out, _, err := c.ExecCapture(boxName, "yarn config get npmRegistryServer 2>/dev/null || true"); err == nil {
+	if out, _, err := c.ExecCapture(islandName, "yarn config get npmRegistryServer 2>/dev/null || true"); err == nil {
 		yarnReg = strings.TrimSpace(out)
 	}
-	if out, _, err := c.ExecCapture(boxName, "pnpm config get registry 2>/dev/null || true"); err == nil {
+	if out, _, err := c.ExecCapture(islandName, "pnpm config get registry 2>/dev/null || true"); err == nil {
 		pnpmReg = strings.TrimSpace(out)
 	}
 	return
@@ -913,9 +913,9 @@ func (c *Client) GetImageDigestInfo(ref string) (string, string, error) {
 	return digest, imgInspect.ID, nil
 }
 
-func (c *Client) GetContainerMeta(boxName string) (map[string]string, string, string, string, map[string]string, []string, map[string]string, string) {
+func (c *Client) GetContainerMeta(islandName string) (map[string]string, string, string, string, map[string]string, []string, map[string]string, string) {
 	ctx := context.Background()
-	inspect, err := c.sdk.containerInspect(ctx, boxName)
+	inspect, err := c.sdk.containerInspect(ctx, islandName)
 	if err != nil {
 		return map[string]string{}, "", "", "", map[string]string{}, []string{}, map[string]string{}, ""
 	}

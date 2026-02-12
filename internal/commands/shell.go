@@ -13,8 +13,8 @@ var keepRunningFlag bool
 
 var shellCmd = &cobra.Command{
 	Use:   "shell <project>",
-	Short: "Open an interactive shell in the project box",
-	Long:  `Attach an interactive bash shell to the specified project's box.`,
+	Short: "Open an interactive shell in the project island",
+	Long:  `Attach an interactive bash shell to the specified project's island.`,
 	Args:  cobra.ExactArgs(1),
 	RunE: func(cmd *cobra.Command, args []string) error {
 		projectName := args[0]
@@ -33,49 +33,49 @@ var shellCmd = &cobra.Command{
 			return fmt.Errorf("project '%s' not found. Run 'coderaft init %s' first", projectName, projectName)
 		}
 
-		exists, err = dockerClient.BoxExists(project.BoxName)
+		exists, err = dockerClient.IslandExists(project.IslandName)
 		if err != nil {
-			return fmt.Errorf("failed to check box status: %w", err)
+			return fmt.Errorf("failed to check island status: %w", err)
 		}
 
 		if !exists {
-			return fmt.Errorf("box '%s' not found. Run 'coderaft init %s' to recreate", project.BoxName, projectName)
+			return fmt.Errorf("island '%s' not found. Run 'coderaft init %s' to recreate", project.IslandName, projectName)
 		}
 
-		status, err := dockerClient.GetBoxStatus(project.BoxName)
+		status, err := dockerClient.GetIslandStatus(project.IslandName)
 		if err != nil {
-			return fmt.Errorf("failed to get box status: %w", err)
+			return fmt.Errorf("failed to get island status: %w", err)
 		}
 
 		if status != "running" {
-			ui.Status("starting box '%s'...", project.BoxName)
-			if err := dockerClient.StartBox(project.BoxName); err != nil {
-				return fmt.Errorf("failed to start box: %w", err)
+			ui.Status("starting island '%s'...", project.IslandName)
+			if err := dockerClient.StartIsland(project.IslandName); err != nil {
+				return fmt.Errorf("failed to start island: %w", err)
 			}
 		}
 
-		if !dockerClient.IsBoxInitialized(project.BoxName) {
-			ui.Status("setting up coderaft commands in box...")
-			if err := dockerClient.SetupCoderaftInBox(project.BoxName, projectName); err != nil {
-				return fmt.Errorf("failed to setup coderaft in box: %w", err)
+		if !dockerClient.IsIslandInitialized(project.IslandName) {
+			ui.Status("setting up coderaft commands in island...")
+			if err := dockerClient.SetupCoderaftOnIsland(project.IslandName, projectName); err != nil {
+				return fmt.Errorf("failed to setup coderaft in island: %w", err)
 			}
 		}
 
-		ui.Status("attaching to box '%s'...", project.BoxName)
-		if err := docker.AttachShell(project.BoxName); err != nil {
+		ui.Status("attaching to island '%s'...", project.IslandName)
+		if err := docker.AttachShell(project.IslandName); err != nil {
 			return fmt.Errorf("failed to attach shell: %w", err)
 		}
 
 		if !keepRunningFlag {
 			cfg, err := configManager.Load()
 			if err == nil && cfg.Settings != nil && cfg.Settings.AutoStopOnExit {
-				idle, idleErr := dockerClient.IsContainerIdle(project.BoxName)
+				idle, idleErr := dockerClient.IsContainerIdle(project.IslandName)
 				if idleErr != nil {
-					ui.Warning("failed to check container idle status: %v", idleErr)
+					ui.Warning("failed to check island idle status: %v", idleErr)
 				} else if idle {
-					ui.Status("stopping box '%s' (auto-stop: idle)...", project.BoxName)
-					if err := dockerClient.StopBox(project.BoxName); err != nil {
-						ui.Warning("failed to stop box: %v", err)
+					ui.Status("stopping island '%s' (auto-stop: idle)...", project.IslandName)
+					if err := dockerClient.StopIsland(project.IslandName); err != nil {
+						ui.Warning("failed to stop island: %v", err)
 					}
 				}
 			}
@@ -86,5 +86,5 @@ var shellCmd = &cobra.Command{
 }
 
 func init() {
-	shellCmd.Flags().BoolVar(&keepRunningFlag, "keep-running", false, "Keep the box running after exiting the shell")
+	shellCmd.Flags().BoolVar(&keepRunningFlag, "keep-running", false, "Keep the island running after exiting the shell")
 }

@@ -29,7 +29,7 @@ type GlobalSettings struct {
 
 type Project struct {
 	Name          string `json:"name"`
-	BoxName       string `json:"box_name"`
+	IslandName    string `json:"island_name"`
 	BaseImage     string `json:"base_image"`
 	WorkspacePath string `json:"workspace_path"`
 	Status        string `json:"status,omitempty"`
@@ -235,12 +235,12 @@ func (cm *ConfigManager) ValidateProjectConfig(cfg *ProjectConfig) error {
 	for _, port := range cfg.Ports {
 		if !strings.Contains(port, ":") && !strings.Contains(port, "/") {
 
-			return fmt.Errorf("invalid port mapping '%s' (expected host:container or container[/proto])", port)
+			return fmt.Errorf("invalid port mapping '%s' (expected host:island or island[/proto])", port)
 		}
 	}
 	for _, volume := range cfg.Volumes {
 		if !strings.Contains(volume, ":") {
-			return fmt.Errorf("invalid volume mapping '%s' (expected host:container)", volume)
+			return fmt.Errorf("invalid volume mapping '%s' (expected host:island)", volume)
 		}
 	}
 	if cfg.HealthCheck != nil {

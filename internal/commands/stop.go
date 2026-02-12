@@ -10,8 +10,8 @@ import (
 
 var stopCmd = &cobra.Command{
 	Use:   "stop <project>",
-	Short: "Stop a project's box",
-	Long:  `Stop the Docker box for the specified project if it's running.`,
+	Short: "Stop a project's island",
+	Long:  `Stop the Docker island for the specified project if it's running.`,
 	Args:  cobra.ExactArgs(1),
 	RunE: func(cmd *cobra.Command, args []string) error {
 		projectName := args[0]
@@ -30,32 +30,32 @@ var stopCmd = &cobra.Command{
 			return fmt.Errorf("project '%s' not found. Run 'coderaft init %s' first", projectName, projectName)
 		}
 
-		exists, err = dockerClient.BoxExists(project.BoxName)
+		exists, err = dockerClient.IslandExists(project.IslandName)
 		if err != nil {
-			return fmt.Errorf("failed to check box status: %w", err)
+			return fmt.Errorf("failed to check island status: %w", err)
 		}
 
 		if !exists {
-			ui.Info("box '%s' not found, nothing to stop.", project.BoxName)
+			ui.Info("island '%s' not found, nothing to stop.", project.IslandName)
 			return nil
 		}
 
-		status, err := dockerClient.GetBoxStatus(project.BoxName)
+		status, err := dockerClient.GetIslandStatus(project.IslandName)
 		if err != nil {
-			return fmt.Errorf("failed to get box status: %w", err)
+			return fmt.Errorf("failed to get island status: %w", err)
 		}
 
 		if status != "running" {
-			ui.Info("box '%s' is not running.", project.BoxName)
+			ui.Info("island '%s' is not running.", project.IslandName)
 			return nil
 		}
 
-		ui.Status("stopping box '%s'...", project.BoxName)
-		if err := dockerClient.StopBox(project.BoxName); err != nil {
-			return fmt.Errorf("failed to stop box: %w", err)
+		ui.Status("stopping island '%s'...", project.IslandName)
+		if err := dockerClient.StopIsland(project.IslandName); err != nil {
+			return fmt.Errorf("failed to stop island: %w", err)
 		}
 
-		ui.Success("stopped '%s'", project.BoxName)
+		ui.Success("stopped '%s'", project.IslandName)
 		return nil
 	},
 }
