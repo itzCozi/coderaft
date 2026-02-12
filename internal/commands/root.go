@@ -49,11 +49,7 @@ var rootCmd = &cobra.Command{
 		return nil
 	},
 	PersistentPostRun: func(cmd *cobra.Command, args []string) {
-		// Auto-stop is now handled directly in shell/up commands when
-		// they know which project they operated on. The old code iterated
-		// ALL projects (N * inspect + idle check per project) on EVERY
-		// command, adding hundreds of ms of overhead for a feature that
-		// only applies after shell exit.
+
 		if dockerClient != nil {
 			dockerClient.Close()
 		}

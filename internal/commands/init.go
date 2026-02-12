@@ -154,9 +154,6 @@ Examples:
 			return fmt.Errorf("box failed to start: %w", err)
 		}
 
-		// Skip the heavy apt update + full-upgrade when there are no setup commands.
-		// apt full-upgrade alone takes 10-30s and invalidates Docker layer cache
-		// on every security patch. The base image is already up to date enough.
 		if projectConfig != nil && len(projectConfig.SetupCommands) > 0 {
 			ui.Status("updating system packages...")
 			systemUpdateCommands := []string{

@@ -64,7 +64,7 @@ var runCmd = &cobra.Command{
 			if err == nil && cfg.Settings != nil && cfg.Settings.AutoStopOnExit {
 				idle, idleErr := dockerClient.IsContainerIdle(project.BoxName)
 				if idleErr != nil {
-
+					ui.Warning("failed to check container idle status: %v", idleErr)
 				} else if idle {
 					ui.Status("stopping box '%s' (auto-stop: idle)...", project.BoxName)
 					if err := dockerClient.StopBox(project.BoxName); err != nil {

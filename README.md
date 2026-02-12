@@ -17,8 +17,8 @@ devbox creates isolated development environments, contained in a project's Docke
 - 🗑️ **Disposable** - Easily destroy and recreate environments as needed
 - 🛡️ **Isolated** - Each project runs in its own box, preventing conflicts
 - 🔄 **Docker-in-Docker** - Use Docker within your devbox environments by default
-- 🐧 **Linux-only** - Officially supported on Debian/Ubuntu systems
-- 🧪 **Well Tested** - Comprehensive test suite on Linux
+- 🐧 **Cross-platform** - Supports Linux, macOS, and Windows (primary target: Debian/Ubuntu)
+- 🧪 **Well Tested** - Comprehensive test suite
 
 ## Why devbox?
 
@@ -28,7 +28,7 @@ devbox focuses on fast, disposable, Docker-native development environments with 
 - Clean host workspace: flat folders, no complex mounts
 - Reproducible: isolated per-project boxes you can destroy/recreate anytime
 - Docker-in-Docker ready: use Docker inside your environment out of the box
-- Designed for Linux/WSL: optimized for Debian/Ubuntu workflows
+- Cross-platform: runs on Linux, macOS, and Windows wherever Docker is available
 
 ## Installation
 
@@ -38,7 +38,7 @@ curl -fsSL https://devbox.ar0.eu/install.sh | bash
 # Or manually: https://devbox.ar0.eu/docs/install/#manual-build-from-source
 ```
 
-Note: devbox supports Linux environments only (Debian/Ubuntu). On Windows, use WSL2 with an Ubuntu distribution.
+Note: devbox requires Docker. It supports Linux, macOS, and Windows. On Windows without WSL2, ensure Docker Desktop is running.
 
 ## Quick Start
 

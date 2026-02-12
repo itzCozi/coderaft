@@ -243,9 +243,9 @@ func cleanupUnusedImages() error {
 	ui.Status("scanning for unused images...")
 
 	if dryRunFlag {
-		ui.Info("dry run - no images will be removed")
-		if err := dockerClient.RunDockerCommand([]string{"image", "prune", "--dry-run"}); err != nil {
-			return fmt.Errorf("failed to show unused images: %w", err)
+		ui.Info("dry run - dangling images that would be removed:")
+		if err := dockerClient.RunDockerCommand([]string{"images", "-f", "dangling=true"}); err != nil {
+			return fmt.Errorf("failed to list dangling images: %w", err)
 		}
 	} else {
 		if !forceFlag {
@@ -277,9 +277,9 @@ func cleanupUnusedVolumes() error {
 	ui.Status("scanning for unused volumes...")
 
 	if dryRunFlag {
-		ui.Info("dry run - no volumes will be removed")
-		if err := dockerClient.RunDockerCommand([]string{"volume", "prune", "--dry-run"}); err != nil {
-			return fmt.Errorf("failed to show unused volumes: %w", err)
+		ui.Info("dry run - dangling volumes that would be removed:")
+		if err := dockerClient.RunDockerCommand([]string{"volume", "ls", "-f", "dangling=true"}); err != nil {
+			return fmt.Errorf("failed to list dangling volumes: %w", err)
 		}
 	} else {
 		if !forceFlag {
@@ -311,9 +311,9 @@ func cleanupUnusedNetworks() error {
 	ui.Status("scanning for unused networks...")
 
 	if dryRunFlag {
-		ui.Info("dry run - no networks will be removed")
-		if err := dockerClient.RunDockerCommand([]string{"network", "prune", "--dry-run"}); err != nil {
-			return fmt.Errorf("failed to show unused networks: %w", err)
+		ui.Info("dry run - custom networks (unused ones would be removed):")
+		if err := dockerClient.RunDockerCommand([]string{"network", "ls", "--filter", "type=custom"}); err != nil {
+			return fmt.Errorf("failed to list custom networks: %w", err)
 		}
 	} else {
 		if !forceFlag {
@@ -345,9 +345,9 @@ func runSystemPrune() error {
 	ui.Status("running comprehensive system cleanup...")
 
 	if dryRunFlag {
-		ui.Info("dry run - no resources will be removed")
-		if err := dockerClient.RunDockerCommand([]string{"system", "prune", "--dry-run"}); err != nil {
-			return fmt.Errorf("failed to show system prune info: %w", err)
+		ui.Info("dry run - Docker disk usage:")
+		if err := dockerClient.RunDockerCommand([]string{"system", "df"}); err != nil {
+			return fmt.Errorf("failed to show Docker disk usage: %w", err)
 		}
 	} else {
 		if !forceFlag {

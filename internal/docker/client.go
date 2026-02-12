@@ -2,7 +2,6 @@ package docker
 
 import (
 	"bufio"
-	"bytes"
 	"context"
 	"fmt"
 	"os"
@@ -18,8 +17,10 @@ import (
 )
 
 type Client struct {
-	sdk *sdkClient // SDK client for direct Docker API access
+	sdk *sdkClient
 }
+
+const yarnGlobalListQuery = `node -e "(async()=>{const cp=require('child_process');function sh(c){try{return cp.execSync(c,{stdio:['ignore','pipe','ignore']}).toString()}catch(e){return ''}}const dir=sh('yarn global dir').trim();if(!dir){process.exit(0)}const fs=require('fs'),path=require('path');const pkgLock=path.join(dir,'package.json');let deps={};try{const pkg=JSON.parse(fs.readFileSync(pkgLock,'utf8'));deps=Object.assign({},pkg.dependencies||{},pkg.devDependencies||{})}catch{}Object.keys(deps).forEach(n=>{let v='';try{const pj=JSON.parse(fs.readFileSync(path.join(dir,'node_modules',n,'package.json'),'utf8'));v=pj.version||''}catch{}if(v)console.log(n+'@'+v)});})();" 2>/dev/null || true`
 
 func NewClient() (*Client, error) {
 	sdk, err := newSDKClient()
@@ -36,8 +37,6 @@ func (c *Client) Close() error {
 	return nil
 }
 
-// SDKExecFunc returns an ExecFunc suitable for parallel executors,
-// routing exec calls through the SDK instead of spawning CLI processes.
 func (c *Client) SDKExecFunc() func(ctx context.Context, containerID string, cmd []string, showOutput bool) (string, string, int, error) {
 	return func(ctx context.Context, containerID string, cmd []string, showOutput bool) (string, string, int, error) {
 		result, err := c.sdk.containerExec(ctx, containerID, cmd, showOutput)
@@ -56,7 +55,7 @@ func dockerCmd() string {
 }
 
 func IsDockerAvailable() error {
-	// Use SDK ping for fast daemon check (no process spawn)
+
 	sdk, err := newSDKClient()
 	if err != nil {
 		return fmt.Errorf("docker is not available: %w", err)
@@ -72,8 +71,6 @@ func IsDockerAvailable() error {
 	return nil
 }
 
-// IsDockerAvailableWith checks Docker availability using an existing client,
-// avoiding a redundant SDK connection.
 func (c *Client) IsDockerAvailableWith() error {
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
@@ -86,7 +83,6 @@ func (c *Client) IsDockerAvailableWith() error {
 func (c *Client) PullImage(ref string) error {
 	ctx := context.Background()
 
-	// Check if image already exists locally (SDK: no process spawn)
 	exists, err := c.sdk.imageExists(ctx, ref)
 	if err == nil && exists {
 		return nil
@@ -163,9 +159,6 @@ func (c *Client) ExecuteSetupCommandsSequential(boxName string, commands []strin
 		ui.Status("executing setup commands in box '%s'...", boxName)
 	}
 
-	// Batch commands into a single exec call to avoid the overhead of
-	// spawning a new docker exec process per command (~200ms each).
-	// For N commands, this saves ~(N-1)*200ms of process startup time.
 	batchSize := 10
 	for i := 0; i < len(commands); i += batchSize {
 		end := i + batchSize
@@ -178,8 +171,6 @@ func (c *Client) ExecuteSetupCommandsSequential(boxName string, commands []strin
 			ui.Step(i+1, len(commands), fmt.Sprintf("steps %d-%d", i+1, end))
 		}
 
-		// Join commands with error-checking: each command must succeed
-		// before the next runs (set -e ensures this)
 		var scriptBuilder strings.Builder
 		scriptBuilder.WriteString(". /root/.bashrc >/dev/null 2>&1 || true; set -e; ")
 		for j, command := range batch {
@@ -187,7 +178,7 @@ func (c *Client) ExecuteSetupCommandsSequential(boxName string, commands []strin
 				scriptBuilder.WriteString(" ; ")
 			}
 			if showOutput {
-				// Echo the command being run for visibility
+
 				scriptBuilder.WriteString(fmt.Sprintf("echo '==> %s' ; ", strings.ReplaceAll(command, "'", "'\\''")))
 			}
 			scriptBuilder.WriteString(command)
@@ -234,8 +225,38 @@ func (c *Client) QueryPackagesParallel(boxName string) (aptList, pipList, npmLis
 }
 
 func (c *Client) queryPackagesSequential(boxName string) (aptList, pipList, npmList, yarnList, pnpmList []string) {
+	type query struct {
+		name    string
+		command string
+		jsonPkg bool
+	}
 
-	return nil, nil, nil, nil, nil
+	queries := []query{
+		{"apt", `dpkg-query -W -f='${Package}=${Version}\n' $(apt-mark showmanual 2>/dev/null || true) 2>/dev/null | sort`, false},
+		{"pip", "python3 -m pip freeze 2>/dev/null || pip3 freeze 2>/dev/null || true", false},
+		{"npm", "npm list -g --depth=0 --json 2>/dev/null || true", true},
+		{"yarn", yarnGlobalListQuery, false},
+		{"pnpm", "pnpm ls -g --depth=0 --json 2>/dev/null || true", true},
+	}
+
+	results := make(map[string][]string)
+	ctx := context.Background()
+
+	for _, q := range queries {
+		result, err := c.sdk.containerExec(ctx, boxName, []string{"bash", "-c", q.command}, false)
+		if err != nil {
+			ui.Warning("sequential query for %s failed: %v", q.name, err)
+			continue
+		}
+
+		if q.jsonPkg {
+			results[q.name] = parallel.ParseJSONPackageList(result.Stdout)
+		} else {
+			results[q.name] = parallel.ParseLineList(result.Stdout)
+		}
+	}
+
+	return results["apt"], results["pip"], results["npm"], results["yarn"], results["pnpm"]
 }
 
 func (c *Client) StartBox(boxID string) error {
@@ -254,15 +275,12 @@ func (c *Client) SetupDevboxInBoxWithUpdate(boxName, projectName string) error {
 	return c.setupDevboxInBoxWithOptions(boxName, projectName, true)
 }
 
-// IsBoxInitialized checks if a box has been initialized via the SDK,
-// avoiding the ~200ms overhead of spawning a docker exec CLI process.
 func (c *Client) IsBoxInitialized(boxName string) bool {
 	ctx := context.Background()
 	result, err := c.sdk.containerExec(ctx, boxName, []string{"test", "-f", "/etc/devbox-initialized"}, false)
 	return err == nil && result != nil && result.ExitCode == 0
 }
 
-// ImageExists checks if an image exists locally via the SDK (no CLI spawn).
 func (c *Client) ImageExists(ref string) bool {
 	ctx := context.Background()
 	exists, err := c.sdk.imageExists(ctx, ref)
@@ -295,7 +313,6 @@ case "$1" in
         echo "  devbox exit     - Exit the shell"
         echo "  devbox status   - Show box information"
         echo "  devbox help     - Show this help"
-        echo "  devbox host     - Run command on host (experimental)"
         ;;
 	"help"|"--help"|"-h")
 		echo "Devbox box commands"
@@ -304,7 +321,6 @@ case "$1" in
         echo "  devbox exit         - Exit the devbox shell"
         echo "  devbox status       - Show box and project information"
         echo "  devbox help         - Show this help message"
-        echo "  devbox host <cmd>   - Execute command on host (experimental)"
         echo ""
 	echo "Your project files are in: /workspace"
 	echo "You are in an Ubuntu box with full package management"
@@ -312,22 +328,13 @@ case "$1" in
         echo "Examples:"
         echo "  devbox exit                    # Exit to host"
         echo "  devbox status                  # Check box info"
-        echo "  devbox host \"devbox list\"     # Run host command"
         echo ""
 	echo "hint: Files in /workspace are shared with your host system"
         ;;
     "host")
-		if [ -z "$2" ]; then
-			echo "error: usage: devbox host <command>"
-            echo "Example: devbox host \"devbox list\""
-            exit 1
-        fi
-		echo "Executing on host: $2"
-		echo "warning: This is experimental and may not work in all environments"
-        # This is a placeholder - we cannot easily execute on host from box
-        # without additional setup like Docker socket mounting
-		echo "error: host command execution not yet implemented"
-		echo "hint: Exit the box and run commands on the host instead"
+		echo "error: the 'devbox host' command is not yet available"
+		echo "hint: Exit the box with 'devbox exit' and run commands on the host directly"
+		exit 1
         ;;
     "version")
         echo "devbox box wrapper v1.0"
@@ -343,15 +350,13 @@ case "$1" in
 		echo "hint: Use \"devbox help\" to see available commands inside the box"
         echo ""
         echo "Available commands:"
-        echo "  exit, status, help, host, version"
+        echo "  exit, status, help, version"
         echo ""
         echo "Note: 'devbox exit' is handled by the shell function for proper exit behavior"
         exit 1
         ;;
 esac`
 
-	// Batch all setup into a single exec call to eliminate per-call overhead.
-	// Previously this was 3-4 separate exec calls (~100ms each = ~400ms wasted).
 	setupScript := `set -e
 
 # Mark as initialized
@@ -515,8 +520,7 @@ BASHRC_EOF
 }
 
 func (c *Client) StopBox(boxName string) error {
-	// With --init flag on creation, containers respond to SIGTERM properly
-	// so we can use a short timeout for fast shutdown
+
 	timeoutSec := 2
 	if v := strings.TrimSpace(os.Getenv("DEVBOX_STOP_TIMEOUT")); v != "" {
 		if n, err := strconv.Atoi(v); err == nil && n >= 0 {
@@ -595,9 +599,7 @@ func RunCommand(boxName string, command []string) error {
 
 func (c *Client) WaitForBox(boxName string, timeout time.Duration) error {
 	start := time.Now()
-	// Exponential backoff: containers usually start in <100ms so we poll
-	// aggressively at first (25ms) and back off. Old 500ms fixed sleep
-	// wasted up to 450ms on every startup.
+
 	pollInterval := 25 * time.Millisecond
 	maxInterval := 500 * time.Millisecond
 	for {
@@ -638,7 +640,7 @@ func (c *Client) ListBoxes() ([]BoxInfo, error) {
 	var boxes []BoxInfo
 	for _, ctr := range containers {
 		for _, name := range ctr.Names {
-			// Docker prefixes names with "/"
+
 			cleanName := strings.TrimPrefix(name, "/")
 			if strings.HasPrefix(cleanName, "devbox_") {
 				boxes = append(boxes, BoxInfo{
@@ -705,37 +707,8 @@ func (c *Client) LoadImage(tarPath string) (string, error) {
 }
 
 func (c *Client) GetContainerStats(boxName string) (*ContainerStats, error) {
-
-	format := "{{.CPUPerc}}\t{{.MemUsage}}\t{{.MemPerc}}\t{{.NetIO}}\t{{.BlockIO}}\t{{.PIDs}}"
-	cmd := exec.Command(dockerCmd(), "stats", "--no-stream", "--format", format, boxName)
-	var stdout, stderr bytes.Buffer
-	cmd.Stdout = &stdout
-	cmd.Stderr = &stderr
-
-	if err := cmd.Run(); err != nil {
-		if s := strings.TrimSpace(stderr.String()); s != "" {
-			return nil, fmt.Errorf("failed to get stats: %s", s)
-		}
-		return nil, fmt.Errorf("failed to get stats: %w", err)
-	}
-	line := strings.TrimSpace(stdout.String())
-	if line == "" {
-
-		return &ContainerStats{}, nil
-	}
-	parts := strings.Split(line, "\t")
-
-	for len(parts) < 6 {
-		parts = append(parts, "")
-	}
-	return &ContainerStats{
-		CPUPercent: strings.TrimSpace(parts[0]),
-		MemUsage:   strings.TrimSpace(parts[1]),
-		MemPercent: strings.TrimSpace(parts[2]),
-		NetIO:      strings.TrimSpace(parts[3]),
-		BlockIO:    strings.TrimSpace(parts[4]),
-		PIDs:       strings.TrimSpace(parts[5]),
-	}, nil
+	ctx := context.Background()
+	return c.sdk.containerStats(ctx, boxName)
 }
 
 func (c *Client) GetContainerID(boxName string) (string, error) {
@@ -911,7 +884,6 @@ func (c *Client) GetNodeRegistries(boxName string) (npmReg, yarnReg, pnpmReg str
 func (c *Client) GetImageDigestInfo(ref string) (string, string, error) {
 	ctx := context.Background()
 
-	// Try image inspect first
 	imgInspect, _, err := c.sdk.cli.ImageInspectWithRaw(ctx, ref)
 	if err == nil {
 		digest := ""
@@ -921,7 +893,6 @@ func (c *Client) GetImageDigestInfo(ref string) (string, string, error) {
 		return digest, imgInspect.ID, nil
 	}
 
-	// Fall back to container inspect → get image ID → inspect image
 	containerInspect, err := c.sdk.containerInspect(ctx, ref)
 	if err != nil {
 		return "", "", fmt.Errorf("inspect failed: %w", err)
@@ -949,7 +920,6 @@ func (c *Client) GetContainerMeta(boxName string) (map[string]string, string, st
 		return map[string]string{}, "", "", "", map[string]string{}, []string{}, map[string]string{}, ""
 	}
 
-	// Parse environment variables
 	env := map[string]string{}
 	for _, e := range inspect.Config.Env {
 		if kv := strings.SplitN(e, "=", 2); len(kv) == 2 {
@@ -957,7 +927,6 @@ func (c *Client) GetContainerMeta(boxName string) (map[string]string, string, st
 		}
 	}
 
-	// Parse resources
 	resources := map[string]string{}
 	if inspect.HostConfig != nil {
 		if inspect.HostConfig.NanoCPUs > 0 {

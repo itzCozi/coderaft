@@ -81,9 +81,6 @@ func (optSetup *OptimizedSetup) FastInit(projectName string, projectConfig *conf
 
 	ui.Status("fast initialization of '%s'...", boxName)
 
-	// Try Dockerfile-based cached build if there are setup commands.
-	// This bakes apt install + setup into a cached Docker image layer,
-	// so subsequent inits with the same config are near-instant.
 	effectiveImage := baseImage
 	if projectConfig != nil && len(projectConfig.SetupCommands) > 0 {
 		buildCfg := &docker.BuildImageConfig{
@@ -100,7 +97,7 @@ func (optSetup *OptimizedSetup) FastInit(projectName string, projectConfig *conf
 		cachedImage, err := optSetup.imageCache.BuildCachedImage(buildCfg)
 		if err != nil {
 			ui.Warning("cached build failed, falling back to base image: %v", err)
-			// Fall back to pulling the base image
+
 			if pullErr := optSetup.dockerClient.PullImage(baseImage); pullErr != nil {
 				return fmt.Errorf("failed to pull base image: %w", pullErr)
 			}
@@ -136,15 +133,13 @@ func (optSetup *OptimizedSetup) FastInit(projectName string, projectConfig *conf
 		return fmt.Errorf("box failed to start: %w", err)
 	}
 
-	// Setup devbox wrapper commands in the box
 	ui.Status("setting up devbox commands...")
 	if err := optSetup.dockerClient.SetupDevboxInBoxWithUpdate(boxName, projectName); err != nil {
 		return fmt.Errorf("failed to setup devbox in box: %w", err)
 	}
 
-	// Only run setup commands via exec if we didn't use the cached build
 	if effectiveImage == baseImage && projectConfig != nil && len(projectConfig.SetupCommands) > 0 {
-		// System update + setup commands (no cached image)
+
 		if err := optSetup.OptimizedSystemUpdate(boxName); err != nil {
 			ui.Warning("system update failed: %v", err)
 		}
@@ -161,7 +156,6 @@ func (optSetup *OptimizedSetup) FastInit(projectName string, projectConfig *conf
 func (optSetup *OptimizedSetup) FastUp(projectConfig *config.ProjectConfig, projectName, boxName, baseImage, cwd, workspaceBox string) error {
 	ui.Status("fast startup of environment...")
 
-	// Try Dockerfile-based cached build for speed
 	effectiveImage := baseImage
 	if projectConfig != nil && len(projectConfig.SetupCommands) > 0 {
 		buildCfg := &docker.BuildImageConfig{
@@ -200,12 +194,10 @@ func (optSetup *OptimizedSetup) FastUp(projectConfig *config.ProjectConfig, proj
 		return fmt.Errorf("box failed to start: %w", err)
 	}
 
-	// Setup devbox wrapper
 	if err := optSetup.dockerClient.SetupDevboxInBoxWithUpdate(boxName, projectName); err != nil {
 		return fmt.Errorf("failed to setup devbox in box: %w", err)
 	}
 
-	// Process lock file if present
 	lockfilePath := filepath.Join(cwd, "devbox.lock")
 	if _, err := os.Stat(lockfilePath); err == nil {
 		ui.Status("processing lock file...")
@@ -214,7 +206,6 @@ func (optSetup *OptimizedSetup) FastUp(projectConfig *config.ProjectConfig, proj
 		}
 	}
 
-	// Only run setup commands via exec if we used the base image (no cache hit)
 	if effectiveImage == baseImage && projectConfig != nil && len(projectConfig.SetupCommands) > 0 {
 		if err := optSetup.OptimizedSystemUpdate(boxName); err != nil {
 			ui.Warning("system update failed: %v", err)

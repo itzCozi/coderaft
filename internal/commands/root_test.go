@@ -1,6 +1,7 @@
 package commands
 
 import (
+	"strings"
 	"testing"
 )
 
@@ -83,7 +84,7 @@ func TestValidateProjectName(t *testing.T) {
 					t.Errorf("validateProjectName() expected error but got none")
 					return
 				}
-				if tt.errContains != "" && !contains(err.Error(), tt.errContains) {
+				if tt.errContains != "" && !strings.Contains(err.Error(), tt.errContains) {
 					t.Errorf("validateProjectName() error = %v, want error containing %q", err, tt.errContains)
 				}
 			} else {
@@ -93,17 +94,4 @@ func TestValidateProjectName(t *testing.T) {
 			}
 		})
 	}
-}
-
-func contains(s, substr string) bool {
-	return len(s) >= len(substr) && containsAtIndex(s, substr)
-}
-
-func containsAtIndex(s, substr string) bool {
-	for i := 0; i <= len(s)-len(substr); i++ {
-		if s[i:i+len(substr)] == substr {
-			return true
-		}
-	}
-	return false
 }

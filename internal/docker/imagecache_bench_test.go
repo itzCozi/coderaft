@@ -63,7 +63,7 @@ func BenchmarkGenerateDockerfile(b *testing.B) {
 }
 
 func BenchmarkFingerprintCacheHit(b *testing.B) {
-	// Simulates the hot path: compute fingerprint, check if it matches
+
 	cfg := &BuildImageConfig{
 		BaseImage: "ubuntu:22.04",
 		SetupCommands: []string{
@@ -76,13 +76,12 @@ func BenchmarkFingerprintCacheHit(b *testing.B) {
 		ProjectName: "test",
 	}
 
-	// Pre-compute the "cached" fingerprint
 	cachedFP := cfg.Fingerprint()
 
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
 		fp := cfg.Fingerprint()
-		_ = fp == cachedFP // simulates the cache-hit check
+		_ = fp == cachedFP
 	}
 }
 

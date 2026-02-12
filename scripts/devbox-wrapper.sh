@@ -24,7 +24,6 @@ case "$1" in
         echo "  devbox exit     - Exit the shell"
         echo "  devbox status   - Show box information"
         echo "  devbox help     - Show this help"
-        echo "  devbox host     - Run command on host (experimental)"
         ;;
     "help"|"--help"|"-h")
         echo "🚀 Devbox box Commands"
@@ -33,7 +32,6 @@ case "$1" in
         echo "  devbox exit         - Exit the devbox shell"
         echo "  devbox status       - Show box and project information"
         echo "  devbox help         - Show this help message"
-        echo "  devbox host <cmd>   - Execute command on host (experimental)"
         echo ""
         echo "📁 Your project files are in: /workspace"
         echo "🐧 You're in an Ubuntu box with full package management"
@@ -41,22 +39,13 @@ case "$1" in
         echo "Examples:"
         echo "  devbox exit                    # Exit to host"
         echo "  devbox status                  # Check box info"
-        echo "  devbox host 'devbox list'     # Run host command"
         echo ""
         echo "💡 Tip: Files in /workspace are shared with your host system"
         ;;
     "host")
-        if [ -z "$2" ]; then
-            echo "❌ Usage: devbox host <command>"
-            echo "Example: devbox host 'devbox list'"
-            exit 1
-        fi
-        echo "🔄 Executing on host: $2"
-        echo "⚠️  Note: This is experimental and may not work in all environments"
-
-
-        echo "❌ Host command execution not yet implemented"
-        echo "💡 Exit the box and run commands on the host instead"
+        echo "⚠️  The 'devbox host' command is not yet available."
+        echo "To run commands on the host, exit the box first with 'devbox exit'."
+        exit 1
         ;;
     "version")
         echo "devbox box wrapper v1.0"
@@ -72,7 +61,7 @@ case "$1" in
         echo "💡 Use 'devbox help' to see available commands inside the box"
         echo ""
         echo "Available commands:"
-        echo "  exit, status, help, host, version"
+        echo "  exit, status, help, version"
         exit 1
         ;;
 esac

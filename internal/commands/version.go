@@ -6,8 +6,10 @@ import (
 	"github.com/spf13/cobra"
 )
 
-const (
+var (
 	Version = "1.0"
+
+	CommitHash = "unknown"
 )
 
 var versionCmd = &cobra.Command{
@@ -15,10 +17,10 @@ var versionCmd = &cobra.Command{
 	Short: "Print the version information",
 	Long:  `Display the version and build information for devbox.`,
 	Run: func(cmd *cobra.Command, args []string) {
-		fmt.Printf("devbox (v%s)\n", Version)
+		if CommitHash != "" && CommitHash != "unknown" {
+			fmt.Printf("devbox (v%s, commit %s)\n", Version, CommitHash)
+		} else {
+			fmt.Printf("devbox (v%s)\n", Version)
+		}
 	},
-}
-
-func init() {
-
 }

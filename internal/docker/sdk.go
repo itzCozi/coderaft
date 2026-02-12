@@ -1,16 +1,9 @@
-// Package docker provides the Docker client for devbox.
-//
-// This file contains the SDK-based wrapper around the Docker Engine API.
-// Instead of shelling out to the `docker` CLI (which spawns a new process
-// per call at ~200ms overhead each), we talk directly to the Docker daemon
-// over a Unix socket (Linux/macOS) or named pipe (Windows) using a
-// persistent HTTP connection. This eliminates process-spawn overhead and
-// gives us structured JSON responses instead of parsing text output.
 package docker
 
 import (
 	"bytes"
 	"context"
+	"encoding/json"
 	"fmt"
 	"io"
 	"os"
@@ -29,16 +22,10 @@ import (
 	"github.com/docker/go-units"
 )
 
-// sdkClient wraps the official Docker SDK client.
-// A single instance is created per devbox Client and reused for all API calls,
-// maintaining a persistent HTTP connection to the Docker daemon.
 type sdkClient struct {
 	cli *dockerclient.Client
 }
 
-// newSDKClient creates a Docker SDK client using environment configuration.
-// It reads DOCKER_HOST, DOCKER_TLS_VERIFY, DOCKER_CERT_PATH, etc.
-// API version negotiation ensures compatibility across Docker versions.
 func newSDKClient() (*sdkClient, error) {
 	cli, err := dockerclient.NewClientWithOpts(
 		dockerclient.FromEnv,
@@ -57,16 +44,11 @@ func (s *sdkClient) close() error {
 	return nil
 }
 
-// --- Connectivity ---
-
 func (s *sdkClient) ping(ctx context.Context) error {
 	_, err := s.cli.Ping(ctx)
 	return err
 }
 
-// --- Images ---
-
-// imageExists checks if an image exists locally.
 func (s *sdkClient) imageExists(ctx context.Context, ref string) (bool, error) {
 	filterArgs := filters.NewArgs()
 	filterArgs.Add("reference", ref)
@@ -77,7 +59,6 @@ func (s *sdkClient) imageExists(ctx context.Context, ref string) (bool, error) {
 	return len(images) > 0, nil
 }
 
-// pullImage downloads an image. Progress events are drained to complete the pull.
 func (s *sdkClient) pullImage(ctx context.Context, ref string) error {
 	reader, err := s.cli.ImagePull(ctx, ref, image.PullOptions{})
 	if err != nil {
@@ -85,13 +66,10 @@ func (s *sdkClient) pullImage(ctx context.Context, ref string) error {
 	}
 	defer reader.Close()
 
-	// Drain the response to complete the pull.
-	// The reader emits JSON progress events; we discard them for clean output.
 	_, _ = io.Copy(io.Discard, reader)
 	return nil
 }
 
-// saveImage streams an image to a tar file.
 func (s *sdkClient) saveImage(ctx context.Context, ref string, dest io.Writer) error {
 	reader, err := s.cli.ImageSave(ctx, []string{ref})
 	if err != nil {
@@ -102,7 +80,6 @@ func (s *sdkClient) saveImage(ctx context.Context, ref string, dest io.Writer) e
 	return err
 }
 
-// loadImage loads an image from a tar reader.
 func (s *sdkClient) loadImage(ctx context.Context, src io.Reader) (string, error) {
 	resp, err := s.cli.ImageLoad(ctx, src)
 	if err != nil {
@@ -113,7 +90,6 @@ func (s *sdkClient) loadImage(ctx context.Context, src io.Reader) (string, error
 	var buf bytes.Buffer
 	_, _ = io.Copy(&buf, resp.Body)
 
-	// Parse output to get loaded image reference
 	output := strings.TrimSpace(buf.String())
 	lines := strings.Split(output, "\n")
 	if len(lines) > 0 {
@@ -125,7 +101,6 @@ func (s *sdkClient) loadImage(ctx context.Context, src io.Reader) (string, error
 	return output, nil
 }
 
-// commitContainer creates a new image from a container's changes.
 func (s *sdkClient) commitContainer(ctx context.Context, containerID, ref string) (string, error) {
 	resp, err := s.cli.ContainerCommit(ctx, containerID, container.CommitOptions{
 		Reference: ref,
@@ -136,16 +111,12 @@ func (s *sdkClient) commitContainer(ctx context.Context, containerID, ref string
 	return resp.ID, nil
 }
 
-// --- Containers ---
-
-// containerCreate creates a container with full configuration from a project config map.
 func (s *sdkClient) containerCreate(
 	ctx context.Context,
 	name, imageName, workspaceHost, workspaceBox string,
 	projectConfig map[string]interface{},
 ) (string, error) {
 
-	// Build mount for workspace with OS-specific consistency
 	workspaceMount := mount.Mount{
 		Type:   mount.TypeBind,
 		Source: workspaceHost,
@@ -169,25 +140,21 @@ func (s *sdkClient) containerCreate(
 
 	initTrue := true
 	hostConfig := &container.HostConfig{
-		Init:   &initTrue, // PID 1 signal handling for fast shutdown
+		Init:   &initTrue,
 		Mounts: []mount.Mount{workspaceMount},
 		RestartPolicy: container.RestartPolicy{
 			Name: container.RestartPolicyUnlessStopped,
 		},
-		// Tmpfs mount for /tmp: uses RAM instead of the container's overlay
-		// filesystem, dramatically speeding up builds and tools that write
-		// temp files (apt, pip, npm, compilers). 256MB is generous for temp data.
+
 		Tmpfs: map[string]string{
 			"/tmp": "rw,nosuid,nodev,size=256m",
 		},
-		// Increase shared memory from the default 64MB.
-		// Many tools (Chrome/Puppeteer, Java, databases) need more.
-		ShmSize: 256 * 1024 * 1024, // 256MB
+
+		ShmSize: 256 * 1024 * 1024,
 	}
 
 	networkConfig := &network.NetworkingConfig{}
 
-	// Apply project configuration
 	if projectConfig != nil {
 		applyProjectConfigSDK(containerConfig, hostConfig, networkConfig, projectConfig)
 	}
@@ -204,8 +171,7 @@ func (s *sdkClient) containerStart(ctx context.Context, id string) error {
 }
 
 func (s *sdkClient) containerStop(ctx context.Context, id string, timeoutSec int) error {
-	// Docker's ContainerStop sends SIGTERM, waits the timeout, then sends
-	// SIGKILL automatically. No need for a manual kill fallback.
+
 	opts := container.StopOptions{Timeout: intPtr(timeoutSec)}
 	return s.cli.ContainerStop(ctx, id, opts)
 }
@@ -222,17 +188,12 @@ func (s *sdkClient) containerList(ctx context.Context, all bool) ([]container.Su
 	return s.cli.ContainerList(ctx, container.ListOptions{All: all})
 }
 
-// --- Exec ---
-
-// ExecResult holds the output from a container exec call.
 type ExecResult struct {
 	Stdout   string
 	Stderr   string
 	ExitCode int
 }
 
-// containerExec runs a command inside a container via the Docker API.
-// This avoids spawning a `docker exec` CLI process (~200ms overhead).
 func (s *sdkClient) containerExec(ctx context.Context, containerID string, cmd []string, showOutput bool) (*ExecResult, error) {
 	execConfig := container.ExecOptions{
 		Cmd:          cmd,
@@ -253,7 +214,7 @@ func (s *sdkClient) containerExec(ctx context.Context, containerID string, cmd [
 
 	var stdout, stderr bytes.Buffer
 	if showOutput {
-		// Stream directly to os.Stdout/Stderr
+
 		_, err = stdcopy.StdCopy(os.Stdout, os.Stderr, attachResp.Reader)
 	} else {
 		_, err = stdcopy.StdCopy(&stdout, &stderr, attachResp.Reader)
@@ -262,7 +223,6 @@ func (s *sdkClient) containerExec(ctx context.Context, containerID string, cmd [
 		return nil, fmt.Errorf("exec read failed: %w", err)
 	}
 
-	// Get exit code
 	inspectResp, err := s.cli.ContainerExecInspect(ctx, execResp.ID)
 	if err != nil {
 		return nil, fmt.Errorf("exec inspect failed: %w", err)
@@ -275,24 +235,120 @@ func (s *sdkClient) containerExec(ctx context.Context, containerID string, cmd [
 	}, nil
 }
 
-// --- Config Translation ---
+type statsJSON struct {
+	CPUStats    cpuStatsJSON            `json:"cpu_stats"`
+	PreCPUStats cpuStatsJSON            `json:"precpu_stats"`
+	MemStats    memStatsJSON            `json:"memory_stats"`
+	Networks    map[string]netStatsJSON `json:"networks"`
+	BlkioStats  blkioStatsJSON          `json:"blkio_stats"`
+	PidsStats   pidsStatsJSON           `json:"pids_stats"`
+}
 
-// applyProjectConfigSDK translates the project config map into SDK container config structs.
-// This replaces the old applyProjectConfigToArgs which built CLI flags.
+type cpuStatsJSON struct {
+	CPUUsage struct {
+		TotalUsage  uint64   `json:"total_usage"`
+		PercpuUsage []uint64 `json:"percpu_usage"`
+	} `json:"cpu_usage"`
+	SystemUsage uint64 `json:"system_cpu_usage"`
+	OnlineCPUs  uint32 `json:"online_cpus"`
+}
+
+type memStatsJSON struct {
+	Usage uint64            `json:"usage"`
+	Limit uint64            `json:"limit"`
+	Stats map[string]uint64 `json:"stats"`
+}
+
+type netStatsJSON struct {
+	RxBytes uint64 `json:"rx_bytes"`
+	TxBytes uint64 `json:"tx_bytes"`
+}
+
+type blkioStatsJSON struct {
+	IoServiceBytesRecursive []blkioEntryJSON `json:"io_service_bytes_recursive"`
+}
+
+type blkioEntryJSON struct {
+	Op    string `json:"op"`
+	Value uint64 `json:"value"`
+}
+
+type pidsStatsJSON struct {
+	Current uint64 `json:"current"`
+}
+
+func (s *sdkClient) containerStats(ctx context.Context, containerID string) (*ContainerStats, error) {
+	resp, err := s.cli.ContainerStats(ctx, containerID, false)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get container stats: %w", err)
+	}
+	defer resp.Body.Close()
+
+	var stats statsJSON
+	if err := json.NewDecoder(resp.Body).Decode(&stats); err != nil {
+		return nil, fmt.Errorf("failed to decode stats: %w", err)
+	}
+
+	cpuDelta := float64(stats.CPUStats.CPUUsage.TotalUsage - stats.PreCPUStats.CPUUsage.TotalUsage)
+	systemDelta := float64(stats.CPUStats.SystemUsage - stats.PreCPUStats.SystemUsage)
+	numCPUs := stats.CPUStats.OnlineCPUs
+	if numCPUs == 0 {
+		numCPUs = uint32(len(stats.CPUStats.CPUUsage.PercpuUsage))
+	}
+	cpuPercent := 0.0
+	if systemDelta > 0 && numCPUs > 0 {
+		cpuPercent = (cpuDelta / systemDelta) * float64(numCPUs) * 100.0
+	}
+
+	memUsage := stats.MemStats.Usage
+	if cache, ok := stats.MemStats.Stats["cache"]; ok {
+		memUsage -= cache
+	}
+	memLimit := stats.MemStats.Limit
+	memPercent := 0.0
+	if memLimit > 0 {
+		memPercent = float64(memUsage) / float64(memLimit) * 100.0
+	}
+
+	var rxBytes, txBytes uint64
+	for _, iface := range stats.Networks {
+		rxBytes += iface.RxBytes
+		txBytes += iface.TxBytes
+	}
+
+	var blkRead, blkWrite uint64
+	for _, entry := range stats.BlkioStats.IoServiceBytesRecursive {
+		switch strings.ToLower(entry.Op) {
+		case "read":
+			blkRead += entry.Value
+		case "write":
+			blkWrite += entry.Value
+		}
+	}
+
+	return &ContainerStats{
+		CPUPercent: fmt.Sprintf("%.2f%%", cpuPercent),
+		MemUsage:   fmt.Sprintf("%s / %s", units.HumanSize(float64(memUsage)), units.HumanSize(float64(memLimit))),
+		MemPercent: fmt.Sprintf("%.2f%%", memPercent),
+		NetIO:      fmt.Sprintf("%s / %s", units.HumanSize(float64(rxBytes)), units.HumanSize(float64(txBytes))),
+		BlockIO:    fmt.Sprintf("%s / %s", units.HumanSize(float64(blkRead)), units.HumanSize(float64(blkWrite))),
+		PIDs:       fmt.Sprintf("%d", stats.PidsStats.Current),
+	}, nil
+}
+
 func applyProjectConfigSDK(
 	cc *container.Config,
 	hc *container.HostConfig,
 	nc *network.NetworkingConfig,
 	config map[string]interface{},
 ) {
-	// Restart policy
+
 	if restart, ok := config["restart"].(string); ok && restart != "" {
 		hc.RestartPolicy = container.RestartPolicy{
 			Name: container.RestartPolicyMode(restart),
 		}
 	}
 
-	// Environment variables
 	if env, ok := config["environment"].(map[string]interface{}); ok {
 		for key, value := range env {
 			if valueStr, ok := value.(string); ok {
@@ -301,7 +357,6 @@ func applyProjectConfigSDK(
 		}
 	}
 
-	// Port mappings
 	if ports, ok := config["ports"].([]interface{}); ok {
 		var portSpecs []string
 		for _, port := range ports {
@@ -328,7 +383,6 @@ func applyProjectConfigSDK(
 		}
 	}
 
-	// Volumes
 	if volumes, ok := config["volumes"].([]interface{}); ok {
 		for _, volume := range volumes {
 			if volumeStr, ok := volume.(string); ok {
@@ -349,7 +403,6 @@ func applyProjectConfigSDK(
 		}
 	}
 
-	// Dotfiles mount
 	if dotfiles, ok := config["dotfiles"].([]interface{}); ok {
 		for _, item := range dotfiles {
 			pathStr, ok := item.(string)
@@ -371,17 +424,14 @@ func applyProjectConfigSDK(
 		}
 	}
 
-	// Working directory
 	if workingDir, ok := config["working_dir"].(string); ok && workingDir != "" {
 		cc.WorkingDir = workingDir
 	}
 
-	// User
 	if user, ok := config["user"].(string); ok && user != "" {
 		cc.User = user
 	}
 
-	// Capabilities
 	if capabilities, ok := config["capabilities"].([]interface{}); ok {
 		for _, cap := range capabilities {
 			if capStr, ok := cap.(string); ok {
@@ -390,7 +440,6 @@ func applyProjectConfigSDK(
 		}
 	}
 
-	// Labels
 	if labels, ok := config["labels"].(map[string]interface{}); ok {
 		for key, value := range labels {
 			if valueStr, ok := value.(string); ok {
@@ -399,12 +448,10 @@ func applyProjectConfigSDK(
 		}
 	}
 
-	// Network
 	if networkName, ok := config["network"].(string); ok && networkName != "" {
 		hc.NetworkMode = container.NetworkMode(networkName)
 	}
 
-	// Resources
 	if resources, ok := config["resources"].(map[string]interface{}); ok {
 		if cpus, ok := resources["cpus"].(string); ok && cpus != "" {
 			if cpuVal, err := strconv.ParseFloat(cpus, 64); err == nil {
@@ -418,24 +465,22 @@ func applyProjectConfigSDK(
 		}
 	}
 
-	// GPUs
 	if gpus, ok := config["gpus"].(string); ok && strings.TrimSpace(gpus) != "" {
 		gpuStr := strings.TrimSpace(gpus)
 		deviceReq := container.DeviceRequest{
 			Capabilities: [][]string{{"gpu"}},
 		}
 		if gpuStr == "all" {
-			deviceReq.Count = -1 // all GPUs
+			deviceReq.Count = -1
 		} else if n, err := strconv.Atoi(gpuStr); err == nil {
 			deviceReq.Count = n
 		} else {
-			// Treat as device IDs
+
 			deviceReq.DeviceIDs = strings.Split(gpuStr, ",")
 		}
 		hc.DeviceRequests = append(hc.DeviceRequests, deviceReq)
 	}
 
-	// Health check
 	if healthCheck, ok := config["health_check"].(map[string]interface{}); ok {
 		healthCfg := &container.HealthConfig{}
 		if test, ok := healthCheck["test"].([]interface{}); ok && len(test) > 0 {
@@ -461,7 +506,5 @@ func applyProjectConfigSDK(
 		cc.Healthcheck = healthCfg
 	}
 }
-
-// --- Helpers ---
 
 func intPtr(i int) *int { return &i }

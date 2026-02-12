@@ -170,7 +170,3 @@ func updateAllProjects() error {
 	}
 	return nil
 }
-
-func init() {
-
-}

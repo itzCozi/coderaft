@@ -76,7 +76,6 @@ var upCmd = &cobra.Command{
 				}
 			}
 
-			// Use SDK-based check instead of spawning a CLI process (~200ms overhead)
 			if !dockerClient.IsBoxInitialized(boxName) {
 				if err := dockerClient.SetupDevboxInBox(boxName, projectName); err != nil {
 					return fmt.Errorf("failed to setup devbox in existing box: %w", err)

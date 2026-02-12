@@ -54,7 +54,6 @@ var shellCmd = &cobra.Command{
 			}
 		}
 
-		// Use SDK-based check instead of spawning a CLI process (~200ms overhead)
 		if !dockerClient.IsBoxInitialized(project.BoxName) {
 			ui.Status("setting up devbox commands in box...")
 			if err := dockerClient.SetupDevboxInBox(project.BoxName, projectName); err != nil {
@@ -72,7 +71,7 @@ var shellCmd = &cobra.Command{
 			if err == nil && cfg.Settings != nil && cfg.Settings.AutoStopOnExit {
 				idle, idleErr := dockerClient.IsContainerIdle(project.BoxName)
 				if idleErr != nil {
-
+					ui.Warning("failed to check container idle status: %v", idleErr)
 				} else if idle {
 					ui.Status("stopping box '%s' (auto-stop: idle)...", project.BoxName)
 					if err := dockerClient.StopBox(project.BoxName); err != nil {

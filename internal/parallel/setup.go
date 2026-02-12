@@ -14,15 +14,13 @@ import (
 	"devbox/internal/ui"
 )
 
-// ExecFunc is a function that executes a command in a container via the SDK,
-// avoiding the ~200ms overhead of spawning a docker exec CLI process.
 type ExecFunc func(ctx context.Context, containerID string, cmd []string, showOutput bool) (stdout, stderr string, exitCode int, err error)
 
 type SetupCommandExecutor struct {
 	boxName    string
 	workerPool *WorkerPool
 	showOutput bool
-	execFunc   ExecFunc // SDK-based exec; nil = fallback to CLI
+	execFunc   ExecFunc
 }
 
 func NewSetupCommandExecutor(boxName string, showOutput bool, maxWorkers int) *SetupCommandExecutor {
@@ -37,8 +35,6 @@ func NewSetupCommandExecutor(boxName string, showOutput bool, maxWorkers int) *S
 	}
 }
 
-// NewSetupCommandExecutorWithSDK creates an executor that uses the SDK exec function
-// instead of spawning docker exec CLI processes (~200ms overhead per command).
 func NewSetupCommandExecutorWithSDK(boxName string, showOutput bool, maxWorkers int, execFn ExecFunc) *SetupCommandExecutor {
 	e := NewSetupCommandExecutor(boxName, showOutput, maxWorkers)
 	e.execFunc = execFn
@@ -198,7 +194,6 @@ func (sce *SetupCommandExecutor) executeCommand(command string, step, total int,
 
 	wrapped := ". /root/.bashrc >/dev/null 2>&1 || true; " + command
 
-	// Use SDK exec if available (avoids ~200ms CLI process spawn overhead per command)
 	if sce.execFunc != nil {
 		ctx := context.Background()
 		stdout, stderr, exitCode, err := sce.execFunc(ctx, sce.boxName, []string{"bash", "-c", wrapped}, sce.showOutput)
@@ -216,7 +211,6 @@ func (sce *SetupCommandExecutor) executeCommand(command string, step, total int,
 		return nil
 	}
 
-	// Fallback to CLI exec
 	cmd := exec.Command("docker", "exec", sce.boxName, "bash", "-c", wrapped)
 
 	if sce.showOutput {
@@ -249,7 +243,7 @@ func (sce *SetupCommandExecutor) executeCommand(command string, step, total int,
 type PackageQueryExecutor struct {
 	boxName    string
 	workerPool *WorkerPool
-	execFunc   ExecFunc // SDK-based exec; nil = fallback to CLI
+	execFunc   ExecFunc
 }
 
 func NewPackageQueryExecutor(boxName string) *PackageQueryExecutor {
@@ -259,8 +253,6 @@ func NewPackageQueryExecutor(boxName string) *PackageQueryExecutor {
 	}
 }
 
-// NewPackageQueryExecutorWithSDK creates a query executor that uses the SDK
-// instead of spawning docker exec CLI processes.
 func NewPackageQueryExecutorWithSDK(boxName string, execFn ExecFunc) *PackageQueryExecutor {
 	e := NewPackageQueryExecutor(boxName)
 	e.execFunc = execFn
@@ -298,11 +290,11 @@ func (pqe *PackageQueryExecutor) QueryAllPackages() (map[string][]string, error)
 
 		switch query.Name {
 		case "apt", "pip":
-			packageLists[query.Name] = parseLineList(results[i])
+			packageLists[query.Name] = ParseLineList(results[i])
 		case "npm", "pnpm":
-			packageLists[query.Name] = parseJSONPackageList(results[i])
+			packageLists[query.Name] = ParseJSONPackageList(results[i])
 		case "yarn":
-			packageLists[query.Name] = parseLineList(results[i])
+			packageLists[query.Name] = ParseLineList(results[i])
 		}
 	}
 
@@ -311,7 +303,7 @@ func (pqe *PackageQueryExecutor) QueryAllPackages() (map[string][]string, error)
 
 func (pqe *PackageQueryExecutor) createQueryTask(command string) StringTask {
 	return func() (string, error) {
-		// Use SDK exec if available (avoids ~200ms CLI overhead per query)
+
 		if pqe.execFunc != nil {
 			ctx := context.Background()
 			stdout, _, _, err := pqe.execFunc(ctx, pqe.boxName, []string{"bash", "-c", command}, false)
@@ -321,7 +313,6 @@ func (pqe *PackageQueryExecutor) createQueryTask(command string) StringTask {
 			return stdout, nil
 		}
 
-		// Fallback to CLI exec
 		cmd := exec.Command("docker", "exec", pqe.boxName, "bash", "-c", command)
 
 		var stdout, stderr bytes.Buffer
@@ -336,7 +327,7 @@ func (pqe *PackageQueryExecutor) createQueryTask(command string) StringTask {
 	}
 }
 
-func parseLineList(output string) []string {
+func ParseLineList(output string) []string {
 	var result []string
 	for _, line := range strings.Split(output, "\n") {
 		line = strings.TrimSpace(line)
@@ -347,7 +338,7 @@ func parseLineList(output string) []string {
 	return result
 }
 
-func parseJSONPackageList(output string) []string {
+func ParseJSONPackageList(output string) []string {
 	if strings.TrimSpace(output) == "" {
 		return nil
 	}
