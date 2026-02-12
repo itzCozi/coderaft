@@ -8,6 +8,8 @@ import (
 	"strings"
 
 	"github.com/spf13/cobra"
+
+	"devbox/internal/ui"
 )
 
 var restoreCmd = &cobra.Command{
@@ -39,7 +41,7 @@ var restoreCmd = &cobra.Command{
 		var manifest map[string]any
 		_ = json.Unmarshal(metaBytes, &manifest)
 
-		fmt.Printf("Loading image from %s...\n", imageTar)
+		ui.Status("loading image from %s...", imageTar)
 		imgID, err := dockerClient.LoadImage(imageTar)
 		if err != nil {
 			return fmt.Errorf("failed to load image: %w", err)
@@ -77,7 +79,7 @@ var restoreCmd = &cobra.Command{
 			return fmt.Errorf("failed to start restored box: %w", err)
 		}
 
-		fmt.Printf("✅ Restore complete. Box '%s' recreated from backup.\n", proj.BoxName)
+		ui.Success("restore complete, box '%s' recreated from backup.", proj.BoxName)
 		return nil
 	},
 }

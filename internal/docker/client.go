@@ -14,6 +14,7 @@ import (
 	dockerclient "github.com/docker/docker/client"
 
 	"devbox/internal/parallel"
+	"devbox/internal/ui"
 )
 
 type Client struct {
@@ -33,6 +34,18 @@ func (c *Client) Close() error {
 		return c.sdk.close()
 	}
 	return nil
+}
+
+// SDKExecFunc returns an ExecFunc suitable for parallel executors,
+// routing exec calls through the SDK instead of spawning CLI processes.
+func (c *Client) SDKExecFunc() func(ctx context.Context, containerID string, cmd []string, showOutput bool) (string, string, int, error) {
+	return func(ctx context.Context, containerID string, cmd []string, showOutput bool) (string, string, int, error) {
+		result, err := c.sdk.containerExec(ctx, containerID, cmd, showOutput)
+		if err != nil {
+			return "", "", -1, err
+		}
+		return result.Stdout, result.Stderr, result.ExitCode, nil
+	}
 }
 
 func dockerCmd() string {
@@ -79,11 +92,11 @@ func (c *Client) PullImage(ref string) error {
 		return nil
 	}
 
-	fmt.Printf("Pulling image %s...\n", ref)
+	ui.Status("pulling image %s...", ref)
 	if err := c.sdk.pullImage(ctx, ref); err != nil {
 		return fmt.Errorf("failed to pull image %s: %w", ref, err)
 	}
-	fmt.Printf("Image %s pulled successfully.\n", ref)
+	ui.Success("image %s pulled", ref)
 	return nil
 }
 
@@ -118,16 +131,16 @@ func (c *Client) ExecuteSetupCommandsWithOutput(boxName string, commands []strin
 	}
 
 	if showOutput {
-		fmt.Printf("Executing setup commands in box '%s'...\n", boxName)
+		ui.Status("executing setup commands in box '%s'...", boxName)
 	}
 
 	config := parallel.LoadConfig()
 	if config.EnableParallel {
 
-		executor := parallel.NewSetupCommandExecutor(boxName, showOutput, config.SetupCommandWorkers)
+		executor := parallel.NewSetupCommandExecutorWithSDK(boxName, showOutput, config.SetupCommandWorkers, c.SDKExecFunc())
 		if err := executor.ExecuteParallel(commands); err != nil {
 
-			fmt.Printf("Parallel execution failed, falling back to sequential: %v\n", err)
+			ui.Warning("parallel execution failed, falling back to sequential: %v", err)
 			return c.ExecuteSetupCommandsSequential(boxName, commands, showOutput)
 		}
 	} else {
@@ -136,7 +149,7 @@ func (c *Client) ExecuteSetupCommandsWithOutput(boxName string, commands []strin
 	}
 
 	if showOutput {
-		fmt.Printf("Setup commands completed successfully!\n")
+		ui.Success("setup commands completed")
 	}
 	return nil
 }
@@ -147,7 +160,7 @@ func (c *Client) ExecuteSetupCommandsSequential(boxName string, commands []strin
 	}
 
 	if showOutput {
-		fmt.Printf("Executing setup commands in box '%s'...\n", boxName)
+		ui.Status("executing setup commands in box '%s'...", boxName)
 	}
 
 	// Batch commands into a single exec call to avoid the overhead of
@@ -162,7 +175,7 @@ func (c *Client) ExecuteSetupCommandsSequential(boxName string, commands []strin
 		batch := commands[i:end]
 
 		if showOutput {
-			fmt.Printf("Steps %d-%d/%d\n", i+1, end, len(commands))
+			ui.Step(i+1, len(commands), fmt.Sprintf("steps %d-%d", i+1, end))
 		}
 
 		// Join commands with error-checking: each command must succeed
@@ -188,15 +201,15 @@ func (c *Client) ExecuteSetupCommandsSequential(boxName string, commands []strin
 		}
 		if result != nil && result.ExitCode != 0 {
 			if !showOutput && result.Stderr != "" {
-				fmt.Printf("Command batch failed (steps %d-%d)\n", i+1, end)
-				fmt.Printf("Error output: %s\n", result.Stderr)
+				ui.Error("command batch failed (steps %d-%d)", i+1, end)
+				ui.Detail("stderr", result.Stderr)
 			}
 			return fmt.Errorf("setup command batch failed (steps %d-%d): exit code %d", i+1, end, result.ExitCode)
 		}
 	}
 
 	if showOutput {
-		fmt.Printf("Setup commands completed successfully!\n")
+		ui.Success("setup commands completed")
 	}
 	return nil
 }
@@ -208,11 +221,11 @@ func (c *Client) QueryPackagesParallel(boxName string) (aptList, pipList, npmLis
 		return c.queryPackagesSequential(boxName)
 	}
 
-	executor := parallel.NewPackageQueryExecutor(boxName)
+	executor := parallel.NewPackageQueryExecutorWithSDK(boxName, c.SDKExecFunc())
 
 	packageLists, err := executor.QueryAllPackages()
 	if err != nil {
-		fmt.Printf("Warning: parallel package query failed, falling back to sequential: %v\n", err)
+		ui.Warning("parallel package query failed, falling back to sequential: %v", err)
 
 		return c.queryPackagesSequential(boxName)
 	}
@@ -241,20 +254,24 @@ func (c *Client) SetupDevboxInBoxWithUpdate(boxName, projectName string) error {
 	return c.setupDevboxInBoxWithOptions(boxName, projectName, true)
 }
 
+// IsBoxInitialized checks if a box has been initialized via the SDK,
+// avoiding the ~200ms overhead of spawning a docker exec CLI process.
+func (c *Client) IsBoxInitialized(boxName string) bool {
+	ctx := context.Background()
+	result, err := c.sdk.containerExec(ctx, boxName, []string{"test", "-f", "/etc/devbox-initialized"}, false)
+	return err == nil && result != nil && result.ExitCode == 0
+}
+
+// ImageExists checks if an image exists locally via the SDK (no CLI spawn).
+func (c *Client) ImageExists(ref string) bool {
+	ctx := context.Background()
+	exists, err := c.sdk.imageExists(ctx, ref)
+	return err == nil && exists
+}
+
 func (c *Client) setupDevboxInBoxWithOptions(boxName, projectName string, forceUpdate bool) error {
 
 	ctx := context.Background()
-
-	// Check if this is the first time setup
-	checkResult, _ := c.sdk.containerExec(ctx, boxName, []string{"test", "-f", "/etc/devbox-initialized"}, false)
-	isFirstTime := checkResult == nil || checkResult.ExitCode != 0
-
-	if isFirstTime {
-		_, err := c.sdk.containerExec(ctx, boxName, []string{"touch", "/etc/devbox-initialized"}, false)
-		if err != nil {
-			fmt.Printf("Warning: failed to create initialization marker: %v\n", err)
-		}
-	}
 
 	wrapperScript := `#!/bin/bash
 
@@ -333,24 +350,25 @@ case "$1" in
         ;;
 esac`
 
-	installCmd := `rm -f /usr/local/bin/devbox && cat > /usr/local/bin/devbox << 'DEVBOX_WRAPPER_EOF'
+	// Batch all setup into a single exec call to eliminate per-call overhead.
+	// Previously this was 3-4 separate exec calls (~100ms each = ~400ms wasted).
+	setupScript := `set -e
+
+# Mark as initialized
+touch /etc/devbox-initialized
+
+# Install devbox wrapper
+rm -f /usr/local/bin/devbox
+cat > /usr/local/bin/devbox << 'DEVBOX_WRAPPER_EOF'
 ` + wrapperScript + `
 DEVBOX_WRAPPER_EOF
-chmod +x /usr/local/bin/devbox`
+chmod +x /usr/local/bin/devbox
 
-	result, err := c.sdk.containerExec(ctx, boxName, []string{"bash", "-c", installCmd}, false)
-	if err != nil {
-		return fmt.Errorf("failed to install devbox wrapper in box: %w", err)
-	}
-	if result != nil && result.ExitCode != 0 {
-		return fmt.Errorf("failed to install devbox wrapper in box: exit code %d: %s", result.ExitCode, result.Stderr)
-	}
-
-	welcomeCmd := `# Remove any existing devbox configurations
+# Configure bashrc
 sed -i '/# Devbox welcome message/,/^$/d' /root/.bashrc 2>/dev/null || true
 sed -i '/devbox_exit()/,/^}$/d' /root/.bashrc 2>/dev/null || true
 sed -i '/devbox() {/,/^}$/d' /root/.bashrc 2>/dev/null || true
-	sed -i '/# Devbox package tracking start/,/# Devbox package tracking end/d' /root/.bashrc 2>/dev/null || true
+sed -i '/# Devbox package tracking start/,/# Devbox package tracking end/d' /root/.bashrc 2>/dev/null || true
 
 cat >> /root/.bashrc << 'BASHRC_EOF'
 
@@ -482,12 +500,15 @@ npm()      { _devbox_wrap_and_record "$NPM_BIN" npm "$@"; }
 yarn()     { _devbox_wrap_and_record "$YARN_BIN" yarn "$@"; }
 pnpm()     { _devbox_wrap_and_record "$PNPM_BIN" pnpm "$@"; }
 corepack(){ _devbox_wrap_and_record "$COREPACK_BIN" corepack "$@"; }
-BASHRC_EOF`
+BASHRC_EOF
+`
 
-	_, welcomeErr := c.sdk.containerExec(ctx, boxName, []string{"bash", "-c", welcomeCmd}, false)
-	if welcomeErr != nil {
-
-		fmt.Printf("Warning: failed to add welcome message: %v\n", welcomeErr)
+	result, err := c.sdk.containerExec(ctx, boxName, []string{"bash", "-c", setupScript}, false)
+	if err != nil {
+		return fmt.Errorf("failed to setup devbox in box: %w", err)
+	}
+	if result != nil && result.ExitCode != 0 {
+		return fmt.Errorf("failed to setup devbox in box: exit code %d: %s", result.ExitCode, result.Stderr)
 	}
 
 	return nil
@@ -574,6 +595,11 @@ func RunCommand(boxName string, command []string) error {
 
 func (c *Client) WaitForBox(boxName string, timeout time.Duration) error {
 	start := time.Now()
+	// Exponential backoff: containers usually start in <100ms so we poll
+	// aggressively at first (25ms) and back off. Old 500ms fixed sleep
+	// wasted up to 450ms on every startup.
+	pollInterval := 25 * time.Millisecond
+	maxInterval := 500 * time.Millisecond
 	for {
 		if time.Since(start) > timeout {
 			return fmt.Errorf("timeout waiting for box to be ready")
@@ -588,7 +614,11 @@ func (c *Client) WaitForBox(boxName string, timeout time.Duration) error {
 			return nil
 		}
 
-		time.Sleep(500 * time.Millisecond)
+		time.Sleep(pollInterval)
+		pollInterval *= 2
+		if pollInterval > maxInterval {
+			pollInterval = maxInterval
+		}
 	}
 }
 

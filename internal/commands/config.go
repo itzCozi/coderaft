@@ -9,6 +9,7 @@ import (
 	"github.com/spf13/cobra"
 
 	"devbox/internal/config"
+	"devbox/internal/ui"
 )
 
 var configCmd = &cobra.Command{
@@ -83,10 +84,11 @@ func generateProjectConfig(projectName string) error {
 		return fmt.Errorf("failed to save project configuration: %w", err)
 	}
 
-	fmt.Printf("✅ Generated devbox.json for project '%s'\n", projectName)
-	fmt.Printf("📄 Configuration file: %s\n", configPath)
-	fmt.Printf("\nEdit the file to customize your development environment.\n")
-	fmt.Printf("Available templates: %s\n", strings.Join(configManager.GetAvailableTemplates(), ", "))
+	ui.Success("generated devbox.json for project '%s'", projectName)
+	ui.Detail("configuration file", configPath)
+	ui.Blank()
+	ui.Info("edit the file to customize your development environment.")
+	ui.Info("available templates: %s", strings.Join(configManager.GetAvailableTemplates(), ", "))
 
 	return nil
 }
@@ -112,37 +114,38 @@ func validateProjectConfig(projectName string) error {
 	}
 
 	if projectConfig == nil {
-		fmt.Printf("No devbox.json found for project '%s'\n", projectName)
-		fmt.Printf("Generate one with: devbox config generate %s\n", projectName)
+		ui.Info("no devbox.json found for project '%s'", projectName)
+		ui.Info("generate one with: devbox config generate %s", projectName)
 		return nil
 	}
 
 	if err := configManager.ValidateProjectConfig(projectConfig); err != nil {
-		fmt.Printf("❌ Configuration validation failed:\n")
-		fmt.Printf("   %s\n", err.Error())
+		ui.Error("configuration validation failed:")
+		ui.Item(err.Error())
 		return fmt.Errorf("project config validation failed: %w", err)
 	}
 
-	fmt.Printf("✅ Configuration for project '%s' is valid\n", projectName)
+	ui.Success("configuration for project '%s' is valid", projectName)
 
-	fmt.Printf("\nConfiguration summary:\n")
-	fmt.Printf("  Name: %s\n", projectConfig.Name)
-	fmt.Printf("  Base image: %s\n", projectConfig.BaseImage)
+	ui.Blank()
+	ui.Header("configuration summary")
+	ui.Detail("name", projectConfig.Name)
+	ui.Detail("base image", projectConfig.BaseImage)
 
 	if len(projectConfig.SetupCommands) > 0 {
-		fmt.Printf("  Setup commands: %d\n", len(projectConfig.SetupCommands))
+		ui.Detail("setup commands", fmt.Sprintf("%d", len(projectConfig.SetupCommands)))
 	}
 
 	if len(projectConfig.Environment) > 0 {
-		fmt.Printf("  Environment variables: %d\n", len(projectConfig.Environment))
+		ui.Detail("environment variables", fmt.Sprintf("%d", len(projectConfig.Environment)))
 	}
 
 	if len(projectConfig.Ports) > 0 {
-		fmt.Printf("  Port mappings: %v\n", projectConfig.Ports)
+		ui.Detail("port mappings", fmt.Sprintf("%v", projectConfig.Ports))
 	}
 
 	if len(projectConfig.Volumes) > 0 {
-		fmt.Printf("  Volume mappings: %v\n", projectConfig.Volumes)
+		ui.Detail("volume mappings", fmt.Sprintf("%v", projectConfig.Volumes))
 	}
 
 	return nil
@@ -168,105 +171,107 @@ func showProjectConfig(projectName string) error {
 		return fmt.Errorf("failed to load project configuration: %w", err)
 	}
 
-	fmt.Printf("Configuration for project '%s':\n\n", projectName)
+	ui.Header("project '%s'", projectName)
 
-	fmt.Printf("Global project settings:\n")
-	fmt.Printf("  Name: %s\n", project.Name)
-	fmt.Printf("  Box name: %s\n", project.BoxName)
-	fmt.Printf("  Base image: %s\n", project.BaseImage)
-	fmt.Printf("  Workspace: %s\n", project.WorkspacePath)
-	fmt.Printf("  Status: %s\n", project.Status)
+	ui.Info("global project settings:")
+	ui.Detail("name", project.Name)
+	ui.Detail("box name", project.BoxName)
+	ui.Detail("base image", project.BaseImage)
+	ui.Detail("workspace", project.WorkspacePath)
+	ui.Detail("status", project.Status)
 
 	if projectConfig == nil {
-		fmt.Printf("\nNo devbox.json configuration file found.\n")
-		fmt.Printf("Generate one with: devbox config generate %s\n", projectName)
+		ui.Blank()
+		ui.Info("no devbox.json configuration file found.")
+		ui.Info("generate one with: devbox config generate %s", projectName)
 		return nil
 	}
 
-	fmt.Printf("\nProject configuration (devbox.json):\n")
+	ui.Blank()
+	ui.Info("project configuration (devbox.json):")
 
 	if projectConfig.BaseImage != "" && projectConfig.BaseImage != project.BaseImage {
-		fmt.Printf("  Base image override: %s\n", projectConfig.BaseImage)
+		ui.Detail("base image override", projectConfig.BaseImage)
 	}
 
 	if len(projectConfig.SetupCommands) > 0 {
-		fmt.Printf("  Setup commands:\n")
+		ui.Info("setup commands:")
 		for i, cmd := range projectConfig.SetupCommands {
-			fmt.Printf("    %d. %s\n", i+1, cmd)
+			ui.Item("%d. %s", i+1, cmd)
 		}
 	}
 
 	if len(projectConfig.Environment) > 0 {
-		fmt.Printf("  Environment variables:\n")
+		ui.Info("environment variables:")
 		for key, value := range projectConfig.Environment {
-			fmt.Printf("    %s=%s\n", key, value)
+			ui.Detail(key, value)
 		}
 	}
 
 	if len(projectConfig.Ports) > 0 {
-		fmt.Printf("  Port mappings:\n")
+		ui.Info("port mappings:")
 		for _, port := range projectConfig.Ports {
-			fmt.Printf("    %s\n", port)
+			ui.Item(port)
 		}
 	}
 
 	if len(projectConfig.Volumes) > 0 {
-		fmt.Printf("  Volume mappings:\n")
+		ui.Info("volume mappings:")
 		for _, volume := range projectConfig.Volumes {
-			fmt.Printf("    %s\n", volume)
+			ui.Item(volume)
 		}
 	}
 
 	if projectConfig.WorkingDir != "" {
-		fmt.Printf("  Working directory: %s\n", projectConfig.WorkingDir)
+		ui.Detail("working directory", projectConfig.WorkingDir)
 	}
 
 	if projectConfig.Shell != "" {
-		fmt.Printf("  Shell: %s\n", projectConfig.Shell)
+		ui.Detail("shell", projectConfig.Shell)
 	}
 
 	if projectConfig.User != "" {
-		fmt.Printf("  User: %s\n", projectConfig.User)
+		ui.Detail("user", projectConfig.User)
 	}
 
 	if len(projectConfig.Capabilities) > 0 {
-		fmt.Printf("  Capabilities: %v\n", projectConfig.Capabilities)
+		ui.Detail("capabilities", fmt.Sprintf("%v", projectConfig.Capabilities))
 	}
 
 	if len(projectConfig.Labels) > 0 {
-		fmt.Printf("  Labels:\n")
+		ui.Info("labels:")
 		for key, value := range projectConfig.Labels {
-			fmt.Printf("    %s=%s\n", key, value)
+			ui.Detail(key, value)
 		}
 	}
 
 	if projectConfig.Network != "" {
-		fmt.Printf("  Network: %s\n", projectConfig.Network)
+		ui.Detail("network", projectConfig.Network)
 	}
 
 	if projectConfig.Resources != nil {
-		fmt.Printf("  Resource constraints:\n")
+		ui.Info("resource constraints:")
 		if projectConfig.Resources.CPUs != "" {
-			fmt.Printf("    CPUs: %s\n", projectConfig.Resources.CPUs)
+			ui.Detail("cpus", projectConfig.Resources.CPUs)
 		}
 		if projectConfig.Resources.Memory != "" {
-			fmt.Printf("    Memory: %s\n", projectConfig.Resources.Memory)
+			ui.Detail("memory", projectConfig.Resources.Memory)
 		}
 	}
 
 	if projectConfig.HealthCheck != nil {
-		fmt.Printf("  Health check:\n")
+		ui.Info("health check:")
 		if len(projectConfig.HealthCheck.Test) > 0 {
-			fmt.Printf("    Test: %v\n", projectConfig.HealthCheck.Test)
+			ui.Detail("test", fmt.Sprintf("%v", projectConfig.HealthCheck.Test))
 		}
 		if projectConfig.HealthCheck.Interval != "" {
-			fmt.Printf("    Interval: %s\n", projectConfig.HealthCheck.Interval)
+			ui.Detail("interval", projectConfig.HealthCheck.Interval)
 		}
 		if projectConfig.HealthCheck.Timeout != "" {
-			fmt.Printf("    Timeout: %s\n", projectConfig.HealthCheck.Timeout)
+			ui.Detail("timeout", projectConfig.HealthCheck.Timeout)
 		}
 		if projectConfig.HealthCheck.Retries > 0 {
-			fmt.Printf("    Retries: %d\n", projectConfig.HealthCheck.Retries)
+			ui.Detail("retries", fmt.Sprintf("%d", projectConfig.HealthCheck.Retries))
 		}
 	}
 
@@ -276,36 +281,36 @@ func showProjectConfig(projectName string) error {
 func showTemplates() error {
 	templates := configManager.GetAvailableTemplates()
 
-	fmt.Printf("Available configuration templates:\n\n")
+	ui.Header("available configuration templates")
 
 	for _, templateName := range templates {
 		templateConfig, err := configManager.CreateProjectConfigFromTemplate(templateName, "example")
 		if err != nil {
-			fmt.Printf("  %s: Error loading template\n", templateName)
+			ui.Item("%s: error loading template", templateName)
 			continue
 		}
 
-		fmt.Printf("  %s:\n", templateName)
-		fmt.Printf("    Base image: %s\n", templateConfig.BaseImage)
+		ui.Blank()
+		ui.Info("%s:", templateName)
+		ui.Detail("base image", templateConfig.BaseImage)
 
 		if len(templateConfig.SetupCommands) > 0 {
-			fmt.Printf("    Setup commands: %d steps\n", len(templateConfig.SetupCommands))
+			ui.Detail("setup commands", fmt.Sprintf("%d steps", len(templateConfig.SetupCommands)))
 		}
 
 		if len(templateConfig.Environment) > 0 {
-			fmt.Printf("    Environment: %d variables\n", len(templateConfig.Environment))
+			ui.Detail("environment", fmt.Sprintf("%d variables", len(templateConfig.Environment)))
 		}
 
 		if len(templateConfig.Ports) > 0 {
-			fmt.Printf("    Ports: %v\n", templateConfig.Ports)
+			ui.Detail("ports", fmt.Sprintf("%v", templateConfig.Ports))
 		}
-
-		fmt.Printf("\n")
 	}
 
-	fmt.Printf("Usage:\n")
-	fmt.Printf("  devbox init myproject --template python\n")
-	fmt.Printf("  devbox init myproject --template nodejs\n")
+	ui.Blank()
+	ui.Info("usage:")
+	ui.Info("  devbox init myproject --template python")
+	ui.Info("  devbox init myproject --template nodejs")
 
 	return nil
 }
@@ -316,30 +321,31 @@ func showGlobalConfig() error {
 		return fmt.Errorf("failed to load configuration: %w", err)
 	}
 
-	fmt.Printf("Global devbox configuration:\n\n")
+	ui.Header("global devbox configuration")
 
 	if cfg.Settings != nil {
-		fmt.Printf("Settings:\n")
-		fmt.Printf("  Default base image: %s\n", cfg.Settings.DefaultBaseImage)
-		fmt.Printf("  Auto update: %t\n", cfg.Settings.AutoUpdate)
-		fmt.Printf("  Auto stop on exit: %t\n", cfg.Settings.AutoStopOnExit)
+		ui.Info("settings:")
+		ui.Detail("default base image", cfg.Settings.DefaultBaseImage)
+		ui.Detail("auto update", fmt.Sprintf("%t", cfg.Settings.AutoUpdate))
+		ui.Detail("auto stop on exit", fmt.Sprintf("%t", cfg.Settings.AutoStopOnExit))
 
 		if cfg.Settings.ConfigTemplatesPath != "" {
-			fmt.Printf("  Templates path: %s\n", cfg.Settings.ConfigTemplatesPath)
+			ui.Detail("templates path", cfg.Settings.ConfigTemplatesPath)
 		}
 
 		if len(cfg.Settings.DefaultEnvironment) > 0 {
-			fmt.Printf("  Default environment:\n")
+			ui.Info("default environment:")
 			for key, value := range cfg.Settings.DefaultEnvironment {
-				fmt.Printf("    %s=%s\n", key, value)
+				ui.Detail(key, value)
 			}
 		}
 	}
 
-	fmt.Printf("\nProjects: %d total\n", len(cfg.Projects))
+	ui.Blank()
+	ui.Info("projects: %d total", len(cfg.Projects))
 
 	for name, project := range cfg.Projects {
-		fmt.Printf("  %s (%s)\n", name, project.Status)
+		ui.Item("%s (%s)", name, project.Status)
 	}
 
 	return nil

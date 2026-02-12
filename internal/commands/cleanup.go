@@ -7,6 +7,8 @@ import (
 	"strings"
 
 	"github.com/spf13/cobra"
+
+	"devbox/internal/ui"
 )
 
 var (
@@ -27,7 +29,7 @@ This command helps maintain a clean system by removing:
 
 - Orphaned devbox boxes (not tracked in config)
 - Unused Docker images
-- Unused Docker volumes  
+- Unused Docker volumes
 - Unused Docker networks
 - Dangling build artifacts
 
@@ -81,7 +83,8 @@ Examples:
 		}
 
 		if len(cleanupTasks) > 0 {
-			fmt.Printf("\n✅ Cleanup completed successfully!\n")
+			ui.Blank()
+			ui.Success("cleanup completed")
 		}
 
 		return nil
@@ -89,21 +92,23 @@ Examples:
 }
 
 func runInteractiveCleanup() error {
-	fmt.Printf("🧹 Devbox Cleanup Menu\n\n")
-	fmt.Printf("Available cleanup options:\n")
-	fmt.Printf("  1. Clean up orphaned devbox boxes\n")
-	fmt.Printf("  2. Remove unused Docker images\n")
-	fmt.Printf("  3. Remove unused Docker volumes\n")
-	fmt.Printf("  4. Remove unused Docker networks\n")
-	fmt.Printf("  5. Run Docker system prune (comprehensive cleanup)\n")
-	fmt.Printf("  6. Clean up everything (options 1-4)\n")
-	fmt.Printf("  7. Show system status (disk usage, boxes, images)\n")
-	fmt.Printf("  q. Quit\n\n")
+	ui.Header("Devbox Cleanup")
+	ui.Blank()
+	ui.Info("Available options:")
+	ui.Info("  1. Clean up orphaned boxes")
+	ui.Info("  2. Remove unused Docker images")
+	ui.Info("  3. Remove unused Docker volumes")
+	ui.Info("  4. Remove unused Docker networks")
+	ui.Info("  5. Docker system prune (comprehensive)")
+	ui.Info("  6. Clean up everything (1-4)")
+	ui.Info("  7. Show system status")
+	ui.Info("  q. Quit")
+	ui.Blank()
 
 	reader := bufio.NewReader(os.Stdin)
 
 	for {
-		fmt.Print("Select an option [1-7, q]: ")
+		ui.Prompt("Select an option [1-7, q]: ")
 		response, err := reader.ReadString('\n')
 		if err != nil {
 			return fmt.Errorf("failed to read input: %w", err)
@@ -123,7 +128,8 @@ func runInteractiveCleanup() error {
 		case "5":
 			return runSystemPrune()
 		case "6":
-			fmt.Printf("\nRunning comprehensive cleanup...\n")
+			ui.Blank()
+			ui.Status("running comprehensive cleanup...")
 			tasks := []func() error{
 				cleanupOrphanedFromCleanup,
 				cleanupUnusedImages,
@@ -135,24 +141,25 @@ func runInteractiveCleanup() error {
 					return err
 				}
 			}
-			fmt.Printf("\n✅ Comprehensive cleanup completed!\n")
+			ui.Blank()
+			ui.Success("comprehensive cleanup completed")
 			return nil
 		case "7":
 			return showSystemStatus()
 		case "q", "quit", "exit":
-			fmt.Printf("Cleanup cancelled.\n")
+			ui.Info("cleanup cancelled.")
 			return nil
 		default:
-			fmt.Printf("Invalid option. Please select 1-7 or q.\n")
+			ui.Info("invalid option. please select 1-7 or q.")
 		}
 	}
 }
 
 func cleanupOrphanedFromCleanup() error {
-	fmt.Printf("🔍 Scanning for orphaned devbox boxes...\n")
+	ui.Status("scanning for orphaned boxes...")
 
 	if dryRunFlag {
-		fmt.Printf("DRY RUN - No boxes will be removed\n")
+		ui.Info("dry run - no boxes will be removed")
 	}
 
 	cfg, err := configManager.Load()
@@ -181,22 +188,23 @@ func cleanupOrphanedFromCleanup() error {
 	}
 
 	if len(orphanedboxes) == 0 {
-		fmt.Printf("✅ No orphaned boxes found.\n")
+		ui.Info("no orphaned boxes found.")
 		return nil
 	}
 
-	fmt.Printf("Found %d orphaned devbox box(s):\n", len(orphanedboxes))
+	ui.Info("found %d orphaned box(s):", len(orphanedboxes))
 	for _, boxName := range orphanedboxes {
-		fmt.Printf("  • %s\n", boxName)
+		ui.Item("%s", boxName)
 	}
 
 	if dryRunFlag {
-		fmt.Printf("\nDRY RUN: Would remove %d orphaned boxes\n", len(orphanedboxes))
+		ui.Blank()
+		ui.Info("dry run: would remove %d orphaned boxes", len(orphanedboxes))
 		return nil
 	}
 
 	if !forceFlag {
-		fmt.Print("\nRemove these orphaned boxes? (y/N): ")
+		ui.Prompt("\nRemove these orphaned boxes? (y/N): ")
 		reader := bufio.NewReader(os.Stdin)
 		response, err := reader.ReadString('\n')
 		if err != nil {
@@ -205,24 +213,25 @@ func cleanupOrphanedFromCleanup() error {
 
 		response = strings.ToLower(strings.TrimSpace(response))
 		if response != "y" && response != "yes" {
-			fmt.Printf("Cleanup cancelled.\n")
+			ui.Info("cleanup cancelled.")
 			return nil
 		}
 	}
 
 	var removed, failed int
 	for _, boxName := range orphanedboxes {
-		fmt.Printf("Removing %s...\n", boxName)
+		ui.Status("removing %s...", boxName)
 		if err := dockerClient.RemoveBox(boxName); err != nil {
-			fmt.Printf("❌ Failed to remove %s: %v\n", boxName, err)
+			ui.Error("failed to remove %s: %v", boxName, err)
 			failed++
 		} else {
-			fmt.Printf("✅ Removed %s\n", boxName)
+			ui.Info("removed %s", boxName)
 			removed++
 		}
 	}
 
-	fmt.Printf("\nOrphaned boxes cleanup complete: %d removed, %d failed\n", removed, failed)
+	ui.Blank()
+	ui.Summary("%d removed, %d failed", removed, failed)
 	if failed > 0 {
 		return fmt.Errorf("failed to remove %d box(s)", failed)
 	}
@@ -231,16 +240,16 @@ func cleanupOrphanedFromCleanup() error {
 }
 
 func cleanupUnusedImages() error {
-	fmt.Printf("🔍 Scanning for unused Docker images...\n")
+	ui.Status("scanning for unused images...")
 
 	if dryRunFlag {
-		fmt.Printf("DRY RUN - No images will be removed\n")
+		ui.Info("dry run - no images will be removed")
 		if err := dockerClient.RunDockerCommand([]string{"image", "prune", "--dry-run"}); err != nil {
 			return fmt.Errorf("failed to show unused images: %w", err)
 		}
 	} else {
 		if !forceFlag {
-			fmt.Print("Remove unused Docker images? (y/N): ")
+			ui.Prompt("Remove unused Docker images? (y/N): ")
 			reader := bufio.NewReader(os.Stdin)
 			response, err := reader.ReadString('\n')
 			if err != nil {
@@ -249,32 +258,32 @@ func cleanupUnusedImages() error {
 
 			response = strings.ToLower(strings.TrimSpace(response))
 			if response != "y" && response != "yes" {
-				fmt.Printf("Image cleanup cancelled.\n")
+				ui.Info("image cleanup cancelled.")
 				return nil
 			}
 		}
 
-		fmt.Printf("Removing unused images...\n")
+		ui.Status("removing unused images...")
 		if err := dockerClient.RunDockerCommand([]string{"image", "prune", "-f"}); err != nil {
 			return fmt.Errorf("failed to prune images: %w", err)
 		}
-		fmt.Printf("✅ Unused images removed.\n")
+		ui.Success("unused images removed")
 	}
 
 	return nil
 }
 
 func cleanupUnusedVolumes() error {
-	fmt.Printf("🔍 Scanning for unused Docker volumes...\n")
+	ui.Status("scanning for unused volumes...")
 
 	if dryRunFlag {
-		fmt.Printf("DRY RUN - No volumes will be removed\n")
+		ui.Info("dry run - no volumes will be removed")
 		if err := dockerClient.RunDockerCommand([]string{"volume", "prune", "--dry-run"}); err != nil {
 			return fmt.Errorf("failed to show unused volumes: %w", err)
 		}
 	} else {
 		if !forceFlag {
-			fmt.Print("Remove unused Docker volumes? (y/N): ")
+			ui.Prompt("Remove unused Docker volumes? (y/N): ")
 			reader := bufio.NewReader(os.Stdin)
 			response, err := reader.ReadString('\n')
 			if err != nil {
@@ -283,32 +292,32 @@ func cleanupUnusedVolumes() error {
 
 			response = strings.ToLower(strings.TrimSpace(response))
 			if response != "y" && response != "yes" {
-				fmt.Printf("Volume cleanup cancelled.\n")
+				ui.Info("volume cleanup cancelled.")
 				return nil
 			}
 		}
 
-		fmt.Printf("Removing unused volumes...\n")
+		ui.Status("removing unused volumes...")
 		if err := dockerClient.RunDockerCommand([]string{"volume", "prune", "-f"}); err != nil {
 			return fmt.Errorf("failed to prune volumes: %w", err)
 		}
-		fmt.Printf("✅ Unused volumes removed.\n")
+		ui.Success("unused volumes removed")
 	}
 
 	return nil
 }
 
 func cleanupUnusedNetworks() error {
-	fmt.Printf("🔍 Scanning for unused Docker networks...\n")
+	ui.Status("scanning for unused networks...")
 
 	if dryRunFlag {
-		fmt.Printf("DRY RUN - No networks will be removed\n")
+		ui.Info("dry run - no networks will be removed")
 		if err := dockerClient.RunDockerCommand([]string{"network", "prune", "--dry-run"}); err != nil {
 			return fmt.Errorf("failed to show unused networks: %w", err)
 		}
 	} else {
 		if !forceFlag {
-			fmt.Print("Remove unused Docker networks? (y/N): ")
+			ui.Prompt("Remove unused Docker networks? (y/N): ")
 			reader := bufio.NewReader(os.Stdin)
 			response, err := reader.ReadString('\n')
 			if err != nil {
@@ -317,32 +326,32 @@ func cleanupUnusedNetworks() error {
 
 			response = strings.ToLower(strings.TrimSpace(response))
 			if response != "y" && response != "yes" {
-				fmt.Printf("Network cleanup cancelled.\n")
+				ui.Info("network cleanup cancelled.")
 				return nil
 			}
 		}
 
-		fmt.Printf("Removing unused networks...\n")
+		ui.Status("removing unused networks...")
 		if err := dockerClient.RunDockerCommand([]string{"network", "prune", "-f"}); err != nil {
 			return fmt.Errorf("failed to prune networks: %w", err)
 		}
-		fmt.Printf("✅ Unused networks removed.\n")
+		ui.Success("unused networks removed")
 	}
 
 	return nil
 }
 
 func runSystemPrune() error {
-	fmt.Printf("🔍 Running comprehensive Docker system cleanup...\n")
+	ui.Status("running comprehensive system cleanup...")
 
 	if dryRunFlag {
-		fmt.Printf("DRY RUN - No resources will be removed\n")
+		ui.Info("dry run - no resources will be removed")
 		if err := dockerClient.RunDockerCommand([]string{"system", "prune", "--dry-run"}); err != nil {
 			return fmt.Errorf("failed to show system prune info: %w", err)
 		}
 	} else {
 		if !forceFlag {
-			fmt.Print("Run Docker system prune (removes all unused resources)? (y/N): ")
+			ui.Prompt("Run Docker system prune (removes all unused resources)? (y/N): ")
 			reader := bufio.NewReader(os.Stdin)
 			response, err := reader.ReadString('\n')
 			if err != nil {
@@ -351,57 +360,61 @@ func runSystemPrune() error {
 
 			response = strings.ToLower(strings.TrimSpace(response))
 			if response != "y" && response != "yes" {
-				fmt.Printf("System prune cancelled.\n")
+				ui.Info("system prune cancelled.")
 				return nil
 			}
 		}
 
-		fmt.Printf("Running system prune...\n")
+		ui.Status("running system prune...")
 		if err := dockerClient.RunDockerCommand([]string{"system", "prune", "-f"}); err != nil {
 			return fmt.Errorf("failed to run system prune: %w", err)
 		}
-		fmt.Printf("✅ System prune completed.\n")
+		ui.Success("system prune completed")
 	}
 
 	return nil
 }
 
 func showSystemStatus() error {
-	fmt.Printf("📊 Docker System Status\n\n")
+	ui.Header("System Status")
+	ui.Blank()
 
-	fmt.Printf("=== Disk Usage ===\n")
+	ui.Info("Disk Usage:")
 	if err := dockerClient.RunDockerCommand([]string{"system", "df"}); err != nil {
-		fmt.Printf("❌ Failed to get disk usage: %v\n", err)
+		ui.Error("failed to get disk usage: %v", err)
 	}
 
-	fmt.Printf("\n=== Devbox boxes ===\n")
+	ui.Blank()
+	ui.Info("Devbox Boxes:")
 	boxes, err := dockerClient.ListBoxes()
 	if err != nil {
-		fmt.Printf("❌ Failed to list boxes: %v\n", err)
+		ui.Error("failed to list boxes: %v", err)
 	} else {
-		fmt.Printf("Active devbox boxes: %d\n", len(boxes))
+		ui.Info("active boxes: %d", len(boxes))
 		for _, box := range boxes {
 			for _, name := range box.Names {
-				fmt.Printf("  • %s (%s)\n", strings.TrimPrefix(name, "/"), box.Status)
+				ui.Item("%s (%s)", strings.TrimPrefix(name, "/"), box.Status)
 			}
 		}
 	}
 
-	fmt.Printf("\n=== Tracked Projects ===\n")
+	ui.Blank()
+	ui.Info("Tracked Projects:")
 	cfg, err := configManager.Load()
 	if err != nil {
-		fmt.Printf("❌ Failed to load config: %v\n", err)
+		ui.Error("failed to load config: %v", err)
 	} else {
 		projects := cfg.GetProjects()
-		fmt.Printf("Tracked projects: %d\n", len(projects))
+		ui.Info("tracked projects: %d", len(projects))
 		for name, project := range projects {
-			fmt.Printf("  • %s -> %s\n", name, project.BoxName)
+			ui.Item("%s -> %s", name, project.BoxName)
 		}
 	}
 
-	fmt.Printf("\n=== Docker Version ===\n")
+	ui.Blank()
+	ui.Info("Docker Version:")
 	if err := dockerClient.RunDockerCommand([]string{"version", "--format", "{{.Server.Version}}"}); err != nil {
-		fmt.Printf("❌ Failed to get Docker version: %v\n", err)
+		ui.Error("failed to get Docker version: %v", err)
 	}
 
 	return nil

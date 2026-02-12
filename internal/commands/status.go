@@ -6,6 +6,8 @@ import (
 	"time"
 
 	"github.com/spf13/cobra"
+
+	"devbox/internal/ui"
 )
 
 var statusCmd = &cobra.Command{
@@ -24,18 +26,19 @@ var statusCmd = &cobra.Command{
 				return fmt.Errorf("failed to list boxes: %w", err)
 			}
 			if len(boxes) == 0 {
-				fmt.Println("No devbox containers found.")
+				ui.Info("no devbox containers found.")
 				return nil
 			}
-			fmt.Println("Devbox containers:")
+			ui.Header("devbox containers")
 			for _, b := range boxes {
 				name := ""
 				if len(b.Names) > 0 {
 					name = b.Names[0]
 				}
-				fmt.Printf("- %s\t%s\t%s\n", name, b.Status, b.Image)
+				ui.Item("%s\t%s\t%s", name, b.Status, b.Image)
 			}
-			fmt.Println("\nTip: devbox status <project> for detailed view.")
+			ui.Blank()
+			ui.Info("tip: devbox status <project> for detailed view.")
 			return nil
 		}
 
@@ -63,7 +66,8 @@ var statusCmd = &cobra.Command{
 			return fmt.Errorf("failed to check if box exists: %w", err)
 		}
 		if !exists {
-			fmt.Printf("Project: %s\nBox: %s (not found)\n", projectName, box)
+			ui.Detail("project", projectName)
+			ui.Detail("box", fmt.Sprintf("%s (not found)", box))
 			return nil
 		}
 
@@ -76,36 +80,36 @@ var statusCmd = &cobra.Command{
 		ports, _ := dockerClient.GetPortMappings(box)
 		mounts, _ := dockerClient.GetMounts(box)
 
-		fmt.Printf("📊 Devbox Status\n")
-		fmt.Printf("Project: %s\n", projectName)
-		fmt.Printf("Box: %s\n", box)
-		fmt.Printf("Image: %s\n", project.BaseImage)
-		fmt.Printf("State: %s\n", status)
+		ui.Header("devbox status")
+		ui.Detail("project", projectName)
+		ui.Detail("box", box)
+		ui.Detail("image", project.BaseImage)
+		ui.Detail("state", status)
 		if uptime > 0 {
-			fmt.Printf("Uptime: %s\n", humanizeDuration(uptime))
+			ui.Detail("uptime", humanizeDuration(uptime))
 		} else {
-			fmt.Printf("Uptime: -\n")
+			ui.Detail("uptime", "-")
 		}
 		if stats != nil {
-			fmt.Printf("CPU: %s\n", stats.CPUPercent)
-			fmt.Printf("Memory: %s (%s)\n", stats.MemUsage, stats.MemPercent)
+			ui.Detail("cpu", stats.CPUPercent)
+			ui.Detail("memory", fmt.Sprintf("%s (%s)", stats.MemUsage, stats.MemPercent))
 			if stats.NetIO != "" {
-				fmt.Printf("Net I/O: %s\n", stats.NetIO)
+				ui.Detail("net i/o", stats.NetIO)
 			}
 			if stats.BlockIO != "" {
-				fmt.Printf("Block I/O: %s\n", stats.BlockIO)
+				ui.Detail("block i/o", stats.BlockIO)
 			}
 			if stats.PIDs != "" {
-				fmt.Printf("PIDs: %s\n", stats.PIDs)
+				ui.Detail("pids", stats.PIDs)
 			}
 		}
 		if len(ports) > 0 {
-			fmt.Printf("Ports:\n  %s\n", strings.Join(ports, "\n  "))
+			ui.Detail("ports", strings.Join(ports, ", "))
 		} else {
-			fmt.Println("Ports: -")
+			ui.Detail("ports", "-")
 		}
 		if len(mounts) > 0 {
-			fmt.Printf("Mounts:\n  %s\n", strings.Join(mounts, "\n  "))
+			ui.Detail("mounts", strings.Join(mounts, ", "))
 		}
 
 		return nil

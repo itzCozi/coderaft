@@ -49,23 +49,11 @@ var rootCmd = &cobra.Command{
 		return nil
 	},
 	PersistentPostRun: func(cmd *cobra.Command, args []string) {
-
-		if configManager != nil && dockerClient != nil {
-			if cfg, err := configManager.Load(); err == nil && cfg.Settings != nil && cfg.Settings.AutoStopOnExit {
-				for _, project := range cfg.GetProjects() {
-					status, err := dockerClient.GetBoxStatus(project.BoxName)
-					if err != nil || status != "running" {
-						continue
-					}
-					if idle, err := dockerClient.IsContainerIdle(project.BoxName); err == nil && idle {
-						fmt.Printf("Stopping box '%s' (auto-stop: idle)...\n", project.BoxName)
-						if err := dockerClient.StopBox(project.BoxName); err != nil {
-							fmt.Printf("Warning: failed to stop box '%s': %v\n", project.BoxName, err)
-						}
-					}
-				}
-			}
-		}
+		// Auto-stop is now handled directly in shell/up commands when
+		// they know which project they operated on. The old code iterated
+		// ALL projects (N * inspect + idle check per project) on EVERY
+		// command, adding hundreds of ms of overhead for a feature that
+		// only applies after shell exit.
 		if dockerClient != nil {
 			dockerClient.Close()
 		}

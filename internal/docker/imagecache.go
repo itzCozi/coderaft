@@ -10,6 +10,8 @@ import (
 	"runtime"
 	"sort"
 	"strings"
+
+	"devbox/internal/ui"
 )
 
 // ImageCache manages Dockerfile-based image building with layer caching.
@@ -17,10 +19,20 @@ import (
 // (which spawns a new process per command and gets no caching), we generate
 // a Dockerfile with all setup baked in and build it once. Docker's build
 // cache ensures subsequent builds with the same commands are instant.
-type ImageCache struct{}
+type ImageCache struct {
+	// imageExistsFunc checks if an image exists locally via the SDK,
+	// avoiding CLI process spawn (~200ms). Nil falls back to CLI.
+	imageExistsFunc func(ref string) bool
+}
 
 func NewImageCache() *ImageCache {
 	return &ImageCache{}
+}
+
+// NewImageCacheWithSDK creates an ImageCache that uses the SDK for image
+// existence checks instead of spawning docker CLI processes.
+func NewImageCacheWithSDK(existsFn func(ref string) bool) *ImageCache {
+	return &ImageCache{imageExistsFunc: existsFn}
 }
 
 // BuildImageConfig holds parameters for building a cached devbox image.
@@ -183,11 +195,19 @@ func (ic *ImageCache) BuildCachedImage(cfg *BuildImageConfig) (string, error) {
 	imageTag := fmt.Sprintf("devbox-cache/%s:%s", cfg.ProjectName, fingerprint)
 
 	// Check if image already exists (instant cache hit)
-	checkCmd := exec.Command(dockerCmd(), "images", "-q", imageTag)
-	output, err := checkCmd.Output()
-	if err == nil && len(strings.TrimSpace(string(output))) > 0 {
-		fmt.Printf("Using cached image %s\n", imageTag)
-		return imageTag, nil
+	// Use SDK check if available, otherwise fall back to CLI
+	if ic.imageExistsFunc != nil {
+		if ic.imageExistsFunc(imageTag) {
+			ui.Status("using cached image %s", imageTag)
+			return imageTag, nil
+		}
+	} else {
+		checkCmd := exec.Command(dockerCmd(), "images", "-q", imageTag)
+		output, err := checkCmd.Output()
+		if err == nil && len(strings.TrimSpace(string(output))) > 0 {
+			ui.Status("using cached image %s", imageTag)
+			return imageTag, nil
+		}
 	}
 
 	// Create temp build context
@@ -211,7 +231,7 @@ func (ic *ImageCache) BuildCachedImage(cfg *BuildImageConfig) (string, error) {
 
 	args = append(args, tmpDir)
 
-	fmt.Printf("Building cached image (fingerprint: %s)...\n", fingerprint)
+	ui.Status("building cached image (fingerprint: %s)...", fingerprint)
 	cmd := exec.Command(dockerCmd(), args...)
 	cmd.Env = append(os.Environ(), "DOCKER_BUILDKIT=1")
 	cmd.Stdout = os.Stdout
@@ -221,7 +241,7 @@ func (ic *ImageCache) BuildCachedImage(cfg *BuildImageConfig) (string, error) {
 		return "", fmt.Errorf("failed to build cached image: %w", err)
 	}
 
-	fmt.Printf("Image cached as %s\n", imageTag)
+	ui.Success("image cached as %s", imageTag)
 	return imageTag, nil
 }
 
@@ -239,7 +259,7 @@ func (ic *ImageCache) CleanupImageCache(projectName string) error {
 		if line == "" || line == "<none>:<none>" {
 			continue
 		}
-		fmt.Printf("Removing cached image: %s\n", line)
+		ui.Status("removing cached image: %s", line)
 		exec.Command(dockerCmd(), "rmi", line).Run()
 	}
 	return nil

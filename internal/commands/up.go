@@ -4,12 +4,12 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
-	"os/exec"
 	"path/filepath"
 
 	"github.com/spf13/cobra"
 
 	"devbox/internal/config"
+	"devbox/internal/ui"
 )
 
 var (
@@ -76,30 +76,30 @@ var upCmd = &cobra.Command{
 				}
 			}
 
-			checkCmd := exec.Command("docker", "exec", boxName, "test", "-f", "/etc/devbox-initialized")
-			if checkCmd.Run() != nil {
+			// Use SDK-based check instead of spawning a CLI process (~200ms overhead)
+			if !dockerClient.IsBoxInitialized(boxName) {
 				if err := dockerClient.SetupDevboxInBox(boxName, projectName); err != nil {
 					return fmt.Errorf("failed to setup devbox in existing box: %w", err)
 				}
 			}
-			fmt.Printf("✅ Environment is up!\n")
-			fmt.Printf("📁 Workspace: %s\n", cwd)
-			fmt.Printf("🐳 Box: %s\n", boxName)
-			fmt.Printf("🖼️  Image: %s\n", baseImage)
-			fmt.Printf("Tip: run 'devbox shell %s' to enter the environment.\n", projectName)
+			ui.Success("environment is up")
+			ui.Detail("workspace", cwd)
+			ui.Detail("box", boxName)
+			ui.Detail("image", baseImage)
+			ui.Info("hint: run 'devbox shell %s' to enter the environment.", projectName)
 
 			if cfg.Settings != nil && cfg.Settings.AutoStopOnExit && !keepRunningUpFlag {
 				if idle, err := dockerClient.IsContainerIdle(boxName); err == nil && idle {
-					fmt.Printf("Stopping box '%s' (auto-stop: idle)...\n", boxName)
+					ui.Status("stopping box '%s' (auto-stop: idle)...", boxName)
 					if err := dockerClient.StopBox(boxName); err != nil {
-						fmt.Printf("Warning: failed to stop box: %v\n", err)
+						ui.Warning("failed to stop box: %v", err)
 					}
 				}
 			}
 			return nil
 		}
 
-		fmt.Printf("Setting up box '%s' with image '%s'...\n", boxName, baseImage)
+		ui.Status("setting up box '%s' with image '%s'...", boxName, baseImage)
 		if err := dockerClient.PullImage(baseImage); err != nil {
 			return fmt.Errorf("failed to pull base image: %w", err)
 		}
@@ -142,17 +142,17 @@ var upCmd = &cobra.Command{
 			return fmt.Errorf("failed to start environment: %w", err)
 		}
 
-		fmt.Printf("✅ Environment is up!\n")
-		fmt.Printf("📁 Workspace: %s\n", cwd)
-		fmt.Printf("🐳 Box: %s\n", boxName)
-		fmt.Printf("🖼️  Image: %s\n", baseImage)
-		fmt.Printf("Tip: run 'devbox shell %s' to enter the environment.\n", projectName)
+		ui.Success("environment is up")
+		ui.Detail("workspace", cwd)
+		ui.Detail("box", boxName)
+		ui.Detail("image", baseImage)
+		ui.Info("hint: run 'devbox shell %s' to enter the environment.", projectName)
 
 		if cfg.Settings != nil && cfg.Settings.AutoStopOnExit && !keepRunningUpFlag {
 			if idle, err := dockerClient.IsContainerIdle(boxName); err == nil && idle {
-				fmt.Printf("Stopping box '%s' (auto-stop: idle)...\n", boxName)
+				ui.Status("stopping box '%s' (auto-stop: idle)...", boxName)
 				if err := dockerClient.StopBox(boxName); err != nil {
-					fmt.Printf("Warning: failed to stop box: %v\n", err)
+					ui.Warning("failed to stop box: %v", err)
 				}
 			}
 		}

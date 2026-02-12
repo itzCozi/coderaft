@@ -11,6 +11,7 @@ import (
 	"github.com/spf13/cobra"
 
 	"devbox/internal/config"
+	"devbox/internal/ui"
 )
 
 type backupManifest struct {
@@ -62,7 +63,7 @@ var backupCmd = &cobra.Command{
 		}
 
 		imageTag := fmt.Sprintf("devbox/%s:backup-%s", projectName, ts)
-		fmt.Printf("Creating image from box '%s'...\n", proj.BoxName)
+		ui.Status("creating image from box '%s'...", proj.BoxName)
 		imgID, err := dockerClient.CommitContainer(proj.BoxName, imageTag)
 		if err != nil {
 			return fmt.Errorf("failed to commit container: %w", err)
@@ -70,7 +71,7 @@ var backupCmd = &cobra.Command{
 		_ = imgID
 
 		imageTar := filepath.Join(outDir, "image.tar")
-		fmt.Printf("Saving image '%s' to %s...\n", imageTag, imageTar)
+		ui.Status("saving image '%s' to %s...", imageTag, imageTar)
 		if err := dockerClient.SaveImage(imageTag, imageTar); err != nil {
 			return fmt.Errorf("failed to save image: %w", err)
 		}
@@ -99,10 +100,10 @@ var backupCmd = &cobra.Command{
 			return fmt.Errorf("failed to write metadata: %w", err)
 		}
 
-		fmt.Printf("✅ Backup complete\n")
-		fmt.Printf("📦 Directory: %s\n", outDir)
-		fmt.Printf("🖼️  Image tag: %s\n", imageTag)
-		fmt.Printf("📄 Files: image.tar, metadata.json\n")
+		ui.Success("backup complete")
+		ui.Detail("directory", outDir)
+		ui.Detail("image tag", imageTag)
+		ui.Detail("files", "image.tar, metadata.json")
 		return nil
 	},
 }

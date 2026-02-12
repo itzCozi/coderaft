@@ -9,6 +9,8 @@ import (
 	"strings"
 
 	"github.com/spf13/cobra"
+
+	"devbox/internal/ui"
 )
 
 type verifyLockFile struct {
@@ -118,14 +120,14 @@ var verifyCmd = &cobra.Command{
 		}
 
 		if len(drifts) > 0 {
-			fmt.Println("❌ Verification failed. Drift detected:")
+			ui.Error("verification failed, drift detected:")
 			for _, d := range drifts {
-				fmt.Printf(" - %s\n", d)
+				ui.Item(d)
 			}
 			return fmt.Errorf("environment does not match lockfile")
 		}
 
-		fmt.Println("✅ Environment matches devbox.lock.json")
+		ui.Success("environment matches devbox.lock.json")
 		return nil
 	},
 }

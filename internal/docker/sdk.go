@@ -174,6 +174,15 @@ func (s *sdkClient) containerCreate(
 		RestartPolicy: container.RestartPolicy{
 			Name: container.RestartPolicyUnlessStopped,
 		},
+		// Tmpfs mount for /tmp: uses RAM instead of the container's overlay
+		// filesystem, dramatically speeding up builds and tools that write
+		// temp files (apt, pip, npm, compilers). 256MB is generous for temp data.
+		Tmpfs: map[string]string{
+			"/tmp": "rw,nosuid,nodev,size=256m",
+		},
+		// Increase shared memory from the default 64MB.
+		// Many tools (Chrome/Puppeteer, Java, databases) need more.
+		ShmSize: 256 * 1024 * 1024, // 256MB
 	}
 
 	networkConfig := &network.NetworkingConfig{}
@@ -195,19 +204,10 @@ func (s *sdkClient) containerStart(ctx context.Context, id string) error {
 }
 
 func (s *sdkClient) containerStop(ctx context.Context, id string, timeoutSec int) error {
-	timeout := time.Duration(timeoutSec) * time.Second
+	// Docker's ContainerStop sends SIGTERM, waits the timeout, then sends
+	// SIGKILL automatically. No need for a manual kill fallback.
 	opts := container.StopOptions{Timeout: intPtr(timeoutSec)}
-
-	err := s.cli.ContainerStop(ctx, id, opts)
-	if err != nil {
-		// If graceful stop fails, force kill
-		killCtx, cancel := context.WithTimeout(ctx, timeout)
-		defer cancel()
-		if killErr := s.cli.ContainerKill(killCtx, id, "SIGKILL"); killErr != nil {
-			return fmt.Errorf("failed to stop container: %w (kill also failed: %v)", err, killErr)
-		}
-	}
-	return nil
+	return s.cli.ContainerStop(ctx, id, opts)
 }
 
 func (s *sdkClient) containerRemove(ctx context.Context, id string) error {

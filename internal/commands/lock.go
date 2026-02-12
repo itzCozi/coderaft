@@ -9,6 +9,8 @@ import (
 	"time"
 
 	"github.com/spf13/cobra"
+
+	"devbox/internal/ui"
 )
 
 type lockFile struct {
@@ -122,7 +124,7 @@ var lockCmd = &cobra.Command{
 
 		envMap, workdir, user, restart, labels, capabilities, resources, network := dockerClient.GetContainerMeta(proj.BoxName)
 
-		fmt.Printf("Gathering package information in parallel...\n")
+		ui.Status("gathering package information...")
 		aptList, pipList, npmList, yarnList, pnpmList := dockerClient.QueryPackagesParallel(proj.BoxName)
 
 		aptSnapshot, aptSources, aptRelease := dockerClient.GetAptSources(proj.BoxName)
@@ -188,7 +190,7 @@ var lockCmd = &cobra.Command{
 			return fmt.Errorf("failed to write lock file: %w", err)
 		}
 
-		fmt.Printf("Wrote lock file: %s\n", outPath)
+		ui.Success("wrote lock file: %s", outPath)
 		return nil
 	},
 }

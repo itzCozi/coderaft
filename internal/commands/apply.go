@@ -8,6 +8,8 @@ import (
 	"strings"
 
 	"github.com/spf13/cobra"
+
+	"devbox/internal/ui"
 )
 
 type applyLockFile struct {
@@ -124,7 +126,7 @@ var applyCmd = &cobra.Command{
 			}
 		}
 
-		fmt.Println("✅ Applied lockfile: registries/sources configured and packages reconciled")
+		ui.Success("applied lockfile: registries/sources configured and packages reconciled")
 		return nil
 	},
 }

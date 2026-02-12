@@ -6,6 +6,7 @@ import (
 	"github.com/spf13/cobra"
 
 	"devbox/internal/docker"
+	"devbox/internal/ui"
 )
 
 var keepRunningRunFlag bool
@@ -48,7 +49,7 @@ var runCmd = &cobra.Command{
 		}
 
 		if status != "running" {
-			fmt.Printf("Starting box '%s'...\n", project.BoxName)
+			ui.Status("starting box '%s'...", project.BoxName)
 			if err := dockerClient.StartBox(project.BoxName); err != nil {
 				return fmt.Errorf("failed to start box: %w", err)
 			}
@@ -65,9 +66,9 @@ var runCmd = &cobra.Command{
 				if idleErr != nil {
 
 				} else if idle {
-					fmt.Printf("Stopping box '%s' (auto-stop: idle) ...\n", project.BoxName)
+					ui.Status("stopping box '%s' (auto-stop: idle)...", project.BoxName)
 					if err := dockerClient.StopBox(project.BoxName); err != nil {
-						fmt.Printf("Warning: failed to stop box: %v\n", err)
+						ui.Warning("failed to stop box: %v", err)
 					}
 				}
 			}

@@ -9,6 +9,7 @@ import (
 	"github.com/spf13/cobra"
 
 	"devbox/internal/config"
+	"devbox/internal/ui"
 )
 
 var templatesCmd = &cobra.Command{
@@ -22,12 +23,12 @@ var templatesListCmd = &cobra.Command{
 	RunE: func(cmd *cobra.Command, args []string) error {
 		names := configManager.GetAvailableTemplates()
 		if len(names) == 0 {
-			fmt.Println("No templates available.")
+			ui.Info("no templates available.")
 			return nil
 		}
-		fmt.Println("Available templates:")
+		ui.Header("available templates")
 		for _, n := range names {
-			fmt.Printf("- %s\n", n)
+			ui.Item(n)
 		}
 		return nil
 	},
@@ -74,7 +75,7 @@ var templatesCreateCmd = &cobra.Command{
 		if err := configManager.SaveProjectConfig(wd, cfg); err != nil {
 			return fmt.Errorf("failed to save project config: %w", err)
 		}
-		fmt.Printf("Generated devbox.json from template '%s' for project '%s'\n", name, project)
+		ui.Success("generated devbox.json from template '%s' for project '%s'", name, project)
 		return nil
 	},
 }
@@ -97,7 +98,7 @@ var templatesSaveCmd = &cobra.Command{
 		if err := configManager.SaveUserTemplate(tpl); err != nil {
 			return fmt.Errorf("failed to save user template: %w", err)
 		}
-		fmt.Printf("Saved template '%s'\n", name)
+		ui.Success("saved template '%s'", name)
 		return nil
 	},
 }
@@ -111,7 +112,7 @@ var templatesDeleteCmd = &cobra.Command{
 		if err := configManager.DeleteUserTemplate(name); err != nil {
 			return fmt.Errorf("failed to delete user template: %w", err)
 		}
-		fmt.Printf("Deleted template '%s'\n", name)
+		ui.Success("deleted template '%s'", name)
 		return nil
 	},
 }

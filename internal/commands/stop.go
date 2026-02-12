@@ -4,6 +4,8 @@ import (
 	"fmt"
 
 	"github.com/spf13/cobra"
+
+	"devbox/internal/ui"
 )
 
 var stopCmd = &cobra.Command{
@@ -34,7 +36,7 @@ var stopCmd = &cobra.Command{
 		}
 
 		if !exists {
-			fmt.Printf("Box '%s' not found. Nothing to stop.\n", project.BoxName)
+			ui.Info("box '%s' not found, nothing to stop.", project.BoxName)
 			return nil
 		}
 
@@ -44,16 +46,16 @@ var stopCmd = &cobra.Command{
 		}
 
 		if status != "running" {
-			fmt.Printf("Box '%s' is not running.\n", project.BoxName)
+			ui.Info("box '%s' is not running.", project.BoxName)
 			return nil
 		}
 
-		fmt.Printf("Stopping box '%s'...\n", project.BoxName)
+		ui.Status("stopping box '%s'...", project.BoxName)
 		if err := dockerClient.StopBox(project.BoxName); err != nil {
 			return fmt.Errorf("failed to stop box: %w", err)
 		}
 
-		fmt.Printf("✅ Stopped '%s'\n", project.BoxName)
+		ui.Success("stopped '%s'", project.BoxName)
 		return nil
 	},
 }

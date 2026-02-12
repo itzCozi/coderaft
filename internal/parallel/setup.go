@@ -2,6 +2,7 @@ package parallel
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"fmt"
 	"os"
@@ -9,12 +10,19 @@ import (
 	"sort"
 	"strings"
 	"time"
+
+	"devbox/internal/ui"
 )
+
+// ExecFunc is a function that executes a command in a container via the SDK,
+// avoiding the ~200ms overhead of spawning a docker exec CLI process.
+type ExecFunc func(ctx context.Context, containerID string, cmd []string, showOutput bool) (stdout, stderr string, exitCode int, err error)
 
 type SetupCommandExecutor struct {
 	boxName    string
 	workerPool *WorkerPool
 	showOutput bool
+	execFunc   ExecFunc // SDK-based exec; nil = fallback to CLI
 }
 
 func NewSetupCommandExecutor(boxName string, showOutput bool, maxWorkers int) *SetupCommandExecutor {
@@ -27,6 +35,14 @@ func NewSetupCommandExecutor(boxName string, showOutput bool, maxWorkers int) *S
 		workerPool: NewWorkerPool(maxWorkers, 10*time.Minute),
 		showOutput: showOutput,
 	}
+}
+
+// NewSetupCommandExecutorWithSDK creates an executor that uses the SDK exec function
+// instead of spawning docker exec CLI processes (~200ms overhead per command).
+func NewSetupCommandExecutorWithSDK(boxName string, showOutput bool, maxWorkers int, execFn ExecFunc) *SetupCommandExecutor {
+	e := NewSetupCommandExecutor(boxName, showOutput, maxWorkers)
+	e.execFunc = execFn
+	return e
 }
 
 type CommandGroup struct {
@@ -58,7 +74,7 @@ func (sce *SetupCommandExecutor) ExecuteCommandGroups(groups []CommandGroup) err
 
 	if len(parallelBatches) > 0 {
 		if sce.showOutput {
-			fmt.Printf("Executing %d parallel command groups...\n", len(parallelBatches))
+			ui.Status("executing %d parallel command groups...", len(parallelBatches))
 		}
 
 		batchResults := sce.workerPool.ExecuteBatches(parallelBatches)
@@ -72,13 +88,13 @@ func (sce *SetupCommandExecutor) ExecuteCommandGroups(groups []CommandGroup) err
 		}
 
 		if sce.showOutput {
-			fmt.Printf("All parallel command groups completed successfully!\n")
+			ui.Success("all parallel command groups completed")
 		}
 	}
 
 	for _, group := range sequentialGroups {
 		if sce.showOutput {
-			fmt.Printf("Executing sequential group: %s\n", group.Name)
+			ui.Status("executing sequential group: %s", group.Name)
 		}
 
 		for i, cmd := range group.Commands {
@@ -88,7 +104,7 @@ func (sce *SetupCommandExecutor) ExecuteCommandGroups(groups []CommandGroup) err
 		}
 
 		if sce.showOutput {
-			fmt.Printf("Sequential group '%s' completed successfully!\n", group.Name)
+			ui.Success("sequential group '%s' completed", group.Name)
 		}
 	}
 
@@ -177,10 +193,30 @@ func (sce *SetupCommandExecutor) createCommandTask(command string, step, total i
 
 func (sce *SetupCommandExecutor) executeCommand(command string, step, total int, groupName string) error {
 	if sce.showOutput {
-		fmt.Printf("[%s] Step %d/%d: %s\n", groupName, step, total, command)
+		ui.Step(step, total, command)
 	}
 
 	wrapped := ". /root/.bashrc >/dev/null 2>&1 || true; " + command
+
+	// Use SDK exec if available (avoids ~200ms CLI process spawn overhead per command)
+	if sce.execFunc != nil {
+		ctx := context.Background()
+		stdout, stderr, exitCode, err := sce.execFunc(ctx, sce.boxName, []string{"bash", "-c", wrapped}, sce.showOutput)
+		if err != nil {
+			return fmt.Errorf("command failed: %s: %w", command, err)
+		}
+		if exitCode != 0 {
+			if !sce.showOutput && stderr != "" {
+				ui.Error("command failed: %s", command)
+				ui.Detail("stderr", stderr)
+			}
+			_ = stdout
+			return fmt.Errorf("command failed: %s: exit code %d", command, exitCode)
+		}
+		return nil
+	}
+
+	// Fallback to CLI exec
 	cmd := exec.Command("docker", "exec", sce.boxName, "bash", "-c", wrapped)
 
 	if sce.showOutput {
@@ -196,12 +232,12 @@ func (sce *SetupCommandExecutor) executeCommand(command string, step, total int,
 		cmd.Stderr = &stderr
 
 		if err := cmd.Run(); err != nil {
-			fmt.Printf("Command failed: %s\n", command)
+			ui.Error("command failed: %s", command)
 			if stderr.Len() > 0 {
-				fmt.Printf("Error output: %s\n", stderr.String())
+				ui.Detail("stderr", stderr.String())
 			}
 			if stdout.Len() > 0 {
-				fmt.Printf("Standard output: %s\n", stdout.String())
+				ui.Detail("stdout", stdout.String())
 			}
 			return fmt.Errorf("command failed: %s: %w", command, err)
 		}
@@ -213,6 +249,7 @@ func (sce *SetupCommandExecutor) executeCommand(command string, step, total int,
 type PackageQueryExecutor struct {
 	boxName    string
 	workerPool *WorkerPool
+	execFunc   ExecFunc // SDK-based exec; nil = fallback to CLI
 }
 
 func NewPackageQueryExecutor(boxName string) *PackageQueryExecutor {
@@ -220,6 +257,14 @@ func NewPackageQueryExecutor(boxName string) *PackageQueryExecutor {
 		boxName:    boxName,
 		workerPool: NewWorkerPool(5, 2*time.Minute),
 	}
+}
+
+// NewPackageQueryExecutorWithSDK creates a query executor that uses the SDK
+// instead of spawning docker exec CLI processes.
+func NewPackageQueryExecutorWithSDK(boxName string, execFn ExecFunc) *PackageQueryExecutor {
+	e := NewPackageQueryExecutor(boxName)
+	e.execFunc = execFn
+	return e
 }
 
 type PackageQuery struct {
@@ -246,7 +291,7 @@ func (pqe *PackageQueryExecutor) QueryAllPackages() (map[string][]string, error)
 	packageLists := make(map[string][]string)
 	for i, query := range queries {
 		if errors[i] != nil {
-			fmt.Printf("Warning: failed to query %s packages: %v\n", query.Name, errors[i])
+			ui.Warning("failed to query %s packages: %v", query.Name, errors[i])
 			packageLists[query.Name] = nil
 			continue
 		}
@@ -266,6 +311,17 @@ func (pqe *PackageQueryExecutor) QueryAllPackages() (map[string][]string, error)
 
 func (pqe *PackageQueryExecutor) createQueryTask(command string) StringTask {
 	return func() (string, error) {
+		// Use SDK exec if available (avoids ~200ms CLI overhead per query)
+		if pqe.execFunc != nil {
+			ctx := context.Background()
+			stdout, _, _, err := pqe.execFunc(ctx, pqe.boxName, []string{"bash", "-c", command}, false)
+			if err != nil {
+				return "", fmt.Errorf("query failed: %w", err)
+			}
+			return stdout, nil
+		}
+
+		// Fallback to CLI exec
 		cmd := exec.Command("docker", "exec", pqe.boxName, "bash", "-c", command)
 
 		var stdout, stderr bytes.Buffer

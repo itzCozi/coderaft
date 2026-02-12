@@ -2,11 +2,11 @@ package commands
 
 import (
 	"fmt"
-	"os/exec"
 
 	"github.com/spf13/cobra"
 
 	"devbox/internal/docker"
+	"devbox/internal/ui"
 )
 
 var keepRunningFlag bool
@@ -48,21 +48,21 @@ var shellCmd = &cobra.Command{
 		}
 
 		if status != "running" {
-			fmt.Printf("Starting box '%s'...\n", project.BoxName)
+			ui.Status("starting box '%s'...", project.BoxName)
 			if err := dockerClient.StartBox(project.BoxName); err != nil {
 				return fmt.Errorf("failed to start box: %w", err)
 			}
 		}
 
-		checkCmd := exec.Command("docker", "exec", project.BoxName, "test", "-f", "/etc/devbox-initialized")
-		if checkCmd.Run() != nil {
-			fmt.Printf("Setting up devbox commands in box...\n")
+		// Use SDK-based check instead of spawning a CLI process (~200ms overhead)
+		if !dockerClient.IsBoxInitialized(project.BoxName) {
+			ui.Status("setting up devbox commands in box...")
 			if err := dockerClient.SetupDevboxInBox(project.BoxName, projectName); err != nil {
 				return fmt.Errorf("failed to setup devbox in box: %w", err)
 			}
 		}
 
-		fmt.Printf("Attaching to box '%s'...\n", project.BoxName)
+		ui.Status("attaching to box '%s'...", project.BoxName)
 		if err := docker.AttachShell(project.BoxName); err != nil {
 			return fmt.Errorf("failed to attach shell: %w", err)
 		}
@@ -74,9 +74,9 @@ var shellCmd = &cobra.Command{
 				if idleErr != nil {
 
 				} else if idle {
-					fmt.Printf("Stopping box '%s' (auto-stop: idle) ...\n", project.BoxName)
+					ui.Status("stopping box '%s' (auto-stop: idle)...", project.BoxName)
 					if err := dockerClient.StopBox(project.BoxName); err != nil {
-						fmt.Printf("Warning: failed to stop box: %v\n", err)
+						ui.Warning("failed to stop box: %v", err)
 					}
 				}
 			}

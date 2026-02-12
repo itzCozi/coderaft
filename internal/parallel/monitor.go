@@ -3,6 +3,8 @@ package parallel
 import (
 	"fmt"
 	"time"
+
+	"devbox/internal/ui"
 )
 
 type PerformanceMonitor struct {
@@ -19,14 +21,14 @@ func NewPerformanceMonitor() *PerformanceMonitor {
 
 func (pm *PerformanceMonitor) Start(operation string) {
 	pm.startTimes[operation] = time.Now()
-	fmt.Printf("⏱️ Starting: %s\n", operation)
+	ui.Status("starting: %s", operation)
 }
 
 func (pm *PerformanceMonitor) End(operation string) time.Duration {
 	if startTime, exists := pm.startTimes[operation]; exists {
 		duration := time.Since(startTime)
 		pm.durations[operation] = duration
-		fmt.Printf("✅ Completed: %s in %v\n", operation, duration)
+		ui.Success("completed: %s in %v", operation, duration)
 		delete(pm.startTimes, operation)
 		return duration
 	}
@@ -42,7 +44,8 @@ func (pm *PerformanceMonitor) PrintSummary() {
 		return
 	}
 
-	fmt.Printf("\n📊 Performance Summary:\n")
+	ui.Blank()
+	ui.Header("performance summary")
 	fmt.Printf("%-30s %s\n", "Operation", "Duration")
 	fmt.Printf("%-30s %s\n", "----------", "--------")
 
@@ -54,7 +57,7 @@ func (pm *PerformanceMonitor) PrintSummary() {
 
 	fmt.Printf("%-30s %s\n", "----------", "--------")
 	fmt.Printf("%-30s %v\n", "Total Time", total)
-	fmt.Printf("\n")
+	ui.Blank()
 }
 
 func (pm *PerformanceMonitor) OperationTimer(operation string) func() {

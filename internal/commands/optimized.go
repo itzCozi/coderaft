@@ -1,6 +1,7 @@
 package commands
 
 import (
+	"context"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -10,6 +11,7 @@ import (
 	"devbox/internal/config"
 	"devbox/internal/docker"
 	"devbox/internal/parallel"
+	"devbox/internal/ui"
 )
 
 type OptimizedSetup struct {
@@ -26,20 +28,22 @@ type DockerClientInterface interface {
 	SetupDevboxInBoxWithUpdate(boxName, projectName string) error
 	ExecuteSetupCommandsWithOutput(boxName string, commands []string, showOutput bool) error
 	QueryPackagesParallel(boxName string) (aptList, pipList, npmList, yarnList, pnpmList []string)
+	ImageExists(ref string) bool
+	SDKExecFunc() func(ctx context.Context, containerID string, cmd []string, showOutput bool) (string, string, int, error)
 }
 
 func NewOptimizedSetup(dockerClient DockerClientInterface, configManager *config.ConfigManager) *OptimizedSetup {
 	return &OptimizedSetup{
 		dockerClient:  dockerClient,
 		configManager: configManager,
-		imageCache:    docker.NewImageCache(),
+		imageCache:    docker.NewImageCacheWithSDK(dockerClient.ImageExists),
 	}
 }
 
 func (optSetup *OptimizedSetup) OptimizedSystemUpdate(boxName string) error {
-	fmt.Printf("Performing optimized system update...\n")
+	ui.Status("performing optimized system update...")
 
-	executor := parallel.NewSetupCommandExecutor(boxName, false, 2)
+	executor := parallel.NewSetupCommandExecutorWithSDK(boxName, false, 2, optSetup.dockerClient.SDKExecFunc())
 
 	groups := []parallel.CommandGroup{
 		{
@@ -75,7 +79,7 @@ func (optSetup *OptimizedSetup) FastInit(projectName string, projectConfig *conf
 		workspaceBox = projectConfig.WorkingDir
 	}
 
-	fmt.Printf("Fast initialization of '%s'...\n", boxName)
+	ui.Status("fast initialization of '%s'...", boxName)
 
 	// Try Dockerfile-based cached build if there are setup commands.
 	// This bakes apt install + setup into a cached Docker image layer,
@@ -95,7 +99,7 @@ func (optSetup *OptimizedSetup) FastInit(projectName string, projectConfig *conf
 
 		cachedImage, err := optSetup.imageCache.BuildCachedImage(buildCfg)
 		if err != nil {
-			fmt.Printf("Warning: cached build failed, falling back to base image: %v\n", err)
+			ui.Warning("cached build failed, falling back to base image: %v", err)
 			// Fall back to pulling the base image
 			if pullErr := optSetup.dockerClient.PullImage(baseImage); pullErr != nil {
 				return fmt.Errorf("failed to pull base image: %w", pullErr)
@@ -104,17 +108,17 @@ func (optSetup *OptimizedSetup) FastInit(projectName string, projectConfig *conf
 			effectiveImage = cachedImage
 		}
 	} else {
-		fmt.Printf("Pulling image '%s'...\n", baseImage)
+		ui.Status("pulling image '%s'...", baseImage)
 		if err := optSetup.dockerClient.PullImage(baseImage); err != nil {
 			return fmt.Errorf("failed to pull base image: %w", err)
 		}
 	}
 
 	if forceFlag {
-		fmt.Printf("Force flag detected, recreating box...\n")
+		ui.Status("force flag detected, recreating box...")
 	}
 
-	fmt.Printf("Creating box...\n")
+	ui.Status("creating box...")
 	configMap := make(map[string]interface{})
 
 	boxID, err := optSetup.dockerClient.CreateBoxWithConfig(boxName, effectiveImage, workspacePath, workspaceBox, configMap)
@@ -122,18 +126,18 @@ func (optSetup *OptimizedSetup) FastInit(projectName string, projectConfig *conf
 		return fmt.Errorf("failed to create box: %w", err)
 	}
 
-	fmt.Printf("Starting box...\n")
+	ui.Status("starting box...")
 	if err := optSetup.dockerClient.StartBox(boxID); err != nil {
 		return fmt.Errorf("failed to start box: %w", err)
 	}
 
-	fmt.Printf("Waiting for box to be ready...\n")
+	ui.Status("waiting for box to be ready...")
 	if err := optSetup.dockerClient.WaitForBox(boxName, 30*time.Second); err != nil {
 		return fmt.Errorf("box failed to start: %w", err)
 	}
 
 	// Setup devbox wrapper commands in the box
-	fmt.Printf("Setting up devbox commands...\n")
+	ui.Status("setting up devbox commands...")
 	if err := optSetup.dockerClient.SetupDevboxInBoxWithUpdate(boxName, projectName); err != nil {
 		return fmt.Errorf("failed to setup devbox in box: %w", err)
 	}
@@ -142,10 +146,10 @@ func (optSetup *OptimizedSetup) FastInit(projectName string, projectConfig *conf
 	if effectiveImage == baseImage && projectConfig != nil && len(projectConfig.SetupCommands) > 0 {
 		// System update + setup commands (no cached image)
 		if err := optSetup.OptimizedSystemUpdate(boxName); err != nil {
-			fmt.Printf("Warning: system update failed: %v\n", err)
+			ui.Warning("system update failed: %v", err)
 		}
 
-		fmt.Printf("Installing packages (%d commands)...\n", len(projectConfig.SetupCommands))
+		ui.Status("installing packages (%d commands)...", len(projectConfig.SetupCommands))
 		if err := optSetup.dockerClient.ExecuteSetupCommandsWithOutput(boxName, projectConfig.SetupCommands, false); err != nil {
 			return fmt.Errorf("failed to execute setup commands: %w", err)
 		}
@@ -155,7 +159,7 @@ func (optSetup *OptimizedSetup) FastInit(projectName string, projectConfig *conf
 }
 
 func (optSetup *OptimizedSetup) FastUp(projectConfig *config.ProjectConfig, projectName, boxName, baseImage, cwd, workspaceBox string) error {
-	fmt.Printf("Fast startup of environment...\n")
+	ui.Status("fast startup of environment...")
 
 	// Try Dockerfile-based cached build for speed
 	effectiveImage := baseImage
@@ -173,7 +177,7 @@ func (optSetup *OptimizedSetup) FastUp(projectConfig *config.ProjectConfig, proj
 
 		cachedImage, err := optSetup.imageCache.BuildCachedImage(buildCfg)
 		if err != nil {
-			fmt.Printf("Warning: cached build failed, using base image: %v\n", err)
+			ui.Warning("cached build failed, using base image: %v", err)
 		} else {
 			effectiveImage = cachedImage
 		}
@@ -181,7 +185,7 @@ func (optSetup *OptimizedSetup) FastUp(projectConfig *config.ProjectConfig, proj
 
 	configMap := make(map[string]interface{})
 
-	fmt.Printf("Creating optimized box...\n")
+	ui.Status("creating optimized box...")
 	boxID, err := optSetup.dockerClient.CreateBoxWithConfig(boxName, effectiveImage, cwd, workspaceBox, configMap)
 	if err != nil {
 		return fmt.Errorf("failed to create box: %w", err)
@@ -191,7 +195,7 @@ func (optSetup *OptimizedSetup) FastUp(projectConfig *config.ProjectConfig, proj
 		return fmt.Errorf("failed to start box: %w", err)
 	}
 
-	fmt.Printf("Waiting for box startup...\n")
+	ui.Status("waiting for box startup...")
 	if err := optSetup.dockerClient.WaitForBox(boxName, 30*time.Second); err != nil {
 		return fmt.Errorf("box failed to start: %w", err)
 	}
@@ -204,7 +208,7 @@ func (optSetup *OptimizedSetup) FastUp(projectConfig *config.ProjectConfig, proj
 	// Process lock file if present
 	lockfilePath := filepath.Join(cwd, "devbox.lock")
 	if _, err := os.Stat(lockfilePath); err == nil {
-		fmt.Printf("Processing lock file...\n")
+		ui.Status("processing lock file...")
 		if err := optSetup.processLockFile(boxName, lockfilePath); err != nil {
 			return fmt.Errorf("failed to process lock file: %w", err)
 		}
@@ -213,10 +217,10 @@ func (optSetup *OptimizedSetup) FastUp(projectConfig *config.ProjectConfig, proj
 	// Only run setup commands via exec if we used the base image (no cache hit)
 	if effectiveImage == baseImage && projectConfig != nil && len(projectConfig.SetupCommands) > 0 {
 		if err := optSetup.OptimizedSystemUpdate(boxName); err != nil {
-			fmt.Printf("Warning: system update failed: %v\n", err)
+			ui.Warning("system update failed: %v", err)
 		}
 
-		fmt.Printf("Installing packages (%d commands)...\n", len(projectConfig.SetupCommands))
+		ui.Status("installing packages (%d commands)...", len(projectConfig.SetupCommands))
 		if err := optSetup.dockerClient.ExecuteSetupCommandsWithOutput(boxName, projectConfig.SetupCommands, false); err != nil {
 			return fmt.Errorf("failed to execute setup commands: %w", err)
 		}
@@ -242,7 +246,7 @@ func (optSetup *OptimizedSetup) processLockFile(boxName, lockfilePath string) er
 	}
 
 	if len(cmds) > 0 {
-		fmt.Printf("Replaying %d commands from lock file...\n", len(cmds))
+		ui.Status("replaying %d commands from lock file...", len(cmds))
 		return optSetup.dockerClient.ExecuteSetupCommandsWithOutput(boxName, cmds, false)
 	}
 
@@ -250,14 +254,14 @@ func (optSetup *OptimizedSetup) processLockFile(boxName, lockfilePath string) er
 }
 
 func (optSetup *OptimizedSetup) PrewarmImage(image string) error {
-	fmt.Printf("Prewarming image %s...\n", image)
+	ui.Status("prewarming image %s...", image)
 	return optSetup.dockerClient.PullImage(image)
 }
 
 func (optSetup *OptimizedSetup) OptimizeEnvironment(boxName string) error {
-	fmt.Printf("Optimizing environment...\n")
+	ui.Status("optimizing environment...")
 
-	executor := parallel.NewSetupCommandExecutor(boxName, false, 3)
+	executor := parallel.NewSetupCommandExecutorWithSDK(boxName, false, 3, optSetup.dockerClient.SDKExecFunc())
 
 	optimizationGroups := []parallel.CommandGroup{
 		{
