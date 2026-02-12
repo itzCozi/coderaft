@@ -3,52 +3,87 @@ package docker
 import (
 	"bufio"
 	"bytes"
-	"encoding/json"
+	"context"
 	"fmt"
 	"os"
 	"os/exec"
-	"path/filepath"
 	"strconv"
 	"strings"
 	"time"
 
+	dockerclient "github.com/docker/docker/client"
+
 	"devbox/internal/parallel"
 )
 
-type Client struct{}
+type Client struct {
+	sdk *sdkClient // SDK client for direct Docker API access
+}
 
 func NewClient() (*Client, error) {
-	return &Client{}, nil
+	sdk, err := newSDKClient()
+	if err != nil {
+		return nil, fmt.Errorf("failed to connect to Docker daemon: %w", err)
+	}
+	return &Client{sdk: sdk}, nil
 }
 
 func (c *Client) Close() error {
+	if c.sdk != nil {
+		return c.sdk.close()
+	}
 	return nil
+}
+
+func dockerCmd() string {
+	if eng := strings.TrimSpace(os.Getenv("DEVBOX_ENGINE")); eng != "" {
+		return eng
+	}
+	return "docker"
 }
 
 func IsDockerAvailable() error {
-	cmd := exec.Command("docker", "version")
-	if err := cmd.Run(); err != nil {
-		return fmt.Errorf("docker is not installed or not running. Please ensure Docker is installed and the Docker daemon is running")
+	// Use SDK ping for fast daemon check (no process spawn)
+	sdk, err := newSDKClient()
+	if err != nil {
+		return fmt.Errorf("docker is not available: %w", err)
+	}
+	defer sdk.close()
+
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+
+	if err := sdk.ping(ctx); err != nil {
+		return fmt.Errorf("docker daemon is not running. Please ensure Docker is installed and its daemon is running: %w", err)
 	}
 	return nil
 }
 
-func (c *Client) PullImage(image string) error {
-	cmd := exec.Command("docker", "images", "-q", image)
-	output, err := cmd.Output()
-	if err == nil && len(strings.TrimSpace(string(output))) > 0 {
+// IsDockerAvailableWith checks Docker availability using an existing client,
+// avoiding a redundant SDK connection.
+func (c *Client) IsDockerAvailableWith() error {
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+	if err := c.sdk.ping(ctx); err != nil {
+		return fmt.Errorf("docker daemon is not running: %w", err)
+	}
+	return nil
+}
+
+func (c *Client) PullImage(ref string) error {
+	ctx := context.Background()
+
+	// Check if image already exists locally (SDK: no process spawn)
+	exists, err := c.sdk.imageExists(ctx, ref)
+	if err == nil && exists {
 		return nil
 	}
 
-	fmt.Printf("Pulling image %s...\n", image)
-	cmd = exec.Command("docker", "pull", image)
-	cmd.Stdout = os.Stdout
-	cmd.Stderr = os.Stderr
-
-	if err := cmd.Run(); err != nil {
-		return fmt.Errorf("failed to pull image %s: %w", image, err)
+	fmt.Printf("Pulling image %s...\n", ref)
+	if err := c.sdk.pullImage(ctx, ref); err != nil {
+		return fmt.Errorf("failed to pull image %s: %w", ref, err)
 	}
-
+	fmt.Printf("Image %s pulled successfully.\n", ref)
 	return nil
 }
 
@@ -57,163 +92,20 @@ func (c *Client) CreateBox(name, image, workspaceHost, workspaceBox string) (str
 }
 
 func (c *Client) CreateBoxWithConfig(name, image, workspaceHost, workspaceBox string, projectConfig interface{}) (string, error) {
-	args := []string{
-		"create",
-		"--name", name,
-		"--mount", fmt.Sprintf("type=bind,source=%s,target=%s", workspaceHost, workspaceBox),
-		"--workdir", workspaceBox,
-		"-it",
-	}
+	ctx := context.Background()
 
+	var config map[string]interface{}
 	if projectConfig != nil {
-		if config, ok := projectConfig.(map[string]interface{}); ok {
-			args = c.applyProjectConfigToArgs(args, config)
+		if cfg, ok := projectConfig.(map[string]interface{}); ok {
+			config = cfg
 		}
 	}
 
-	hasRestart := false
-	for i := 0; i < len(args); i++ {
-		if args[i] == "--restart" {
-			hasRestart = true
-			break
-		}
-	}
-	if !hasRestart {
-		args = append(args, "--restart", "unless-stopped")
-	}
-
-	args = append(args, image, "sleep", "infinity")
-
-	cmd := exec.Command("docker", args...)
-	var stdout, stderr bytes.Buffer
-	cmd.Stdout = &stdout
-	cmd.Stderr = &stderr
-
-	if err := cmd.Run(); err != nil {
-		stderrStr := strings.TrimSpace(stderr.String())
-		if stderrStr != "" {
-			return "", fmt.Errorf("failed to create box: %s", stderrStr)
-		}
+	boxID, err := c.sdk.containerCreate(ctx, name, image, workspaceHost, workspaceBox, config)
+	if err != nil {
 		return "", fmt.Errorf("failed to create box: %w", err)
 	}
-
-	boxID := strings.TrimSpace(stdout.String())
 	return boxID, nil
-}
-
-func (c *Client) applyProjectConfigToArgs(args []string, config map[string]interface{}) []string {
-
-	if restart, ok := config["restart"].(string); ok && restart != "" {
-		args = append(args, "--restart", restart)
-	}
-
-	if env, ok := config["environment"].(map[string]interface{}); ok {
-		for key, value := range env {
-			if valueStr, ok := value.(string); ok {
-				args = append(args, "-e", fmt.Sprintf("%s=%s", key, valueStr))
-			}
-		}
-	}
-
-	if ports, ok := config["ports"].([]interface{}); ok {
-		for _, port := range ports {
-			if portStr, ok := port.(string); ok {
-				args = append(args, "-p", portStr)
-			}
-		}
-	}
-
-	if volumes, ok := config["volumes"].([]interface{}); ok {
-		for _, volume := range volumes {
-			if volumeStr, ok := volume.(string); ok {
-				if strings.HasPrefix(volumeStr, "~") {
-					if home, err := os.UserHomeDir(); err == nil {
-						volumeStr = filepath.Join(home, strings.TrimPrefix(volumeStr, "~"))
-					}
-				}
-				args = append(args, "-v", volumeStr)
-			}
-		}
-	}
-
-	if dotfiles, ok := config["dotfiles"].([]interface{}); ok {
-		for _, item := range dotfiles {
-			pathStr, ok := item.(string)
-			if !ok || pathStr == "" {
-				continue
-			}
-			host := pathStr
-			if strings.HasPrefix(host, "~") {
-				if home, err := os.UserHomeDir(); err == nil {
-					host = filepath.Join(home, strings.TrimPrefix(host, "~"))
-				}
-			}
-			args = append(args, "-v", fmt.Sprintf("%s:%s", host, "/dotfiles"))
-			break
-		}
-	}
-
-	if workingDir, ok := config["working_dir"].(string); ok && workingDir != "" {
-		args = append(args, "--workdir", workingDir)
-	}
-
-	if user, ok := config["user"].(string); ok && user != "" {
-		args = append(args, "--user", user)
-	}
-
-	if capabilities, ok := config["capabilities"].([]interface{}); ok {
-		for _, cap := range capabilities {
-			if capStr, ok := cap.(string); ok {
-				args = append(args, "--cap-add", capStr)
-			}
-		}
-	}
-
-	if labels, ok := config["labels"].(map[string]interface{}); ok {
-		for key, value := range labels {
-			if valueStr, ok := value.(string); ok {
-				args = append(args, "--label", fmt.Sprintf("%s=%s", key, valueStr))
-			}
-		}
-	}
-
-	if network, ok := config["network"].(string); ok && network != "" {
-		args = append(args, "--network", network)
-	}
-
-	if resources, ok := config["resources"].(map[string]interface{}); ok {
-		if cpus, ok := resources["cpus"].(string); ok && cpus != "" {
-			args = append(args, "--cpus", cpus)
-		}
-		if memory, ok := resources["memory"].(string); ok && memory != "" {
-			args = append(args, "--memory", memory)
-		}
-	}
-
-	if healthCheck, ok := config["health_check"].(map[string]interface{}); ok {
-		if test, ok := healthCheck["test"].([]interface{}); ok && len(test) > 0 {
-			var testArgs []string
-			for _, t := range test {
-				if testStr, ok := t.(string); ok {
-					testArgs = append(testArgs, testStr)
-				}
-			}
-			if len(testArgs) > 0 {
-				args = append(args, "--health-cmd", strings.Join(testArgs, " "))
-			}
-		}
-		if interval, ok := healthCheck["interval"].(string); ok && interval != "" {
-			args = append(args, "--health-interval", interval)
-		}
-		if timeout, ok := healthCheck["timeout"].(string); ok && timeout != "" {
-			args = append(args, "--health-timeout", timeout)
-		}
-		if retries, ok := healthCheck["retries"].(float64); ok && retries > 0 {
-			args = append(args, "--health-retries", fmt.Sprintf("%.0f", retries))
-		}
-	}
-
-	return args
 }
 
 func (c *Client) ExecuteSetupCommands(boxName string, commands []string) error {
@@ -258,36 +150,48 @@ func (c *Client) ExecuteSetupCommandsSequential(boxName string, commands []strin
 		fmt.Printf("Executing setup commands in box '%s'...\n", boxName)
 	}
 
-	for i, command := range commands {
+	// Batch commands into a single exec call to avoid the overhead of
+	// spawning a new docker exec process per command (~200ms each).
+	// For N commands, this saves ~(N-1)*200ms of process startup time.
+	batchSize := 10
+	for i := 0; i < len(commands); i += batchSize {
+		end := i + batchSize
+		if end > len(commands) {
+			end = len(commands)
+		}
+		batch := commands[i:end]
+
 		if showOutput {
-			fmt.Printf("Step %d/%d: %s\n", i+1, len(commands), command)
+			fmt.Printf("Steps %d-%d/%d\n", i+1, end, len(commands))
 		}
 
-		wrapped := ". /root/.bashrc >/dev/null 2>&1 || true; " + command
-		cmd := exec.Command("docker", "exec", boxName, "bash", "-c", wrapped)
-
-		if showOutput {
-			cmd.Stdout = os.Stdout
-			cmd.Stderr = os.Stderr
-
-			if err := cmd.Run(); err != nil {
-				return fmt.Errorf("setup command failed: %s: %w", command, err)
+		// Join commands with error-checking: each command must succeed
+		// before the next runs (set -e ensures this)
+		var scriptBuilder strings.Builder
+		scriptBuilder.WriteString(". /root/.bashrc >/dev/null 2>&1 || true; set -e; ")
+		for j, command := range batch {
+			if j > 0 {
+				scriptBuilder.WriteString(" ; ")
 			}
-		} else {
-			var stdout, stderr bytes.Buffer
-			cmd.Stdout = &stdout
-			cmd.Stderr = &stderr
-
-			if err := cmd.Run(); err != nil {
-				fmt.Printf("Command failed: %s\n", command)
-				if stderr.Len() > 0 {
-					fmt.Printf("Error output: %s\n", stderr.String())
-				}
-				if stdout.Len() > 0 {
-					fmt.Printf("Standard output: %s\n", stdout.String())
-				}
-				return fmt.Errorf("setup command failed: %s: %w", command, err)
+			if showOutput {
+				// Echo the command being run for visibility
+				scriptBuilder.WriteString(fmt.Sprintf("echo '==> %s' ; ", strings.ReplaceAll(command, "'", "'\\''")))
 			}
+			scriptBuilder.WriteString(command)
+		}
+
+		cmd := []string{"bash", "-lc", scriptBuilder.String()}
+		ctx := context.Background()
+		result, err := c.sdk.containerExec(ctx, boxName, cmd, showOutput)
+		if err != nil {
+			return fmt.Errorf("setup command batch failed (steps %d-%d): %w", i+1, end, err)
+		}
+		if result != nil && result.ExitCode != 0 {
+			if !showOutput && result.Stderr != "" {
+				fmt.Printf("Command batch failed (steps %d-%d)\n", i+1, end)
+				fmt.Printf("Error output: %s\n", result.Stderr)
+			}
+			return fmt.Errorf("setup command batch failed (steps %d-%d): exit code %d", i+1, end, result.ExitCode)
 		}
 	}
 
@@ -322,15 +226,8 @@ func (c *Client) queryPackagesSequential(boxName string) (aptList, pipList, npmL
 }
 
 func (c *Client) StartBox(boxID string) error {
-	cmd := exec.Command("docker", "start", boxID)
-	var stderr bytes.Buffer
-	cmd.Stderr = &stderr
-
-	if err := cmd.Run(); err != nil {
-		stderrStr := strings.TrimSpace(stderr.String())
-		if stderrStr != "" {
-			return fmt.Errorf("failed to start box: %s", stderrStr)
-		}
+	ctx := context.Background()
+	if err := c.sdk.containerStart(ctx, boxID); err != nil {
 		return fmt.Errorf("failed to start box: %w", err)
 	}
 	return nil
@@ -346,12 +243,15 @@ func (c *Client) SetupDevboxInBoxWithUpdate(boxName, projectName string) error {
 
 func (c *Client) setupDevboxInBoxWithOptions(boxName, projectName string, forceUpdate bool) error {
 
-	checkCmd := exec.Command("docker", "exec", boxName, "test", "-f", "/etc/devbox-initialized")
-	isFirstTime := checkCmd.Run() != nil
+	ctx := context.Background()
+
+	// Check if this is the first time setup
+	checkResult, _ := c.sdk.containerExec(ctx, boxName, []string{"test", "-f", "/etc/devbox-initialized"}, false)
+	isFirstTime := checkResult == nil || checkResult.ExitCode != 0
 
 	if isFirstTime {
-		markerCmd := exec.Command("docker", "exec", boxName, "touch", "/etc/devbox-initialized")
-		if err := markerCmd.Run(); err != nil {
+		_, err := c.sdk.containerExec(ctx, boxName, []string{"touch", "/etc/devbox-initialized"}, false)
+		if err != nil {
 			fmt.Printf("Warning: failed to create initialization marker: %v\n", err)
 		}
 	}
@@ -365,8 +265,8 @@ BOX_NAME="` + boxName + `"
 PROJECT_NAME="` + projectName + `"
 
 case "$1" in
-    "status"|"info")
-        echo "📊 Devbox Box Status"
+	"status"|"info")
+		echo "Devbox box status"
         echo "Project: $PROJECT_NAME"
         echo "Box: $BOX_NAME"
         echo "Workspace: /workspace"
@@ -374,14 +274,14 @@ case "$1" in
         echo "User: $(whoami)"
         echo "Working Directory: $(pwd)"
         echo ""
-        echo "💡 Available devbox commands inside box:"
+	echo "hint: available devbox commands inside box:"
         echo "  devbox exit     - Exit the shell"
         echo "  devbox status   - Show box information"
         echo "  devbox help     - Show this help"
         echo "  devbox host     - Run command on host (experimental)"
         ;;
-    "help"|"--help"|"-h")
-        echo "🚀 Devbox Box Commands"
+	"help"|"--help"|"-h")
+		echo "Devbox box commands"
         echo ""
         echo "Available commands inside the box:"
         echo "  devbox exit         - Exit the devbox shell"
@@ -389,41 +289,41 @@ case "$1" in
         echo "  devbox help         - Show this help message"
         echo "  devbox host <cmd>   - Execute command on host (experimental)"
         echo ""
-        echo "📁 Your project files are in: /workspace"
-        echo "🐧 You are in an Ubuntu box with full package management"
+	echo "Your project files are in: /workspace"
+	echo "You are in an Ubuntu box with full package management"
         echo ""
         echo "Examples:"
         echo "  devbox exit                    # Exit to host"
         echo "  devbox status                  # Check box info"
         echo "  devbox host \"devbox list\"     # Run host command"
         echo ""
-        echo "💡 Tip: Files in /workspace are shared with your host system"
+	echo "hint: Files in /workspace are shared with your host system"
         ;;
     "host")
-        if [ -z "$2" ]; then
-            echo "❌ Usage: devbox host <command>"
+		if [ -z "$2" ]; then
+			echo "error: usage: devbox host <command>"
             echo "Example: devbox host \"devbox list\""
             exit 1
         fi
-        echo "🔄 Executing on host: $2"
-        echo "⚠️  Note: This is experimental and may not work in all environments"
+		echo "Executing on host: $2"
+		echo "warning: This is experimental and may not work in all environments"
         # This is a placeholder - we cannot easily execute on host from box
         # without additional setup like Docker socket mounting
-        echo "❌ Host command execution not yet implemented"
-        echo "💡 Exit the box and run commands on the host instead"
+		echo "error: host command execution not yet implemented"
+		echo "hint: Exit the box and run commands on the host instead"
         ;;
     "version")
         echo "devbox box wrapper v1.0"
         echo "Box: $BOX_NAME"
         echo "Project: $PROJECT_NAME"
         ;;
-    "")
-        echo "❌ Missing command. Use \"devbox help\" for available commands."
+	"")
+		echo "error: missing command. Use \"devbox help\" for available commands."
         exit 1
         ;;
     *)
-        echo "❌ Unknown devbox command: $1"
-        echo "💡 Use \"devbox help\" to see available commands inside the box"
+		echo "error: unknown devbox command: $1"
+		echo "hint: Use \"devbox help\" to see available commands inside the box"
         echo ""
         echo "Available commands:"
         echo "  exit, status, help, host, version"
@@ -438,9 +338,12 @@ esac`
 DEVBOX_WRAPPER_EOF
 chmod +x /usr/local/bin/devbox`
 
-	cmd := exec.Command("docker", "exec", boxName, "bash", "-c", installCmd)
-	if err := cmd.Run(); err != nil {
+	result, err := c.sdk.containerExec(ctx, boxName, []string{"bash", "-c", installCmd}, false)
+	if err != nil {
 		return fmt.Errorf("failed to install devbox wrapper in box: %w", err)
+	}
+	if result != nil && result.ExitCode != 0 {
+		return fmt.Errorf("failed to install devbox wrapper in box: exit code %d: %s", result.ExitCode, result.Stderr)
 	}
 
 	welcomeCmd := `# Remove any existing devbox configurations
@@ -452,10 +355,10 @@ sed -i '/devbox() {/,/^}$/d' /root/.bashrc 2>/dev/null || true
 cat >> /root/.bashrc << 'BASHRC_EOF'
 
 if [ -t 1 ]; then
-    echo "🚀 Welcome to devbox project: ` + projectName + `"
-    echo "📁 Your files are in: /workspace"
-    echo "💡 Type 'devbox help' for available commands"
-    echo "🚪 Type 'devbox exit' to leave the box"
+	echo "Welcome to devbox project: ` + projectName + `"
+	echo "Your files are in: /workspace"
+	echo "hint: Type 'devbox help' for available commands"
+	echo "hint: Type 'devbox exit' to leave the box"
     echo ""
 fi
 
@@ -480,8 +383,8 @@ if [ -d "/dotfiles" ]; then
 fi
 
 devbox_exit() {
-    echo "👋 Exiting devbox shell for project \"` + projectName + `\""
-    exit 0
+	echo "Exiting devbox shell for project \"` + projectName + `\""
+	exit 0
 }
 
 devbox() {
@@ -581,55 +484,44 @@ pnpm()     { _devbox_wrap_and_record "$PNPM_BIN" pnpm "$@"; }
 corepack(){ _devbox_wrap_and_record "$COREPACK_BIN" corepack "$@"; }
 BASHRC_EOF`
 
-	cmd = exec.Command("docker", "exec", boxName, "bash", "-c", welcomeCmd)
-	if err := cmd.Run(); err != nil {
+	_, welcomeErr := c.sdk.containerExec(ctx, boxName, []string{"bash", "-c", welcomeCmd}, false)
+	if welcomeErr != nil {
 
-		fmt.Printf("Warning: failed to add welcome message: %v\n", err)
+		fmt.Printf("Warning: failed to add welcome message: %v\n", welcomeErr)
 	}
 
 	return nil
 }
 
 func (c *Client) StopBox(boxName string) error {
-
+	// With --init flag on creation, containers respond to SIGTERM properly
+	// so we can use a short timeout for fast shutdown
 	timeoutSec := 2
 	if v := strings.TrimSpace(os.Getenv("DEVBOX_STOP_TIMEOUT")); v != "" {
 		if n, err := strconv.Atoi(v); err == nil && n >= 0 {
 			timeoutSec = n
 		}
 	}
-	cmd := exec.Command("docker", "stop", "--time", fmt.Sprintf("%d", timeoutSec), boxName)
-	if err := cmd.Run(); err != nil {
-
-		if killErr := exec.Command("docker", "kill", boxName).Run(); killErr != nil {
-			return fmt.Errorf("failed to stop box: %w", err)
-		}
-		return nil
+	ctx := context.Background()
+	if err := c.sdk.containerStop(ctx, boxName, timeoutSec); err != nil {
+		return fmt.Errorf("failed to stop box: %w", err)
 	}
 	return nil
 }
 
 func (c *Client) RemoveBox(boxName string) error {
-
-	cmd := exec.Command("docker", "rm", "-f", boxName)
-	var stderr bytes.Buffer
-	cmd.Stderr = &stderr
-
-	if err := cmd.Run(); err != nil {
-		stderrStr := strings.TrimSpace(stderr.String())
-		if stderrStr != "" {
-			return fmt.Errorf("failed to remove box: %s", stderrStr)
-		}
+	ctx := context.Background()
+	if err := c.sdk.containerRemove(ctx, boxName); err != nil {
 		return fmt.Errorf("failed to remove box: %w", err)
 	}
 	return nil
 }
 
 func (c *Client) BoxExists(boxName string) (bool, error) {
-	cmd := exec.Command("docker", "inspect", boxName)
-	err := cmd.Run()
+	ctx := context.Background()
+	_, err := c.sdk.containerInspect(ctx, boxName)
 	if err != nil {
-		if exitError, ok := err.(*exec.ExitError); ok && exitError.ExitCode() == 1 {
+		if dockerclient.IsErrNotFound(err) {
 			return false, nil
 		}
 		return false, fmt.Errorf("failed to inspect box: %w", err)
@@ -638,20 +530,20 @@ func (c *Client) BoxExists(boxName string) (bool, error) {
 }
 
 func (c *Client) GetBoxStatus(boxName string) (string, error) {
-	cmd := exec.Command("docker", "inspect", "--format", "{{.State.Status}}", boxName)
-	output, err := cmd.Output()
+	ctx := context.Background()
+	inspect, err := c.sdk.containerInspect(ctx, boxName)
 	if err != nil {
-		if exitError, ok := err.(*exec.ExitError); ok && exitError.ExitCode() == 1 {
+		if dockerclient.IsErrNotFound(err) {
 			return "not found", nil
 		}
 		return "", fmt.Errorf("failed to inspect box: %w", err)
 	}
-	return strings.TrimSpace(string(output)), nil
+	return inspect.State.Status, nil
 }
 
 func AttachShell(boxName string) error {
 
-	cmd := exec.Command("docker", "exec", "-it",
+	cmd := exec.Command(dockerCmd(), "exec", "-it",
 		"-e", fmt.Sprintf("DEVBOX_BOX_NAME=%s", boxName),
 		boxName, "/bin/bash", "-c",
 		"export PS1='devbox(\\$PROJECT_NAME):\\w\\$ '; exec /bin/bash")
@@ -669,7 +561,7 @@ func RunCommand(boxName string, command []string) error {
 	cmdStr := strings.Join(command, " ")
 	wrapped := ". /root/.bashrc >/dev/null 2>&1 || true; " + cmdStr
 	args := []string{"exec", "-it", boxName, "bash", "-lc", wrapped}
-	cmd := exec.Command("docker", args...)
+	cmd := exec.Command(dockerCmd(), args...)
 	cmd.Stdin = os.Stdin
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
@@ -707,51 +599,32 @@ type BoxInfo struct {
 }
 
 func (c *Client) ListBoxes() ([]BoxInfo, error) {
-	cmd := exec.Command("docker", "ps", "-a", "--format", "{{.Names}}\t{{.Status}}\t{{.Image}}")
-	var stdout, stderr bytes.Buffer
-	cmd.Stdout = &stdout
-	cmd.Stderr = &stderr
-
-	if err := cmd.Run(); err != nil {
-		stderrStr := strings.TrimSpace(stderr.String())
-		if stderrStr != "" {
-			return nil, fmt.Errorf("failed to list boxes: %s", stderrStr)
-		}
+	ctx := context.Background()
+	containers, err := c.sdk.containerList(ctx, true)
+	if err != nil {
 		return nil, fmt.Errorf("failed to list boxes: %w", err)
 	}
 
 	var boxes []BoxInfo
-	scanner := bufio.NewScanner(&stdout)
-	for scanner.Scan() {
-		line := scanner.Text()
-		if line == "" {
-			continue
-		}
-
-		parts := strings.Split(line, "\t")
-		if len(parts) != 3 {
-			continue
-		}
-
-		name := parts[0]
-		if strings.HasPrefix(name, "devbox_") {
-			boxes = append(boxes, BoxInfo{
-				Names:  []string{name},
-				Status: parts[1],
-				Image:  parts[2],
-			})
+	for _, ctr := range containers {
+		for _, name := range ctr.Names {
+			// Docker prefixes names with "/"
+			cleanName := strings.TrimPrefix(name, "/")
+			if strings.HasPrefix(cleanName, "devbox_") {
+				boxes = append(boxes, BoxInfo{
+					Names:  []string{cleanName},
+					Status: ctr.Status,
+					Image:  ctr.Image,
+				})
+				break
+			}
 		}
 	}
-
-	if err := scanner.Err(); err != nil {
-		return nil, fmt.Errorf("failed to scan containers: %w", err)
-	}
-
 	return boxes, nil
 }
 
 func (c *Client) RunDockerCommand(args []string) error {
-	cmd := exec.Command("docker", args...)
+	cmd := exec.Command(dockerCmd(), args...)
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
 
@@ -771,15 +644,12 @@ type ContainerStats struct {
 }
 
 func (c *Client) CommitContainer(containerName, imageTag string) (string, error) {
-	args := []string{"commit", containerName, imageTag}
-	cmd := exec.Command("docker", args...)
-	var out, errb bytes.Buffer
-	cmd.Stdout = &out
-	cmd.Stderr = &errb
-	if err := cmd.Run(); err != nil {
-		return "", fmt.Errorf("docker commit failed: %s", strings.TrimSpace(errb.String()))
+	ctx := context.Background()
+	id, err := c.sdk.commitContainer(ctx, containerName, imageTag)
+	if err != nil {
+		return "", err
 	}
-	return strings.TrimSpace(out.String()), nil
+	return id, nil
 }
 
 func (c *Client) SaveImage(imageRef, tarPath string) error {
@@ -788,40 +658,26 @@ func (c *Client) SaveImage(imageRef, tarPath string) error {
 		return fmt.Errorf("failed to create tar file: %w", err)
 	}
 	defer f.Close()
-	cmd := exec.Command("docker", "save", imageRef)
-	cmd.Stdout = f
-	var errb bytes.Buffer
-	cmd.Stderr = &errb
-	if err := cmd.Run(); err != nil {
-		return fmt.Errorf("docker save failed: %s", strings.TrimSpace(errb.String()))
-	}
-	return nil
+
+	ctx := context.Background()
+	return c.sdk.saveImage(ctx, imageRef, f)
 }
 
 func (c *Client) LoadImage(tarPath string) (string, error) {
-	cmd := exec.Command("docker", "load", "-i", tarPath)
-	var out, errb bytes.Buffer
-	cmd.Stdout = &out
-	cmd.Stderr = &errb
-	if err := cmd.Run(); err != nil {
-		return "", fmt.Errorf("docker load failed: %s", strings.TrimSpace(errb.String()))
+	f, err := os.Open(tarPath)
+	if err != nil {
+		return "", fmt.Errorf("failed to open tar file: %w", err)
 	}
+	defer f.Close()
 
-	s := strings.TrimSpace(out.String())
-	lines := strings.Split(s, "\n")
-	if len(lines) > 0 {
-		last := lines[len(lines)-1]
-		if i := strings.LastIndex(last, ": "); i != -1 {
-			return strings.TrimSpace(last[i+2:]), nil
-		}
-	}
-	return s, nil
+	ctx := context.Background()
+	return c.sdk.loadImage(ctx, f)
 }
 
 func (c *Client) GetContainerStats(boxName string) (*ContainerStats, error) {
 
 	format := "{{.CPUPerc}}\t{{.MemUsage}}\t{{.MemPerc}}\t{{.NetIO}}\t{{.BlockIO}}\t{{.PIDs}}"
-	cmd := exec.Command("docker", "stats", "--no-stream", "--format", format, boxName)
+	cmd := exec.Command(dockerCmd(), "stats", "--no-stream", "--format", format, boxName)
 	var stdout, stderr bytes.Buffer
 	cmd.Stdout = &stdout
 	cmd.Stderr = &stderr
@@ -853,34 +709,26 @@ func (c *Client) GetContainerStats(boxName string) (*ContainerStats, error) {
 }
 
 func (c *Client) GetContainerID(boxName string) (string, error) {
-	cmd := exec.Command("docker", "inspect", "--format", "{{.Id}}", boxName)
-	out, err := cmd.Output()
+	ctx := context.Background()
+	inspect, err := c.sdk.containerInspect(ctx, boxName)
 	if err != nil {
 		return "", fmt.Errorf("failed to get container ID: %w", err)
 	}
-	return strings.TrimSpace(string(out)), nil
+	return inspect.ID, nil
 }
 
 func (c *Client) GetUptime(boxName string) (time.Duration, error) {
-	cmd := exec.Command("docker", "inspect", "--format", "{{.State.StartedAt}}\t{{.State.Running}}", boxName)
-	out, err := cmd.Output()
+	ctx := context.Background()
+	inspect, err := c.sdk.containerInspect(ctx, boxName)
 	if err != nil {
 		return 0, fmt.Errorf("failed to inspect container: %w", err)
 	}
-	s := strings.TrimSpace(string(out))
-	parts := strings.Split(s, "\t")
-	if len(parts) < 2 {
+	if inspect.State == nil || !inspect.State.Running {
 		return 0, nil
 	}
-	startedAt := strings.TrimSpace(parts[0])
-	running := strings.TrimSpace(parts[1])
-	if running != "true" {
-		return 0, nil
-	}
-
+	startedAt := inspect.State.StartedAt
 	t, parseErr := time.Parse(time.RFC3339Nano, startedAt)
 	if parseErr != nil {
-
 		if t2, err2 := time.Parse(time.RFC3339, startedAt); err2 == nil {
 			return time.Since(t2), nil
 		}
@@ -890,45 +738,31 @@ func (c *Client) GetUptime(boxName string) (time.Duration, error) {
 }
 
 func (c *Client) GetPortMappings(boxName string) ([]string, error) {
-	cmd := exec.Command("docker", "port", boxName)
-	var stdout, stderr bytes.Buffer
-	cmd.Stdout = &stdout
-	cmd.Stderr = &stderr
-	if err := cmd.Run(); err != nil {
-
+	ctx := context.Background()
+	inspect, err := c.sdk.containerInspect(ctx, boxName)
+	if err != nil {
 		return []string{}, nil
 	}
 	var ports []string
-	scanner := bufio.NewScanner(&stdout)
-	for scanner.Scan() {
-		line := strings.TrimSpace(scanner.Text())
-		if line != "" {
-			ports = append(ports, line)
+	if inspect.NetworkSettings != nil {
+		for containerPort, bindings := range inspect.NetworkSettings.Ports {
+			for _, binding := range bindings {
+				ports = append(ports, fmt.Sprintf("%s -> %s:%s", containerPort, binding.HostIP, binding.HostPort))
+			}
 		}
 	}
 	return ports, nil
 }
 
 func (c *Client) GetMounts(boxName string) ([]string, error) {
-	template := `{{range .Mounts}}{{.Type}} {{.Source}} -> {{.Destination}} (rw={{.RW}})
-{{end}}`
-	cmd := exec.Command("docker", "inspect", "--format", template, boxName)
-	var stdout, stderr bytes.Buffer
-	cmd.Stdout = &stdout
-	cmd.Stderr = &stderr
-	if err := cmd.Run(); err != nil {
-		if s := strings.TrimSpace(stderr.String()); s != "" {
-			return nil, fmt.Errorf("failed to get mounts: %s", s)
-		}
+	ctx := context.Background()
+	inspect, err := c.sdk.containerInspect(ctx, boxName)
+	if err != nil {
 		return nil, fmt.Errorf("failed to get mounts: %w", err)
 	}
 	var mounts []string
-	scanner := bufio.NewScanner(&stdout)
-	for scanner.Scan() {
-		line := strings.TrimSpace(scanner.Text())
-		if line != "" {
-			mounts = append(mounts, line)
-		}
+	for _, m := range inspect.Mounts {
+		mounts = append(mounts, fmt.Sprintf("%s %s -> %s (rw=%v)", m.Type, m.Source, m.Destination, m.RW))
 	}
 	return mounts, nil
 }
@@ -951,14 +785,15 @@ func (c *Client) IsContainerIdle(boxName string) (bool, error) {
 
 func (c *Client) ExecCapture(boxName, command string) (string, string, error) {
 	wrapped := ". /root/.bashrc >/dev/null 2>&1 || true; set -o pipefail; " + command
-	cmd := exec.Command("docker", "exec", boxName, "bash", "-lc", wrapped)
-	var stdout, stderr bytes.Buffer
-	cmd.Stdout = &stdout
-	cmd.Stderr = &stderr
-	if err := cmd.Run(); err != nil {
-		return stdout.String(), stderr.String(), fmt.Errorf("exec failed: %w", err)
+	ctx := context.Background()
+	result, err := c.sdk.containerExec(ctx, boxName, []string{"bash", "-lc", wrapped}, false)
+	if err != nil {
+		return "", "", fmt.Errorf("exec failed: %w", err)
 	}
-	return stdout.String(), stderr.String(), nil
+	if result.ExitCode != 0 {
+		return result.Stdout, result.Stderr, fmt.Errorf("exec failed: exit code %d", result.ExitCode)
+	}
+	return result.Stdout, result.Stderr, nil
 }
 
 func (c *Client) GetAptSources(boxName string) (snapshotURL string, sources []string, release string) {
@@ -993,7 +828,7 @@ func (c *Client) GetAptSources(boxName string) (snapshotURL string, sources []st
 
 func (c *Client) GetPipRegistries(boxName string) (indexURL string, extra []string) {
 
-	out, _, err := c.ExecCapture(boxName, "(pip3 config debug || pip config debug) 2>/dev/null | sed -n 's/^ *index-url *= *//p; s/^ *extra-index-url *= *//p')")
+	out, _, err := c.ExecCapture(boxName, "(pip3 config debug || pip config debug) 2>/dev/null | sed -n 's/^ *index-url *= *//p; s/^ *extra-index-url *= *//p'")
 	if err == nil && strings.TrimSpace(out) != "" {
 
 		lines := strings.Split(strings.TrimSpace(out), "\n")
@@ -1044,108 +879,75 @@ func (c *Client) GetNodeRegistries(boxName string) (npmReg, yarnReg, pnpmReg str
 }
 
 func (c *Client) GetImageDigestInfo(ref string) (string, string, error) {
-	cmd := exec.Command("docker", "inspect", "--type=image", "--format", "{{join .RepoDigests \",\"}}|{{.Id}}", ref)
-	var out bytes.Buffer
-	var errb bytes.Buffer
-	cmd.Stdout = &out
-	cmd.Stderr = &errb
-	if err := cmd.Run(); err == nil {
-		parts := strings.Split(strings.TrimSpace(out.String()), "|")
+	ctx := context.Background()
+
+	// Try image inspect first
+	imgInspect, _, err := c.sdk.cli.ImageInspectWithRaw(ctx, ref)
+	if err == nil {
 		digest := ""
-		id := ""
-		if len(parts) > 0 {
-			ds := strings.Split(parts[0], ",")
-			if len(ds) > 0 {
-				digest = strings.TrimSpace(ds[0])
-			}
+		if len(imgInspect.RepoDigests) > 0 {
+			digest = imgInspect.RepoDigests[0]
 		}
-		if len(parts) > 1 {
-			id = strings.TrimSpace(parts[1])
-		}
-		return digest, id, nil
+		return digest, imgInspect.ID, nil
 	}
 
-	cmd = exec.Command("docker", "inspect", "--type=container", "--format", "{{.Image}}", ref)
-	out.Reset()
-	errb.Reset()
-	cmd.Stdout = &out
-	cmd.Stderr = &errb
-	if err := cmd.Run(); err != nil {
-		return "", "", fmt.Errorf("inspect failed: %s", strings.TrimSpace(errb.String()))
+	// Fall back to container inspect → get image ID → inspect image
+	containerInspect, err := c.sdk.containerInspect(ctx, ref)
+	if err != nil {
+		return "", "", fmt.Errorf("inspect failed: %w", err)
 	}
-	imageID := strings.TrimSpace(out.String())
+	imageID := containerInspect.Image
 	if imageID == "" {
 		return "", "", nil
 	}
-	cmd = exec.Command("docker", "inspect", "--type=image", "--format", "{{join .RepoDigests \",\"}}|{{.Id}}", imageID)
-	out.Reset()
-	errb.Reset()
-	cmd.Stdout = &out
-	cmd.Stderr = &errb
-	if err := cmd.Run(); err != nil {
+
+	imgInspect, _, err = c.sdk.cli.ImageInspectWithRaw(ctx, imageID)
+	if err != nil {
 		return "", imageID, nil
 	}
-	parts := strings.Split(strings.TrimSpace(out.String()), "|")
 	digest := ""
-	id := imageID
-	if len(parts) > 0 {
-		ds := strings.Split(parts[0], ",")
-		if len(ds) > 0 {
-			digest = strings.TrimSpace(ds[0])
-		}
+	if len(imgInspect.RepoDigests) > 0 {
+		digest = imgInspect.RepoDigests[0]
 	}
-	if len(parts) > 1 && strings.TrimSpace(parts[1]) != "" {
-		id = strings.TrimSpace(parts[1])
-	}
-	return digest, id, nil
+	return digest, imgInspect.ID, nil
 }
 
 func (c *Client) GetContainerMeta(boxName string) (map[string]string, string, string, string, map[string]string, []string, map[string]string, string) {
-	type inspectType struct {
-		Config struct {
-			Env        []string          `json:"Env"`
-			WorkingDir string            `json:"WorkingDir"`
-			User       string            `json:"User"`
-			Labels     map[string]string `json:"Labels"`
-		} `json:"Config"`
-		HostConfig struct {
-			RestartPolicy struct {
-				Name string `json:"Name"`
-			} `json:"RestartPolicy"`
-			CapAdd      []string `json:"CapAdd"`
-			NanoCpus    int64    `json:"NanoCpus"`
-			Memory      int64    `json:"Memory"`
-			NetworkMode string   `json:"NetworkMode"`
-		} `json:"HostConfig"`
-	}
-	cmd := exec.Command("docker", "inspect", boxName)
-	var out, errb bytes.Buffer
-	cmd.Stdout = &out
-	cmd.Stderr = &errb
-	if err := cmd.Run(); err != nil {
+	ctx := context.Background()
+	inspect, err := c.sdk.containerInspect(ctx, boxName)
+	if err != nil {
 		return map[string]string{}, "", "", "", map[string]string{}, []string{}, map[string]string{}, ""
 	}
-	var arr []inspectType
-	if err := json.Unmarshal(out.Bytes(), &arr); err != nil || len(arr) == 0 {
-		return map[string]string{}, "", "", "", map[string]string{}, []string{}, map[string]string{}, ""
-	}
-	ins := arr[0]
+
+	// Parse environment variables
 	env := map[string]string{}
-	for _, e := range ins.Config.Env {
+	for _, e := range inspect.Config.Env {
 		if kv := strings.SplitN(e, "=", 2); len(kv) == 2 {
 			env[kv[0]] = kv[1]
 		}
 	}
+
+	// Parse resources
 	resources := map[string]string{}
-	if ins.HostConfig.NanoCpus > 0 {
-
-		cpu := float64(ins.HostConfig.NanoCpus) / 1e9
-		resources["cpus"] = strings.TrimRight(strings.TrimRight(fmt.Sprintf("%.3f", cpu), "0"), ".")
+	if inspect.HostConfig != nil {
+		if inspect.HostConfig.NanoCPUs > 0 {
+			cpu := float64(inspect.HostConfig.NanoCPUs) / 1e9
+			resources["cpus"] = strings.TrimRight(strings.TrimRight(fmt.Sprintf("%.3f", cpu), "0"), ".")
+		}
+		if inspect.HostConfig.Memory > 0 {
+			mb := float64(inspect.HostConfig.Memory) / (1024 * 1024)
+			resources["memory"] = fmt.Sprintf("%.0fMB", mb)
+		}
 	}
-	if ins.HostConfig.Memory > 0 {
 
-		mb := float64(ins.HostConfig.Memory) / (1024 * 1024)
-		resources["memory"] = fmt.Sprintf("%.0fMB", mb)
+	restartPolicy := ""
+	var capAdd []string
+	networkMode := ""
+	if inspect.HostConfig != nil {
+		restartPolicy = string(inspect.HostConfig.RestartPolicy.Name)
+		capAdd = inspect.HostConfig.CapAdd
+		networkMode = string(inspect.HostConfig.NetworkMode)
 	}
-	return env, ins.Config.WorkingDir, ins.Config.User, ins.HostConfig.RestartPolicy.Name, ins.Config.Labels, ins.HostConfig.CapAdd, resources, ins.HostConfig.NetworkMode
+
+	return env, inspect.Config.WorkingDir, inspect.Config.User, restartPolicy, inspect.Config.Labels, capAdd, resources, networkMode
 }

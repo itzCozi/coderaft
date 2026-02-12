@@ -8,6 +8,8 @@ import (
 	"strings"
 	"time"
 
+	"errors"
+
 	"github.com/xeipuuv/gojsonschema"
 )
 
@@ -22,6 +24,7 @@ type GlobalSettings struct {
 	ConfigTemplatesPath string            `json:"config_templates_path,omitempty"`
 	AutoUpdate          bool              `json:"auto_update,omitempty"`
 	AutoStopOnExit      bool              `json:"auto_stop_on_exit,omitempty"`
+	AutoApplyLock       bool              `json:"auto_apply_lock,omitempty"`
 }
 
 type Project struct {
@@ -50,6 +53,7 @@ type ProjectConfig struct {
 	Restart       string            `json:"restart,omitempty"`
 	HealthCheck   *HealthCheck      `json:"health_check,omitempty"`
 	Resources     *Resources        `json:"resources,omitempty"`
+	Gpus          string            `json:"gpus,omitempty"`
 }
 
 type HealthCheck struct {
@@ -100,6 +104,7 @@ func (cm *ConfigManager) Load() (*Config, error) {
 			DefaultBaseImage: "ubuntu:22.04",
 			AutoUpdate:       true,
 			AutoStopOnExit:   true,
+			AutoApplyLock:    true,
 		},
 	}
 
@@ -125,6 +130,7 @@ func (cm *ConfigManager) Load() (*Config, error) {
 			DefaultBaseImage: "ubuntu:22.04",
 			AutoUpdate:       true,
 			AutoStopOnExit:   true,
+			AutoApplyLock:    true,
 		}
 	}
 
@@ -145,9 +151,21 @@ func (cm *ConfigManager) Save(config *Config) error {
 }
 
 func (cm *ConfigManager) LoadProjectConfig(projectPath string) (*ProjectConfig, error) {
-	configPath := filepath.Join(projectPath, "devbox.json")
 
-	if _, err := os.Stat(configPath); os.IsNotExist(err) {
+	candidates := []string{
+		filepath.Join(projectPath, "devbox.json"),
+		filepath.Join(projectPath, "devbox.project.json"),
+		filepath.Join(projectPath, ".devbox.json"),
+	}
+
+	var configPath string
+	for _, p := range candidates {
+		if _, err := os.Stat(p); err == nil {
+			configPath = p
+			break
+		}
+	}
+	if configPath == "" {
 		return nil, nil
 	}
 
@@ -165,7 +183,19 @@ func (cm *ConfigManager) LoadProjectConfig(projectPath string) (*ProjectConfig, 
 }
 
 func (cm *ConfigManager) SaveProjectConfig(projectPath string, config *ProjectConfig) error {
-	configPath := filepath.Join(projectPath, "devbox.json")
+
+	candidates := []string{
+		filepath.Join(projectPath, "devbox.json"),
+		filepath.Join(projectPath, "devbox.project.json"),
+		filepath.Join(projectPath, ".devbox.json"),
+	}
+	configPath := candidates[0]
+	for _, p := range candidates {
+		if _, err := os.Stat(p); err == nil {
+			configPath = p
+			break
+		}
+	}
 
 	data, err := json.MarshalIndent(config, "", "  ")
 	if err != nil {
@@ -199,7 +229,7 @@ func (cm *ConfigManager) ValidateProjectConfig(cfg *ProjectConfig) error {
 			b.WriteString(e.String())
 			b.WriteString("\n")
 		}
-		return fmt.Errorf(strings.TrimSpace(b.String()))
+		return errors.New(strings.TrimSpace(b.String()))
 	}
 
 	for _, port := range cfg.Ports {
@@ -247,10 +277,9 @@ func (cm *ConfigManager) GetDefaultProjectConfig(projectName string) *ProjectCon
 		Restart:     "unless-stopped",
 		Environment: make(map[string]string),
 		Labels:      make(map[string]string),
-		Volumes:     []string{"/var/run/docker.sock:/var/run/docker.sock"},
-		SetupCommands: []string{
-			"apt install -y docker.io",
-		},
+
+		Volumes:       []string{},
+		SetupCommands: []string{},
 	}
 }
 
@@ -260,62 +289,71 @@ func (cm *ConfigManager) CreateProjectConfigFromTemplate(templateName, projectNa
 			Name:      projectName,
 			BaseImage: "ubuntu:22.04",
 			SetupCommands: []string{
-				"apt install -y python3 python3-pip python3-venv python3-dev build-essential docker.io",
+				"apt update -y",
+				"DEBIAN_FRONTEND=noninteractive apt install -y --no-install-recommends python3 python3-pip python3-venv python3-dev build-essential ca-certificates",
 				"pip3 install --upgrade pip setuptools wheel",
+				"apt-get clean && rm -rf /var/lib/apt/lists/*",
 			},
 			Environment: map[string]string{
 				"PYTHONPATH":       "/workspace",
 				"PYTHONUNBUFFERED": "1",
 			},
 			Ports:   []string{"8000:8000", "5000:5000"},
-			Volumes: []string{"/var/run/docker.sock:/var/run/docker.sock"},
+			Volumes: []string{},
 		},
 		"nodejs": {
 			Name:      projectName,
 			BaseImage: "ubuntu:22.04",
 			SetupCommands: []string{
+				"apt update -y",
+				"DEBIAN_FRONTEND=noninteractive apt install -y --no-install-recommends curl ca-certificates gnupg build-essential",
 				"curl -fsSL https://deb.nodesource.com/setup_18.x | bash -",
-				"apt install -y nodejs build-essential docker.io",
+				"DEBIAN_FRONTEND=noninteractive apt install -y --no-install-recommends nodejs",
 				"npm install -g npm@latest",
+				"apt-get clean && rm -rf /var/lib/apt/lists/*",
 			},
 			Environment: map[string]string{
 				"NODE_ENV": "development",
 				"PATH":     "/workspace/node_modules/.bin:$PATH",
 			},
 			Ports:   []string{"3000:3000", "8080:8080"},
-			Volumes: []string{"/var/run/docker.sock:/var/run/docker.sock"},
+			Volumes: []string{},
 		},
 		"go": {
 			Name:      projectName,
 			BaseImage: "ubuntu:22.04",
 			SetupCommands: []string{
-				"apt install -y wget git build-essential docker.io",
-				"wget -O /tmp/go.tar.gz https://go.dev/dl/go1.21.0.linux-amd64.tar.gz",
-				"tar -C /usr/local -xzf /tmp/go.tar.gz",
+				"apt update -y",
+				"DEBIAN_FRONTEND=noninteractive apt install -y --no-install-recommends wget git build-essential ca-certificates",
+				"wget -q -O /tmp/go.tar.gz https://go.dev/dl/go1.21.0.linux-amd64.tar.gz",
+				"tar -C /usr/local -xzf /tmp/go.tar.gz && rm /tmp/go.tar.gz",
 				"echo 'export PATH=$PATH:/usr/local/go/bin' >> /root/.bashrc",
+				"apt-get clean && rm -rf /var/lib/apt/lists/*",
 			},
 			Environment: map[string]string{
 				"GOPATH": "/workspace/go",
 				"PATH":   "/usr/local/go/bin:$PATH",
 			},
 			Ports:   []string{"8080:8080"},
-			Volumes: []string{"/var/run/docker.sock:/var/run/docker.sock"},
+			Volumes: []string{},
 		},
 		"web": {
 			Name:      projectName,
 			BaseImage: "ubuntu:22.04",
 			SetupCommands: []string{
-				"apt install -y python3 python3-pip nodejs npm nginx git curl wget docker.io",
+				"apt update -y",
+				"DEBIAN_FRONTEND=noninteractive apt install -y --no-install-recommends python3 python3-pip nodejs npm nginx git curl wget ca-certificates gnupg",
 				"curl -fsSL https://deb.nodesource.com/setup_18.x | bash -",
 				"pip3 install flask django fastapi",
 				"npm install -g typescript vue-cli create-react-app",
+				"apt-get clean && rm -rf /var/lib/apt/lists/*",
 			},
 			Environment: map[string]string{
 				"PYTHONPATH": "/workspace",
 				"NODE_ENV":   "development",
 			},
 			Ports:   []string{"3000:3000", "5000:5000", "8000:8000", "80:80"},
-			Volumes: []string{"/var/run/docker.sock:/var/run/docker.sock"},
+			Volumes: []string{},
 		},
 	}
 
@@ -523,7 +561,8 @@ const ProjectConfigJSONSchema = `{
 				"memory": {"type": "string"}
 			},
 			"additionalProperties": false
-		}
+		},
+		"gpus": {"type": "string"}
 	},
 	"additionalProperties": false
 }`

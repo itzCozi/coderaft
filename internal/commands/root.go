@@ -25,8 +25,8 @@ var rootCmd = &cobra.Command{
 	Long:  `devbox creates isolated development environments, contained in a project's Docker box. Each project operates in its own disposable environment, while your code remains neatly organized in a simple, flat folder on the host machine.`,
 	PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
 
-		if runtime.GOOS != "linux" {
-			return fmt.Errorf("devbox only runs on Debian/Ubuntu Linux")
+		if runtime.GOOS != "linux" && runtime.GOOS != "darwin" && runtime.GOOS != "windows" {
+			return fmt.Errorf("devbox requires Docker and supports Linux, macOS, and Windows")
 		}
 
 		var err error
@@ -35,13 +35,15 @@ var rootCmd = &cobra.Command{
 			return fmt.Errorf("failed to initialize config: %w", err)
 		}
 
-		if err := docker.IsDockerAvailable(); err != nil {
-			return fmt.Errorf("docker availability check failed: %w", err)
-		}
-
 		dockerClient, err = docker.NewClient()
 		if err != nil {
-			return fmt.Errorf("failed to initialize Docker client: %w", err)
+			return fmt.Errorf("docker is not available. Please ensure Docker is installed and its daemon is running: %w", err)
+		}
+
+		if err := dockerClient.IsDockerAvailableWith(); err != nil {
+			dockerClient.Close()
+			dockerClient = nil
+			return fmt.Errorf("docker availability check failed: %w", err)
 		}
 
 		return nil
