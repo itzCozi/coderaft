@@ -1,6 +1,6 @@
 ---
 name: Question
-about: Ask a question about using devbox
+about: Ask a question about using coderaft
 title: "[Question]: "
 labels: [question]
 assignees: ''
@@ -10,7 +10,7 @@ assignees: ''
 
 ### Context
 - OS / Distro:
-- devbox version:
+- coderaft version:
 - Docker version:
 
 ### What you've tried

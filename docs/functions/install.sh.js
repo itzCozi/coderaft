@@ -2,7 +2,7 @@
 
 
 export async function onRequest(context) {
-  const upstreamUrl = 'https://raw.githubusercontent.com/itzcozi/devbox/main/install.sh';
+  const upstreamUrl = 'https://raw.githubusercontent.com/itzcozi/coderaft/main/install.sh';
   const headers = new Headers();
   const ifNoneMatch = context.request.headers.get('If-None-Match');
   const ifModifiedSince = context.request.headers.get('If-Modified-Since');

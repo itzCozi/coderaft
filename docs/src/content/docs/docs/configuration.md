@@ -1,14 +1,14 @@
 ---
 title: Configuration Files
-description: Comprehensive configuration management with devbox.json and global settings
+description: Comprehensive configuration management with coderaft.json and global settings
 ---
 
-Devbox supports configuration via a per-project `devbox.json` and a global `~/.devbox/config.json`.
+Coderaft supports configuration via a per-project `coderaft.json` and a global `~/.coderaft/config.json`.
 
 ## Project Configuration
 ---
 
-Each project can have a `devbox.json` file in its workspace directory that defines the development environment configuration.
+Each project can have a `coderaft.json` file in its workspace directory that defines the development environment configuration.
 
 ##### Basic Structure
 
@@ -56,8 +56,8 @@ Each project can have a `devbox.json` file in its workspace directory that defin
   "user": "root",
   "capabilities": ["SYS_PTRACE"],
   "labels": {
-    "devbox.project": "example-project",
-    "devbox.type": "development"
+    "coderaft.project": "example-project",
+    "coderaft.type": "development"
   },
   "network": "bridge",
   "restart": "unless-stopped",
@@ -77,17 +77,17 @@ Each project can have a `devbox.json` file in its workspace directory that defin
 Key fields you may use: `name`, `base_image`, `setup_commands`, `environment`, `ports`, `volumes`, `dotfiles`, `working_dir`. Advanced options like `capabilities`, `labels`, `network`, `restart`, `resources`, and `health_check` are supported but optional.
 
 :::note
-Regardless of configuration, devbox always runs `apt update -y && apt full-upgrade -y` first when initializing any box to ensure the system is up to date. Your `setup_commands` will run after this system update.
+Regardless of configuration, coderaft always runs `apt update -y && apt full-upgrade -y` first when initializing any box to ensure the system is up to date. Your `setup_commands` will run after this system update.
 :::
 
 ## Reproducible Installs
 ---
 
-Devbox automatically records package manager installs you run inside the box to `/workspace/devbox.lock` (which is your project folder on the host).
+Coderaft automatically records package manager installs you run inside the box to `/workspace/coderaft.lock` (which is your project folder on the host).
 
 Lock file paths:
-- Inside box: `/workspace/devbox.lock`
-- On host: `~/devbox/<project>/devbox.lock`
+- Inside box: `/workspace/coderaft.lock`
+- On host: `~/coderaft/<project>/coderaft.lock`
 
 The following commands are tracked when they succeed:
 
@@ -97,12 +97,12 @@ The following commands are tracked when they succeed:
 - `yarn add ...` and `yarn global add ...`
 - `pnpm add ...`, `pnpm install ...`, and `pnpm i ...`
 
-On `devbox up` and during `devbox update` rebuilds, devbox replays the commands from `devbox.lock` before running `setup_commands`. This makes it easy to reproduce the exact environment or share it with teammates by committing `devbox.lock` to your repo.
+On `coderaft up` and during `coderaft update` rebuilds, coderaft replays the commands from `coderaft.lock` before running `setup_commands`. This makes it easy to reproduce the exact environment or share it with teammates by committing `coderaft.lock` to your repo.
 
 Notes:
 - Only successful install commands are recorded, and duplicates are de-duplicated line-by-line.
-- You can edit `devbox.lock` manually to remove mistakes or add comments (lines starting with `#` are ignored).
-- If you prefer explicit configuration, keep using `setup_commands` in `devbox.json`; the lock file complements it for ad-hoc installs.
+- You can edit `coderaft.lock` manually to remove mistakes or add comments (lines starting with `#` are ignored).
+- If you prefer explicit configuration, keep using `setup_commands` in `coderaft.json`; the lock file complements it for ad-hoc installs.
 
 ## Environment Snapshot
 ---
@@ -110,10 +110,10 @@ Notes:
 For a more comprehensive, shareable snapshot similar to Nix-style locks, use:
 
 ```bash
-devbox lock <project>
+coderaft lock <project>
 ``
 
-This writes a JSON snapshot (by default to `<workspace>/devbox.lock.json`) that includes:
+This writes a JSON snapshot (by default to `<workspace>/coderaft.lock.json`) that includes:
 
 - Base image: name, digest (if available), and image ID
 - Container configuration: working_dir, user, restart policy, network, ports, volumes, labels, environment, capabilities, resources (cpus/memory)
@@ -125,13 +125,13 @@ This writes a JSON snapshot (by default to `<workspace>/devbox.lock.json`) that 
   - pip: `index-url` and `extra-index-url`
   - npm/yarn/pnpm: global registry URLs
   - apt: full `sources.list` lines, snapshot base URL if present, and OS release codename
-- Any `setup_commands` from your `devbox.json` (for context)
+- Any `setup_commands` from your `coderaft.json` (for context)
 
 Usage notes:
-- Commit `devbox.lock.json` to your repository to share environment details with teammates.
-- This file is an authoritative snapshot for auditing/sharing. The current execution path for rebuilds remains `devbox.json` + the simple `devbox.lock` replay file. You can now also use:
-  - `devbox verify <project>` to validate a box matches the lock (fails fast on drift)
-  - `devbox apply <project>` to configure registries/sources and reconcile package sets to the lock
+- Commit `coderaft.lock.json` to your repository to share environment details with teammates.
+- This file is an authoritative snapshot for auditing/sharing. The current execution path for rebuilds remains `coderaft.json` + the simple `coderaft.lock` replay file. You can now also use:
+  - `coderaft verify <project>` to validate a box matches the lock (fails fast on drift)
+  - `coderaft apply <project>` to configure registries/sources and reconcile package sets to the lock
 - Local app dependencies (e.g. non-global Node packages in your repo) are intentionally not included; rely on your project’s own lockfiles (package-lock.json, yarn.lock, pnpm-lock.yaml, requirements.txt/poetry.lock, etc.).
 
 ## Initialize with Configuration
@@ -139,27 +139,27 @@ Usage notes:
 
 ```bash
 # Basic initialization
-devbox init myproject
+coderaft init myproject
 
 # Initialize with template
-devbox init myproject --template python
+coderaft init myproject --template python
 
 # Generate config file only
-devbox init myproject --config-only --template python
+coderaft init myproject --config-only --template python
 
 # Initialize and generate config
-devbox init myproject --generate-config
+coderaft init myproject --generate-config
 ```
 
 ### Shared Configs
 
-To make onboarding easy, commit your `devbox.json` to the repository. New teammates can simply run:
+To make onboarding easy, commit your `coderaft.json` to the repository. New teammates can simply run:
 
 ```bash
-devbox up
+coderaft up
 ```
 
-This reads `./devbox.json` and starts the environment without requiring prior project registration.
+This reads `./coderaft.json` and starts the environment without requiring prior project registration.
 
 ### Dotfile Injection
 
@@ -167,7 +167,7 @@ You can mount your personal dotfiles into the box to keep your editor/shell pref
 
 ```bash
 # One-off via flag
-devbox up --dotfiles ~/.dotfiles
+coderaft up --dotfiles ~/.dotfiles
 
 # Or persist via config
 {
@@ -182,20 +182,20 @@ Behavior summary: mount at `/dotfiles` and source/symlink common files on shell 
 ---
 
 ```bash
-# Generate devbox.json for existing project
-devbox config generate myproject
+# Generate coderaft.json for existing project
+coderaft config generate myproject
 
 # Validate project configuration
-devbox config validate myproject
+coderaft config validate myproject
 
 # Show project configuration
-devbox config show myproject
+coderaft config show myproject
 
 # List available templates
-devbox config templates
+coderaft config templates
 
 # Show global configuration
-devbox config global
+coderaft config global
 ```
 
 ## Usage Examples
@@ -205,9 +205,9 @@ devbox config global
 
 ```bash
 # Create Python project
-devbox init python-app --template python
+coderaft init python-app --template python
 
-# The generated devbox.json includes:
+# The generated coderaft.json includes:
 # - Python 3 with pip and venv
 # - Development tools
 # - PYTHONPATH configuration
@@ -218,10 +218,10 @@ devbox init python-app --template python
 
 1. Initialize project:
 ```bash
-devbox init custom-project --generate-config
+coderaft init custom-project --generate-config
 ```
 
-2. Edit `devbox.json`:
+2. Edit `coderaft.json`:
 ```json
 {
   "name": "custom-project",
@@ -239,24 +239,24 @@ devbox init custom-project --generate-config
 
 3. Recreate with new configuration:
 ```bash
-devbox destroy custom-project
-devbox init custom-project
+coderaft destroy custom-project
+coderaft init custom-project
 ```
 
 ## Global Configuration
 ---
 
-Global settings are stored in `~/.devbox/config.json`:
+Global settings are stored in `~/.coderaft/config.json`:
 
 ```json
 {
   "projects": {
     "my-project": {
       "name": "my-project",
-      "container_name": "devbox_my-project",
+      "container_name": "coderaft_my-project",
       "base_image": "ubuntu:22.04",
-      "workspace_path": "/home/user/devbox/my-project",
-      "config_file": "/home/user/devbox/my-project/devbox.json"
+      "workspace_path": "/home/user/coderaft/my-project",
+      "config_file": "/home/user/coderaft/my-project/coderaft.json"
     }
   },
   "settings": {
@@ -276,11 +276,11 @@ Global settings are stored in `~/.devbox/config.json`:
 |--------|------|---------|-------------|
 | `default_base_image` | string | `ubuntu:22.04` | Default base image for new projects |
 | `auto_update` | boolean | `true` | Whether to run updates during initialization |
-| `auto_stop_on_exit` | boolean | `true` | If enabled, devbox stops a project's box automatically after exiting an interactive shell or finishing a one-off `run` command. Override per-invocation with `--keep-running`. |
+| `auto_stop_on_exit` | boolean | `true` | If enabled, coderaft stops a project's box automatically after exiting an interactive shell or finishing a one-off `run` command. Override per-invocation with `--keep-running`. |
 
 When `auto_stop_on_exit` is enabled:
-- `devbox up` will also stop the container if it is idle right after setup (no ports exposed and only the init process running), unless `--keep-running` is passed.
-- If your `devbox.json` does not specify a `restart` policy, devbox will default to `--restart no` so that manual stops persist.
+- `coderaft up` will also stop the container if it is idle right after setup (no ports exposed and only the init process running), unless `--keep-running` is passed.
+- If your `coderaft.json` does not specify a `restart` policy, coderaft will default to `--restart no` so that manual stops persist.
 
 Note: If `auto_stop_on_exit` is missing in older installs, add it under `settings`.
 
@@ -291,24 +291,24 @@ Existing projects continue to work without configuration files. You can:
 
 1. Generate configuration for existing projects:
 ```bash
-devbox config generate existing-project
+coderaft config generate existing-project
 ```
 
 2. Apply templates to existing projects:
 ```bash
-devbox config generate existing-project --template python
+coderaft config generate existing-project --template python
 ```
 
 3. Recreate projects with new configuration:
 ```bash
-devbox destroy old-project
-devbox init old-project --template nodejs
+coderaft destroy old-project
+coderaft init old-project --template nodejs
 ```
 
 ## Error Handling
 ---
 
-- Invalid JSON in `devbox.json` will show parsing errors
+- Invalid JSON in `coderaft.json` will show parsing errors
 - Missing required fields are validated before box creation
 - Invalid port/volume formats are caught during validation
 - Failed setup commands stop initialization with clear error messages
@@ -316,8 +316,8 @@ devbox init old-project --template nodejs
 ## Configuration Precedence
 ---
 
-1. Project `devbox.json` configuration (highest priority)
-2. Global project settings in `~/.devbox/config.json`
+1. Project `coderaft.json` configuration (highest priority)
+2. Global project settings in `~/.coderaft/config.json`
 3. Global default settings
 4. Built-in defaults (lowest priority)
 

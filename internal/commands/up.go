@@ -4,13 +4,13 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
-	"os/exec"
 	"path/filepath"
 	"strings"
 
 	"github.com/spf13/cobra"
 
-	"devbox/internal/config"
+	"coderaft/internal/config"
+	"coderaft/internal/ui"
 )
 
 func engineCmd() string {
@@ -28,8 +28,8 @@ var keepRunningUpFlag bool
 
 var upCmd = &cobra.Command{
 	Use:   "up",
-	Short: "Start a devbox environment from the current folder's devbox.json",
-	Long:  "Reads a devbox project config (devbox.json | devbox.project.json | .devbox.json) in the current directory and boots the environment so new teammates can simply run 'devbox up'.",
+	Short: "Start a coderaft environment from the current folder's coderaft.json",
+	Long:  "Reads coderaft.json in the current directory and boots the environment so new teammates can simply run 'coderaft up'.",
 	Args:  cobra.NoArgs,
 	RunE: func(cmd *cobra.Command, args []string) error {
 		cwd, err := os.Getwd()
@@ -39,14 +39,14 @@ var upCmd = &cobra.Command{
 
 		projectConfig, err := configManager.LoadProjectConfig(cwd)
 		if err != nil {
-			return fmt.Errorf("failed to load project config: %w", err)
+			return fmt.Errorf("failed to load coderaft.json: %w", err)
 		}
 		if projectConfig == nil {
-			return fmt.Errorf("no project config found in %s (checked devbox.json, devbox.project.json, .devbox.json)", cwd)
+			return fmt.Errorf("no coderaft.json found in %s", cwd)
 		}
 
 		if err := configManager.ValidateProjectConfig(projectConfig); err != nil {
-			return fmt.Errorf("invalid devbox.json: %w", err)
+			return fmt.Errorf("invalid coderaft.json: %w", err)
 		}
 
 		projectName := projectConfig.Name
@@ -60,7 +60,7 @@ var upCmd = &cobra.Command{
 			return fmt.Errorf("failed to load global config: %w", err)
 		}
 
-		boxName := fmt.Sprintf("devbox_%s", projectName)
+		boxName := fmt.Sprintf("coderaft_%s", projectName)
 		baseImage := cfg.GetEffectiveBaseImage(&config.Project{Name: projectName, BaseImage: projectConfig.BaseImage}, projectConfig)
 
 		workspaceBox := "/workspace"
@@ -84,30 +84,29 @@ var upCmd = &cobra.Command{
 				}
 			}
 
-			checkCmd := exec.Command(engineCmd(), "exec", boxName, "test", "-f", "/etc/devbox-initialized")
-			if checkCmd.Run() != nil {
-				if err := dockerClient.SetupDevboxInBox(boxName, projectName); err != nil {
-					return fmt.Errorf("failed to setup devbox in existing box: %w", err)
+			if !dockerClient.IsBoxInitialized(boxName) {
+				if err := dockerClient.SetupCoderaftInBox(boxName, projectName); err != nil {
+					return fmt.Errorf("failed to setup coderaft in existing box: %w", err)
 				}
 			}
-			fmt.Printf("Environment is up.\n")
-			fmt.Printf("Workspace: %s\n", cwd)
-			fmt.Printf("Box: %s\n", boxName)
-			fmt.Printf("Image: %s\n", baseImage)
-			fmt.Printf("Tip: run 'devbox shell %s' to enter the environment.\n", projectName)
+			ui.Success("environment is up")
+			ui.Detail("workspace", cwd)
+			ui.Detail("box", boxName)
+			ui.Detail("image", baseImage)
+			ui.Info("hint: run 'coderaft shell %s' to enter the environment.", projectName)
 
 			if cfg.Settings != nil && cfg.Settings.AutoStopOnExit && !keepRunningUpFlag {
 				if idle, err := dockerClient.IsContainerIdle(boxName); err == nil && idle {
-					fmt.Printf("Stopping box '%s' (auto-stop: idle)...\n", boxName)
+					ui.Status("stopping box '%s' (auto-stop: idle)...", boxName)
 					if err := dockerClient.StopBox(boxName); err != nil {
-						fmt.Printf("Warning: failed to stop box: %v\n", err)
+						ui.Warning("failed to stop box: %v", err)
 					}
 				}
 			}
 			return nil
 		}
 
-		fmt.Printf("Setting up box '%s' with image '%s'...\n", boxName, baseImage)
+		ui.Status("setting up box '%s' with image '%s'...", boxName, baseImage)
 		if err := dockerClient.PullImage(baseImage); err != nil {
 			return fmt.Errorf("failed to pull base image: %w", err)
 		}
@@ -150,11 +149,11 @@ var upCmd = &cobra.Command{
 			return fmt.Errorf("failed to start environment: %w", err)
 		}
 
-		fmt.Printf("Environment is up.\n")
-		fmt.Printf("Workspace: %s\n", cwd)
-		fmt.Printf("Box: %s\n", boxName)
-		fmt.Printf("Image: %s\n", baseImage)
-		fmt.Printf("Tip: run 'devbox shell %s' to enter the environment.\n", projectName)
+		ui.Success("environment is up")
+		ui.Detail("workspace", cwd)
+		ui.Detail("box", boxName)
+		ui.Detail("image", baseImage)
+		ui.Info("hint: run 'coderaft shell %s' to enter the environment.", projectName)
 
 		_ = WriteLockFileForBox(boxName, projectName, cwd, baseImage, "")
 
@@ -169,9 +168,9 @@ var upCmd = &cobra.Command{
 
 		if cfg.Settings != nil && cfg.Settings.AutoStopOnExit && !keepRunningUpFlag {
 			if idle, err := dockerClient.IsContainerIdle(boxName); err == nil && idle {
-				fmt.Printf("Stopping box '%s' (auto-stop: idle)...\n", boxName)
+				ui.Status("stopping box '%s' (auto-stop: idle)...", boxName)
 				if err := dockerClient.StopBox(boxName); err != nil {
-					fmt.Printf("Warning: failed to stop box: %v\n", err)
+					ui.Warning("failed to stop box: %v", err)
 				}
 			}
 		}

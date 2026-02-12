@@ -8,6 +8,8 @@ import (
 	"strings"
 
 	"github.com/spf13/cobra"
+
+	"coderaft/internal/ui"
 )
 
 type applyLockFile struct {
@@ -21,7 +23,7 @@ type applyLockFile struct {
 
 var applyCmd = &cobra.Command{
 	Use:   "apply <project>",
-	Short: "Apply devbox.lock.json: set registries and apt sources, then reconcile packages",
+	Short: "Apply coderaft.lock.json: set registries and apt sources, then reconcile packages",
 	Args:  cobra.ExactArgs(1),
 	RunE: func(cmd *cobra.Command, args []string) error {
 		projectName := args[0]
@@ -35,7 +37,7 @@ var applyCmd = &cobra.Command{
 			return fmt.Errorf("project '%s' not found", projectName)
 		}
 
-		lockPath := filepath.Join(proj.WorkspacePath, "devbox.lock.json")
+		lockPath := filepath.Join(proj.WorkspacePath, "coderaft.lock.json")
 		data, err := os.ReadFile(lockPath)
 		if err != nil {
 			return fmt.Errorf("failed to read %s: %w", lockPath, err)
@@ -51,7 +53,7 @@ var applyCmd = &cobra.Command{
 			return err
 		}
 		if !exists {
-			return fmt.Errorf("box '%s' not found; run 'devbox up %s' first", proj.BoxName, projectName)
+			return fmt.Errorf("box '%s' not found; run 'coderaft up %s' first", proj.BoxName, projectName)
 		}
 		status, err := dockerClient.GetBoxStatus(proj.BoxName)
 		if err != nil {
@@ -124,9 +126,7 @@ var applyCmd = &cobra.Command{
 			}
 		}
 
-		_ = WriteLockFileForBox(proj.BoxName, projectName, proj.WorkspacePath, proj.BaseImage, "")
-
-		fmt.Println("Applied lockfile: registries/sources configured and packages reconciled")
+		ui.Success("applied lockfile: registries/sources configured and packages reconciled")
 		return nil
 	},
 }

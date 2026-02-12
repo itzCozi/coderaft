@@ -1,6 +1,7 @@
 package docker
 
 import (
+	"strings"
 	"testing"
 )
 
@@ -33,23 +34,10 @@ func TestIsDockerAvailable(t *testing.T) {
 	if err != nil {
 		t.Logf("Docker not available (this is expected in some test environments): %v", err)
 
-		if !contains(err.Error(), "docker") {
+		if !strings.Contains(err.Error(), "docker") {
 			t.Errorf("Expected error to mention docker, got: %v", err)
 		}
 	} else {
 		t.Log("Docker is available")
 	}
-}
-
-func contains(s, substr string) bool {
-	return len(s) >= len(substr) && containsAtIndex(s, substr)
-}
-
-func containsAtIndex(s, substr string) bool {
-	for i := 0; i <= len(s)-len(substr); i++ {
-		if s[i:i+len(substr)] == substr {
-			return true
-		}
-	}
-	return false
 }

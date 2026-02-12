@@ -10,11 +10,11 @@ GOMOD=$(GOCMD) mod
 VERSION=1.0
 GIT_COMMIT=$(shell git rev-parse --short HEAD 2>/dev/null || echo "unknown")
 BUILD_DATE=$(shell date +%Y-%m-%d)
-LDFLAGS=-ldflags "-X devbox/internal/commands.Version=$(VERSION) -X devbox/internal/commands.CommitHash=$(GIT_COMMIT)"
+LDFLAGS=-ldflags "-X coderaft/internal/commands.Version=$(VERSION) -X coderaft/internal/commands.CommitHash=$(GIT_COMMIT)"
 
 # Binary name
-BINARY_NAME=devbox
-BINARY_PATH=./cmd/devbox
+BINARY_NAME=coderaft
+BINARY_PATH=./cmd/coderaft
 
 # Build directory
 BUILD_DIR=./build

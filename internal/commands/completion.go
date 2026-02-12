@@ -13,11 +13,11 @@ var completionCmd = &cobra.Command{
 
 Bash:
 
-  $ source <(devbox completion bash)
+  $ source <(coderaft completion bash)
 
   # To load completions for each session, execute once:
   # Linux:
-  $ devbox completion bash > /etc/bash_completion.d/devbox
+  $ coderaft completion bash > /etc/bash_completion.d/coderaft
 
 Zsh:
 
@@ -27,16 +27,16 @@ Zsh:
   $ echo "autoload -U compinit; compinit" >> ~/.zshrc
 
   # To load completions for each session, execute once:
-  $ devbox completion zsh > "${fpath[1]}/_devbox"
+  $ coderaft completion zsh > "${fpath[1]}/_coderaft"
 
   # You will need to start a new shell for this setup to take effect.
 
 Fish:
 
-  $ devbox completion fish | source
+  $ coderaft completion fish | source
 
   # To load completions for each session, execute once:
-  $ devbox completion fish > ~/.config/fish/completions/devbox.fish
+  $ coderaft completion fish > ~/.config/fish/completions/coderaft.fish
 
 `,
 	DisableFlagsInUseLine: true,

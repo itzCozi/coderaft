@@ -8,6 +8,8 @@ import (
 	"strings"
 
 	"github.com/spf13/cobra"
+
+	"coderaft/internal/ui"
 )
 
 var destroyCmd = &cobra.Command{
@@ -17,7 +19,7 @@ var destroyCmd = &cobra.Command{
 Removes empty project directories automatically.
 
 Special usage:
-  devbox destroy --cleanup-orphaned  Remove boxes not tracked in config`,
+  coderaft destroy --cleanup-orphaned  Remove boxes not tracked in config`,
 	Args: cobra.ExactArgs(1),
 	RunE: func(cmd *cobra.Command, args []string) error {
 		projectName := args[0]
@@ -41,9 +43,9 @@ Special usage:
 		}
 
 		if !forceFlag {
-			fmt.Printf("This will destroy the box '%s' for project '%s'.\n", project.BoxName, projectName)
-			fmt.Printf("Empty project directories will be automatically removed.\n")
-			fmt.Print("Are you sure? (y/N): ")
+			ui.Info("this will destroy the box '%s' for project '%s'.", project.BoxName, projectName)
+			ui.Info("empty project directories will be automatically removed.")
+			ui.Prompt("are you sure? (y/N): ")
 
 			reader := bufio.NewReader(os.Stdin)
 			response, err := reader.ReadString('\n')
@@ -53,7 +55,7 @@ Special usage:
 
 			response = strings.ToLower(strings.TrimSpace(response))
 			if response != "y" && response != "yes" {
-				fmt.Println("Destruction cancelled.")
+				ui.Info("destruction cancelled.")
 				return nil
 			}
 		}
@@ -65,13 +67,13 @@ Special usage:
 
 		if exists {
 
-			fmt.Printf("Stopping and removing box '%s'...\n", project.BoxName)
+			ui.Status("stopping and removing box '%s'...", project.BoxName)
 			if err := dockerClient.RemoveBox(project.BoxName); err != nil {
-				fmt.Printf("Warning: failed to remove box: %v\n", err)
+				ui.Warning("failed to remove box: %v", err)
 
 			}
 		} else {
-			fmt.Printf("Box '%s' not found (already removed)\n", project.BoxName)
+			ui.Info("box '%s' not found (already removed)", project.BoxName)
 		}
 
 		cfg.RemoveProject(projectName)
@@ -79,25 +81,26 @@ Special usage:
 			return fmt.Errorf("failed to save configuration: %w", err)
 		}
 
-		fmt.Printf("Project '%s' destroyed successfully!\n", projectName)
+		ui.Success("project '%s' destroyed", projectName)
 
 		if _, err := os.Stat(project.WorkspacePath); err == nil {
 
 			isEmpty, err := isDirEmpty(project.WorkspacePath)
 			if err != nil {
-				fmt.Printf("Warning: failed to check if directory is empty: %v\n", err)
-				fmt.Printf("Project files preserved in: %s\n", project.WorkspacePath)
+				ui.Warning("failed to check if directory is empty: %v", err)
+				ui.Detail("files", project.WorkspacePath)
 			} else if isEmpty {
-				fmt.Printf("Removing empty project directory: %s\n", project.WorkspacePath)
+				ui.Status("removing empty project directory: %s", project.WorkspacePath)
 				if err := os.RemoveAll(project.WorkspacePath); err != nil {
-					fmt.Printf("Warning: failed to remove empty directory: %v\n", err)
+					ui.Warning("failed to remove empty directory: %v", err)
 				} else {
-					fmt.Printf("Empty project directory removed!\n")
+					ui.Info("empty project directory removed.")
 				}
 			} else {
-				fmt.Printf("Project files preserved in: %s\n", project.WorkspacePath)
-				fmt.Printf("\nTo completely remove the project files:\n")
-				fmt.Printf("  rm -rf %s\n", project.WorkspacePath)
+				ui.Detail("files preserved", project.WorkspacePath)
+				ui.Blank()
+				ui.Info("to completely remove the project files:")
+				ui.Info("  rm -rf %s", project.WorkspacePath)
 			}
 		}
 
@@ -120,7 +123,7 @@ func isDirEmpty(dirPath string) (bool, error) {
 }
 
 func cleanupOrphanedboxes() error {
-	fmt.Println("Cleaning up orphaned devbox boxes...")
+	ui.Status("cleaning up orphaned coderaft boxes...")
 
 	cfg, err := configManager.Load()
 	if err != nil {
@@ -148,17 +151,18 @@ func cleanupOrphanedboxes() error {
 	}
 
 	if len(orphanedBoxes) == 0 {
-		fmt.Println("No orphaned boxes found.")
+		ui.Info("no orphaned boxes found.")
 		return nil
 	}
 
-	fmt.Printf("Found %d orphaned devbox box(s):\n", len(orphanedBoxes))
+	ui.Info("found %d orphaned coderaft box(s):", len(orphanedBoxes))
 	for _, boxName := range orphanedBoxes {
-		fmt.Printf("  - %s\n", boxName)
+		ui.Item(boxName)
 	}
 
 	if !forceFlag {
-		fmt.Print("\nRemove these orphaned boxes? (y/N): ")
+		ui.Blank()
+		ui.Prompt("remove these orphaned boxes? (y/N): ")
 		reader := bufio.NewReader(os.Stdin)
 		response, err := reader.ReadString('\n')
 		if err != nil {
@@ -167,24 +171,25 @@ func cleanupOrphanedboxes() error {
 
 		response = strings.ToLower(strings.TrimSpace(response))
 		if response != "y" && response != "yes" {
-			fmt.Println("Cleanup cancelled.")
+			ui.Info("cleanup cancelled.")
 			return nil
 		}
 	}
 
 	var removed, failed int
 	for _, boxName := range orphanedBoxes {
-		fmt.Printf("Removing %s...\n", boxName)
+		ui.Status("removing %s...", boxName)
 		if err := dockerClient.RemoveBox(boxName); err != nil {
-			fmt.Printf("Failed to remove %s: %v\n", boxName, err)
+			ui.Error("failed to remove %s: %v", boxName, err)
 			failed++
 		} else {
-			fmt.Printf("Removed %s\n", boxName)
+			ui.Info("removed %s", boxName)
 			removed++
 		}
 	}
 
-	fmt.Printf("\nCleanup complete: %d removed, %d failed\n", removed, failed)
+	ui.Blank()
+	ui.Summary("cleanup: %d removed, %d failed", removed, failed)
 	if failed > 0 {
 		return fmt.Errorf("failed to remove %d box(s)", failed)
 	}

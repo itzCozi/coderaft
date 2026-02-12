@@ -1,6 +1,6 @@
-# Contributing to devbox
+# Contributing to coderaft
 
-Thank you for your interest in contributing to devbox! This document provides guidelines and information for contributors.
+Thank you for your interest in contributing to coderaft! This document provides guidelines and information for contributors.
 
 ## Table of Contents
 
@@ -27,12 +27,12 @@ This project adheres to a code of conduct that we expect all contributors to fol
 1. **Fork the repository** on GitHub
 2. **Clone your fork** locally:
    ```bash
-   git clone https://github.com/itzcozi/devbox.git
-   cd devbox
+   git clone https://github.com/itzcozi/coderaft.git
+   cd coderaft
    ```
 3. **Add the upstream repository**:
    ```bash
-   git remote add upstream https://github.com/itzcozi/devbox.git
+   git remote add upstream https://github.com/itzcozi/coderaft.git
    ```
 
 ## How to Contribute
@@ -47,7 +47,7 @@ We welcome several types of contributions:
 - 🧪 **Tests** - Expand our comprehensive test suite
 - 🔧 **Code refactoring** - Improve code quality and maintainability
 - 🎨 **UI/UX improvements** - Enhance user experience
-- ⚡ **Performance optimizations** - Make devbox faster and more efficient
+- ⚡ **Performance optimizations** - Make coderaft faster and more efficient
 - 🛡️ **Security enhancements** - Improve security posture
 
 ### Good First Issues
@@ -61,7 +61,7 @@ Look for issues labeled with:
 
 ### Prerequisites
 
-**⚠️ Operating System Requirement**: devbox only works on **Debian/Ubuntu** systems. For development and testing:
+**⚠️ Operating System Requirement**: coderaft only works on **Debian/Ubuntu** systems. For development and testing:
 - **Recommended**: Debian 11+ or Ubuntu 20.04+
 - **Alternative**: Docker container with Debian/Ubuntu
 - **Windows users**: Use WSL2 with Ubuntu distribution
@@ -175,9 +175,9 @@ test(docker): add integration tests for container management
 
 ### Overview
 
-**⚠️ Testing Environment**: For best results, run tests on **Debian/Ubuntu** systems where devbox is fully functional. CI runs on Linux only; other platforms are not supported.
+**⚠️ Testing Environment**: For best results, run tests on **Debian/Ubuntu** systems where coderaft is fully functional. CI runs on Linux only; other platforms are not supported.
 
-devbox has a comprehensive test suite that includes:
+coderaft has a comprehensive test suite that includes:
 - **Unit tests** for individual functions and components
 - **Integration tests** for CLI commands and end-to-end functionality (Debian/Ubuntu only)
 - **Security tests** and vulnerability scanning
@@ -244,7 +244,7 @@ go tool cover -html=coverage.out -o coverage.html
 Use the `internal/testutil` package for common operations:
 
 ```go
-import "devbox/internal/testutil"
+import "coderaft/internal/testutil"
 
 func TestMyFunction(t *testing.T) {
     // Create test data
@@ -432,7 +432,7 @@ open coverage.html
 
 #### Platform-Specific Issues
 
-**⚠️ Important Note**: devbox is designed to work only on **Debian/Ubuntu** systems. CI runs on Linux only; other platforms are not supported.
+**⚠️ Important Note**: coderaft is designed to work only on **Debian/Ubuntu** systems. CI runs on Linux only; other platforms are not supported.
 
 **Recommended Testing Environment**:
 - **Debian 11+** or **Ubuntu 20.04+** for best results
@@ -542,7 +542,7 @@ When reporting bugs, please include:
    - OS and version
    - Go version
    - Docker version
-   - devbox version
+   - coderaft version
 3. **Steps to reproduce**
 4. **Expected behavior**
 5. **Actual behavior**
@@ -592,8 +592,8 @@ We welcome feature requests! Please:
 
 ## License
 
-By contributing to devbox, you agree that your contributions will be licensed under the MIT License.
+By contributing to coderaft, you agree that your contributions will be licensed under the MIT License.
 
 ---
 
-Thank you for contributing to devbox! 🚀
+Thank you for contributing to coderaft! 🚀

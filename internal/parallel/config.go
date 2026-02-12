@@ -24,24 +24,24 @@ func DefaultConfig() *Config {
 func LoadConfig() *Config {
 	config := DefaultConfig()
 
-	if os.Getenv("DEVBOX_DISABLE_PARALLEL") == "true" {
+	if os.Getenv("CODERAFT_DISABLE_PARALLEL") == "true" {
 		config.EnableParallel = false
 		return config
 	}
 
-	if maxWorkers := os.Getenv("DEVBOX_MAX_WORKERS"); maxWorkers != "" {
+	if maxWorkers := os.Getenv("CODERAFT_MAX_WORKERS"); maxWorkers != "" {
 		if val, err := strconv.Atoi(maxWorkers); err == nil && val > 0 {
 			config.MaxWorkers = val
 		}
 	}
 
-	if setupWorkers := os.Getenv("DEVBOX_SETUP_WORKERS"); setupWorkers != "" {
+	if setupWorkers := os.Getenv("CODERAFT_SETUP_WORKERS"); setupWorkers != "" {
 		if val, err := strconv.Atoi(setupWorkers); err == nil && val > 0 {
 			config.SetupCommandWorkers = val
 		}
 	}
 
-	if queryWorkers := os.Getenv("DEVBOX_QUERY_WORKERS"); queryWorkers != "" {
+	if queryWorkers := os.Getenv("CODERAFT_QUERY_WORKERS"); queryWorkers != "" {
 		if val, err := strconv.Atoi(queryWorkers); err == nil && val > 0 {
 			config.PackageQueryWorkers = val
 		}

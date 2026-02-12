@@ -2,11 +2,11 @@ package commands
 
 import (
 	"fmt"
-	"os/exec"
 
 	"github.com/spf13/cobra"
 
-	"devbox/internal/docker"
+	"coderaft/internal/docker"
+	"coderaft/internal/ui"
 )
 
 var keepRunningFlag bool
@@ -30,7 +30,7 @@ var shellCmd = &cobra.Command{
 
 		project, exists := cfg.GetProject(projectName)
 		if !exists {
-			return fmt.Errorf("project '%s' not found. Run 'devbox init %s' first", projectName, projectName)
+			return fmt.Errorf("project '%s' not found. Run 'coderaft init %s' first", projectName, projectName)
 		}
 
 		exists, err = dockerClient.BoxExists(project.BoxName)
@@ -39,7 +39,7 @@ var shellCmd = &cobra.Command{
 		}
 
 		if !exists {
-			return fmt.Errorf("box '%s' not found. Run 'devbox init %s' to recreate", project.BoxName, projectName)
+			return fmt.Errorf("box '%s' not found. Run 'coderaft init %s' to recreate", project.BoxName, projectName)
 		}
 
 		status, err := dockerClient.GetBoxStatus(project.BoxName)
@@ -48,21 +48,20 @@ var shellCmd = &cobra.Command{
 		}
 
 		if status != "running" {
-			fmt.Printf("Starting box '%s'...\n", project.BoxName)
+			ui.Status("starting box '%s'...", project.BoxName)
 			if err := dockerClient.StartBox(project.BoxName); err != nil {
 				return fmt.Errorf("failed to start box: %w", err)
 			}
 		}
 
-		checkCmd := exec.Command(engineCmd(), "exec", project.BoxName, "test", "-f", "/etc/devbox-initialized")
-		if checkCmd.Run() != nil {
-			fmt.Printf("Setting up devbox commands in box...\n")
-			if err := dockerClient.SetupDevboxInBox(project.BoxName, projectName); err != nil {
-				return fmt.Errorf("failed to setup devbox in box: %w", err)
+		if !dockerClient.IsBoxInitialized(project.BoxName) {
+			ui.Status("setting up coderaft commands in box...")
+			if err := dockerClient.SetupCoderaftInBox(project.BoxName, projectName); err != nil {
+				return fmt.Errorf("failed to setup coderaft in box: %w", err)
 			}
 		}
 
-		fmt.Printf("Attaching to box '%s'...\n", project.BoxName)
+		ui.Status("attaching to box '%s'...", project.BoxName)
 		if err := docker.AttachShell(project.BoxName); err != nil {
 			return fmt.Errorf("failed to attach shell: %w", err)
 		}
@@ -72,11 +71,11 @@ var shellCmd = &cobra.Command{
 			if err == nil && cfg.Settings != nil && cfg.Settings.AutoStopOnExit {
 				idle, idleErr := dockerClient.IsContainerIdle(project.BoxName)
 				if idleErr != nil {
-
+					ui.Warning("failed to check container idle status: %v", idleErr)
 				} else if idle {
-					fmt.Printf("Stopping box '%s' (auto-stop: idle) ...\n", project.BoxName)
+					ui.Status("stopping box '%s' (auto-stop: idle)...", project.BoxName)
 					if err := dockerClient.StopBox(project.BoxName); err != nil {
-						fmt.Printf("Warning: failed to stop box: %v\n", err)
+						ui.Warning("failed to stop box: %v", err)
 					}
 				}
 			}

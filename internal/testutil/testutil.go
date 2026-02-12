@@ -6,7 +6,7 @@ import (
 	"path/filepath"
 	"testing"
 
-	"devbox/internal/config"
+	"coderaft/internal/config"
 )
 
 func CreateTempDir(t *testing.T) string {
@@ -32,9 +32,9 @@ func CreateTestProject(name string) *config.Project {
 		Name:          name,
 		BoxName:       name + "-box",
 		BaseImage:     "ubuntu:22.04",
-		WorkspacePath: filepath.Join("/home/user/devbox", name),
+		WorkspacePath: filepath.Join("/home/user/coderaft", name),
 		Status:        "stopped",
-		ConfigFile:    filepath.Join("/home/user/devbox", name, "devbox.json"),
+		ConfigFile:    filepath.Join("/home/user/coderaft", name, "coderaft.json"),
 	}
 }
 

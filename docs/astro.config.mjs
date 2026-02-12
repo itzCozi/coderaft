@@ -6,13 +6,13 @@ import sitemap from '@astrojs/sitemap'
 
 
 export default defineConfig({
-	site: 'https://devbox.ar0.eu',
+	site: 'https://coderaft.ar0.eu',
 	integrations: [
     sitemap(),
 		starlight({
-			title: 'devbox',
+			title: 'coderaft',
 			description: 'Isolated development environments using Docker containers',
-			favicon: '/favicon.svg',
+			favicon: '/favicon.png',
 			logo: {
 				replacesTitle: true,
         light: './src/assets/logo-dark.png',
@@ -32,11 +32,11 @@ export default defineConfig({
 				},
 			],
 			social: [
-				{ icon: 'github', label: 'GitHub', href: 'https://github.com/itzcozi/devbox' },
-				{ icon: 'telegram', label: 'Telegram', href: 'http://t.me/devboxcli' }
+				{ icon: 'github', label: 'GitHub', href: 'https://github.com/itzcozi/coderaft' },
+				{ icon: 'telegram', label: 'Telegram', href: 'http://t.me/coderaftcli' }
 			],
 			editLink: {
-        baseUrl: 'https://github.com/itzcozi/devbox/edit/main/docs/',
+        baseUrl: 'https://github.com/itzcozi/coderaft/edit/main/docs/',
       },
 			sidebar: [
 				{

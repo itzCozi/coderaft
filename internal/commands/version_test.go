@@ -10,43 +10,33 @@ import (
 )
 
 func TestVersionCommand(t *testing.T) {
-	tests := []struct {
-		name           string
-		expectedOutput string
-	}{
-		{
-			name:           "version output",
-			expectedOutput: "devbox (v" + Version + ")",
+	var buf bytes.Buffer
+	cmd := &cobra.Command{
+		Use:   "version",
+		Short: "Print the version information",
+		Run: func(cmd *cobra.Command, args []string) {
+			if CommitHash != "" && CommitHash != "unknown" {
+				buf.WriteString(fmt.Sprintf("coderaft (v%s, commit %s)\n", Version, CommitHash))
+			} else {
+				buf.WriteString(fmt.Sprintf("coderaft (v%s)\n", Version))
+			}
 		},
 	}
 
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			var buf bytes.Buffer
-			cmd := &cobra.Command{
-				Use:   "version",
-				Short: "Print the version information",
-				Run: func(cmd *cobra.Command, args []string) {
-					buf.WriteString(fmt.Sprintf("devbox (v%s)\n", Version))
-				},
-			}
+	cmd.Run(cmd, []string{})
 
-			cmd.Run(cmd, []string{})
-
-			output := strings.TrimSpace(buf.String())
-			if !strings.Contains(output, tt.expectedOutput) {
-				t.Errorf("Expected output to contain %q, got %q", tt.expectedOutput, output)
-			}
-		})
+	output := strings.TrimSpace(buf.String())
+	if !strings.Contains(output, "coderaft (v"+Version) {
+		t.Errorf("Expected output to contain version string, got %q", output)
 	}
 }
 
-func TestVersionConstant(t *testing.T) {
+func TestVersionDefault(t *testing.T) {
 	if Version == "" {
-		t.Error("Version constant should not be empty")
+		t.Error("Version should not be empty")
 	}
 
-	if Version != "1.0" {
-		t.Errorf("Expected version to be '1.0', got %q", Version)
+	if CommitHash == "" {
+		t.Error("CommitHash should not be empty (should default to 'unknown')")
 	}
 }

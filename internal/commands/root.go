@@ -9,8 +9,8 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"devbox/internal/config"
-	"devbox/internal/docker"
+	"coderaft/internal/config"
+	"coderaft/internal/docker"
 )
 
 var (
@@ -20,13 +20,13 @@ var (
 )
 
 var rootCmd = &cobra.Command{
-	Use:   "devbox",
+	Use:   "coderaft",
 	Short: "Isolated development environments for anything",
-	Long:  `devbox creates isolated development environments, contained in a project's Docker box. Each project operates in its own disposable environment, while your code remains neatly organized in a simple, flat folder on the host machine.`,
+	Long:  `coderaft creates isolated development environments, contained in a project's Docker box. Each project operates in its own disposable environment, while your code remains neatly organized in a simple, flat folder on the host machine.`,
 	PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
 
-		if runtime.GOOS != "linux" {
-			return fmt.Errorf("devbox only runs on Debian/Ubuntu Linux")
+		if runtime.GOOS != "linux" && runtime.GOOS != "darwin" && runtime.GOOS != "windows" {
+			return fmt.Errorf("coderaft requires Docker and supports Linux, macOS, and Windows")
 		}
 
 		var err error
@@ -35,35 +35,21 @@ var rootCmd = &cobra.Command{
 			return fmt.Errorf("failed to initialize config: %w", err)
 		}
 
-		if err := docker.IsDockerAvailable(); err != nil {
-			return fmt.Errorf("docker availability check failed: %w", err)
-		}
-
 		dockerClient, err = docker.NewClient()
 		if err != nil {
-			return fmt.Errorf("failed to initialize Docker client: %w", err)
+			return fmt.Errorf("docker is not available. Please ensure Docker is installed and its daemon is running: %w", err)
+		}
+
+		if err := dockerClient.IsDockerAvailableWith(); err != nil {
+			dockerClient.Close()
+			dockerClient = nil
+			return fmt.Errorf("docker availability check failed: %w", err)
 		}
 
 		return nil
 	},
 	PersistentPostRun: func(cmd *cobra.Command, args []string) {
 
-		if configManager != nil && dockerClient != nil {
-			if cfg, err := configManager.Load(); err == nil && cfg.Settings != nil && cfg.Settings.AutoStopOnExit {
-				for _, project := range cfg.GetProjects() {
-					status, err := dockerClient.GetBoxStatus(project.BoxName)
-					if err != nil || status != "running" {
-						continue
-					}
-					if idle, err := dockerClient.IsContainerIdle(project.BoxName); err == nil && idle {
-						fmt.Printf("Stopping box '%s' (auto-stop: idle)...\n", project.BoxName)
-						if err := dockerClient.StopBox(project.BoxName); err != nil {
-							fmt.Printf("Warning: failed to stop box '%s': %v\n", project.BoxName, err)
-						}
-					}
-				}
-			}
-		}
 		if dockerClient != nil {
 			dockerClient.Close()
 		}
@@ -118,5 +104,5 @@ func getWorkspacePath(projectName string) (string, error) {
 		return "", fmt.Errorf("failed to get home directory: %w", err)
 	}
 
-	return filepath.Join(homeDir, "devbox", projectName), nil
+	return filepath.Join(homeDir, "coderaft", projectName), nil
 }

@@ -47,7 +47,7 @@ jobs:
         GOARCH: ${{ matrix.goarch }}
       run: |
         mkdir -p build
-        BINARY_NAME=devbox
+        BINARY_NAME=coderaft
 
         # Get version from git tag or use commit hash
         if [ "${{ github.event_name }}" = "release" ]; then
@@ -59,13 +59,13 @@ jobs:
         CGO_ENABLED=0 go build \
           -ldflags="-w -s -X main.version=${VERSION}" \
           -o build/${BINARY_NAME}-${GOOS}-${GOARCH} \
-          ./cmd/devbox
+          ./cmd/coderaft
 
     - name: Create archive (tar.gz)
       run: |
         cd build
-        BINARY_NAME=devbox
-        ARCHIVE_NAME="devbox-${{ matrix.goos }}-${{ matrix.goarch }}"
+        BINARY_NAME=coderaft
+        ARCHIVE_NAME="coderaft-${{ matrix.goos }}-${{ matrix.goarch }}"
         tar -czf ${ARCHIVE_NAME}.tar.gz ${BINARY_NAME}-${{ matrix.goos }}-${{ matrix.goarch }}
 
     - name: Upload Release Asset
@@ -75,14 +75,14 @@ jobs:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       with:
         upload_url: ${{ github.event.release.upload_url }}
-        asset_path: ./build/devbox-${{ matrix.goos }}-${{ matrix.goarch }}.tar.gz
-        asset_name: devbox-${{ matrix.goos }}-${{ matrix.goarch }}.tar.gz
+        asset_path: ./build/coderaft-${{ matrix.goos }}-${{ matrix.goarch }}.tar.gz
+        asset_name: coderaft-${{ matrix.goos }}-${{ matrix.goarch }}.tar.gz
         asset_content_type: application/gzip
 
     - name: Upload artifacts (manual trigger)
       if: github.event_name == 'workflow_dispatch'
       uses: actions/upload-artifact@v4
       with:
-        name: devbox-${{ matrix.goos }}-${{ matrix.goarch }}
-        path: build/devbox-*
+        name: coderaft-${{ matrix.goos }}-${{ matrix.goarch }}
+        path: build/coderaft-*
         retention-days: 30

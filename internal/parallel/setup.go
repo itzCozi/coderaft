@@ -2,6 +2,7 @@ package parallel
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"fmt"
 	"os"
@@ -9,19 +10,17 @@ import (
 	"sort"
 	"strings"
 	"time"
+
+	"coderaft/internal/ui"
 )
 
-func engineCmd() string {
-	if v := strings.TrimSpace(os.Getenv("DEVBOX_ENGINE")); v != "" {
-		return v
-	}
-	return "docker"
-}
+type ExecFunc func(ctx context.Context, containerID string, cmd []string, showOutput bool) (stdout, stderr string, exitCode int, err error)
 
 type SetupCommandExecutor struct {
 	boxName    string
 	workerPool *WorkerPool
 	showOutput bool
+	execFunc   ExecFunc
 }
 
 func NewSetupCommandExecutor(boxName string, showOutput bool, maxWorkers int) *SetupCommandExecutor {
@@ -34,6 +33,12 @@ func NewSetupCommandExecutor(boxName string, showOutput bool, maxWorkers int) *S
 		workerPool: NewWorkerPool(maxWorkers, 10*time.Minute),
 		showOutput: showOutput,
 	}
+}
+
+func NewSetupCommandExecutorWithSDK(boxName string, showOutput bool, maxWorkers int, execFn ExecFunc) *SetupCommandExecutor {
+	e := NewSetupCommandExecutor(boxName, showOutput, maxWorkers)
+	e.execFunc = execFn
+	return e
 }
 
 type CommandGroup struct {
@@ -65,7 +70,7 @@ func (sce *SetupCommandExecutor) ExecuteCommandGroups(groups []CommandGroup) err
 
 	if len(parallelBatches) > 0 {
 		if sce.showOutput {
-			fmt.Printf("Executing %d parallel command groups...\n", len(parallelBatches))
+			ui.Status("executing %d parallel command groups...", len(parallelBatches))
 		}
 
 		batchResults := sce.workerPool.ExecuteBatches(parallelBatches)
@@ -79,13 +84,13 @@ func (sce *SetupCommandExecutor) ExecuteCommandGroups(groups []CommandGroup) err
 		}
 
 		if sce.showOutput {
-			fmt.Printf("All parallel command groups completed successfully!\n")
+			ui.Success("all parallel command groups completed")
 		}
 	}
 
 	for _, group := range sequentialGroups {
 		if sce.showOutput {
-			fmt.Printf("Executing sequential group: %s\n", group.Name)
+			ui.Status("executing sequential group: %s", group.Name)
 		}
 
 		for i, cmd := range group.Commands {
@@ -95,7 +100,7 @@ func (sce *SetupCommandExecutor) ExecuteCommandGroups(groups []CommandGroup) err
 		}
 
 		if sce.showOutput {
-			fmt.Printf("Sequential group '%s' completed successfully!\n", group.Name)
+			ui.Success("sequential group '%s' completed", group.Name)
 		}
 	}
 
@@ -184,11 +189,29 @@ func (sce *SetupCommandExecutor) createCommandTask(command string, step, total i
 
 func (sce *SetupCommandExecutor) executeCommand(command string, step, total int, groupName string) error {
 	if sce.showOutput {
-		fmt.Printf("[%s] Step %d/%d: %s\n", groupName, step, total, command)
+		ui.Step(step, total, command)
 	}
 
 	wrapped := ". /root/.bashrc >/dev/null 2>&1 || true; " + command
-	cmd := exec.Command(engineCmd(), "exec", sce.boxName, "bash", "-c", wrapped)
+
+	if sce.execFunc != nil {
+		ctx := context.Background()
+		stdout, stderr, exitCode, err := sce.execFunc(ctx, sce.boxName, []string{"bash", "-c", wrapped}, sce.showOutput)
+		if err != nil {
+			return fmt.Errorf("command failed: %s: %w", command, err)
+		}
+		if exitCode != 0 {
+			if !sce.showOutput && stderr != "" {
+				ui.Error("command failed: %s", command)
+				ui.Detail("stderr", stderr)
+			}
+			_ = stdout
+			return fmt.Errorf("command failed: %s: exit code %d", command, exitCode)
+		}
+		return nil
+	}
+
+	cmd := exec.Command("docker", "exec", sce.boxName, "bash", "-c", wrapped)
 
 	if sce.showOutput {
 		cmd.Stdout = os.Stdout
@@ -203,12 +226,12 @@ func (sce *SetupCommandExecutor) executeCommand(command string, step, total int,
 		cmd.Stderr = &stderr
 
 		if err := cmd.Run(); err != nil {
-			fmt.Printf("Command failed: %s\n", command)
+			ui.Error("command failed: %s", command)
 			if stderr.Len() > 0 {
-				fmt.Printf("Error output: %s\n", stderr.String())
+				ui.Detail("stderr", stderr.String())
 			}
 			if stdout.Len() > 0 {
-				fmt.Printf("Standard output: %s\n", stdout.String())
+				ui.Detail("stdout", stdout.String())
 			}
 			return fmt.Errorf("command failed: %s: %w", command, err)
 		}
@@ -220,6 +243,7 @@ func (sce *SetupCommandExecutor) executeCommand(command string, step, total int,
 type PackageQueryExecutor struct {
 	boxName    string
 	workerPool *WorkerPool
+	execFunc   ExecFunc
 }
 
 func NewPackageQueryExecutor(boxName string) *PackageQueryExecutor {
@@ -227,6 +251,12 @@ func NewPackageQueryExecutor(boxName string) *PackageQueryExecutor {
 		boxName:    boxName,
 		workerPool: NewWorkerPool(5, 2*time.Minute),
 	}
+}
+
+func NewPackageQueryExecutorWithSDK(boxName string, execFn ExecFunc) *PackageQueryExecutor {
+	e := NewPackageQueryExecutor(boxName)
+	e.execFunc = execFn
+	return e
 }
 
 type PackageQuery struct {
@@ -253,18 +283,18 @@ func (pqe *PackageQueryExecutor) QueryAllPackages() (map[string][]string, error)
 	packageLists := make(map[string][]string)
 	for i, query := range queries {
 		if errors[i] != nil {
-			fmt.Printf("Warning: failed to query %s packages: %v\n", query.Name, errors[i])
+			ui.Warning("failed to query %s packages: %v", query.Name, errors[i])
 			packageLists[query.Name] = nil
 			continue
 		}
 
 		switch query.Name {
 		case "apt", "pip":
-			packageLists[query.Name] = parseLineList(results[i])
+			packageLists[query.Name] = ParseLineList(results[i])
 		case "npm", "pnpm":
-			packageLists[query.Name] = parseJSONPackageList(results[i])
+			packageLists[query.Name] = ParseJSONPackageList(results[i])
 		case "yarn":
-			packageLists[query.Name] = parseLineList(results[i])
+			packageLists[query.Name] = ParseLineList(results[i])
 		}
 	}
 
@@ -273,7 +303,17 @@ func (pqe *PackageQueryExecutor) QueryAllPackages() (map[string][]string, error)
 
 func (pqe *PackageQueryExecutor) createQueryTask(command string) StringTask {
 	return func() (string, error) {
-		cmd := exec.Command(engineCmd(), "exec", pqe.boxName, "bash", "-c", command)
+
+		if pqe.execFunc != nil {
+			ctx := context.Background()
+			stdout, _, _, err := pqe.execFunc(ctx, pqe.boxName, []string{"bash", "-c", command}, false)
+			if err != nil {
+				return "", fmt.Errorf("query failed: %w", err)
+			}
+			return stdout, nil
+		}
+
+		cmd := exec.Command("docker", "exec", pqe.boxName, "bash", "-c", command)
 
 		var stdout, stderr bytes.Buffer
 		cmd.Stdout = &stdout
@@ -287,7 +327,7 @@ func (pqe *PackageQueryExecutor) createQueryTask(command string) StringTask {
 	}
 }
 
-func parseLineList(output string) []string {
+func ParseLineList(output string) []string {
 	var result []string
 	for _, line := range strings.Split(output, "\n") {
 		line = strings.TrimSpace(line)
@@ -298,7 +338,7 @@ func parseLineList(output string) []string {
 	return result
 }
 
-func parseJSONPackageList(output string) []string {
+func ParseJSONPackageList(output string) []string {
 	if strings.TrimSpace(output) == "" {
 		return nil
 	}

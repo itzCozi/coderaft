@@ -8,7 +8,8 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"devbox/internal/config"
+	"coderaft/internal/config"
+	"coderaft/internal/ui"
 )
 
 var (
@@ -19,15 +20,15 @@ var (
 
 var initCmd = &cobra.Command{
 	Use:   "init <project>",
-	Short: "Initialize a new devbox project",
-	Long: `Create a new devbox project with its own Docker box.
+	Short: "Initialize a new coderaft project",
+	Long: `Create a new coderaft project with its own Docker box.
 This will create a project directory and a corresponding Docker box.
 
 Examples:
-  devbox init myproject                    # Basic project
-  devbox init myproject --template python # Python development project
-  devbox init myproject --config-only     # Generate devbox.json only
-  devbox init myproject --generate-config # Create box and generate devbox.json`,
+  coderaft init myproject                    # Basic project
+  coderaft init myproject --template python # Python development project
+  coderaft init myproject --config-only     # Generate coderaft.json only
+  coderaft init myproject --generate-config # Create box and generate coderaft.json`,
 	Args: cobra.ExactArgs(1),
 	RunE: func(cmd *cobra.Command, args []string) error {
 		projectName := args[0]
@@ -54,16 +55,16 @@ Examples:
 			return fmt.Errorf("failed to create workspace directory: %w", err)
 		}
 
-		fmt.Printf("Created workspace directory: %s\n", workspacePath)
+		ui.Status("created workspace directory: %s", workspacePath)
 
 		var projectConfig *config.ProjectConfig
 
 		if existingConfig, err := configManager.LoadProjectConfig(workspacePath); err == nil && existingConfig != nil {
-			fmt.Printf("Found existing devbox.json configuration\n")
+			ui.Info("found existing coderaft.json configuration")
 			projectConfig = existingConfig
 		} else if templateFlag != "" {
 
-			fmt.Printf("Creating project from template: %s\n", templateFlag)
+			ui.Status("creating project from template: %s", templateFlag)
 			projectConfig, err = configManager.CreateProjectConfigFromTemplate(templateFlag, projectName)
 			if err != nil {
 				return fmt.Errorf("failed to create project from template: %w", err)
@@ -77,13 +78,13 @@ Examples:
 			if err := configManager.SaveProjectConfig(workspacePath, projectConfig); err != nil {
 				return fmt.Errorf("failed to save project configuration: %w", err)
 			}
-			fmt.Printf("Generated devbox.json configuration file\n")
+			ui.Info("generated coderaft.json configuration file")
 		}
 
 		if configOnlyFlag {
-			fmt.Printf("Configuration file generated for project '%s'\n", projectName)
-			fmt.Printf("Workspace: %s\n", workspacePath)
-			fmt.Printf("Config: %s/devbox.json\n", workspacePath)
+			ui.Success("configuration generated for '%s'", projectName)
+			ui.Detail("workspace", workspacePath)
+			ui.Detail("config", workspacePath+"/coderaft.json")
 			return nil
 		}
 
@@ -93,7 +94,7 @@ Examples:
 			}
 		}
 
-		boxName := fmt.Sprintf("devbox_%s", projectName)
+		boxName := fmt.Sprintf("coderaft_%s", projectName)
 
 		baseImage := cfg.GetEffectiveBaseImage(&config.Project{
 			Name:      projectName,
@@ -105,7 +106,7 @@ Examples:
 			workspaceBox = projectConfig.WorkingDir
 		}
 
-		fmt.Printf("Setting up box '%s' with image '%s'...\n", boxName, baseImage)
+		ui.Status("setting up box '%s' with image '%s'...", boxName, baseImage)
 		if err := dockerClient.PullImage(baseImage); err != nil {
 			return fmt.Errorf("failed to pull base image: %w", err)
 		}
@@ -116,7 +117,7 @@ Examples:
 				return fmt.Errorf("failed to check box existence: %w", err)
 			}
 			if exists {
-				fmt.Printf("Removing existing box '%s'...\n", boxName)
+				ui.Status("removing existing box '%s'...", boxName)
 				dockerClient.StopBox(boxName)
 				if err := dockerClient.RemoveBox(boxName); err != nil {
 					return fmt.Errorf("failed to remove existing box: %w", err)
@@ -148,30 +149,29 @@ Examples:
 			return fmt.Errorf("failed to start box: %w", err)
 		}
 
-		fmt.Printf("Starting box...\n")
+		ui.Status("starting box...")
 		if err := dockerClient.WaitForBox(boxName, 30*time.Second); err != nil {
 			return fmt.Errorf("box failed to start: %w", err)
 		}
 
-		fmt.Printf("Updating system packages...\n")
-		systemUpdateCommands := []string{
-			"apt update -y",
-			"apt full-upgrade -y",
-		}
-		if err := dockerClient.ExecuteSetupCommandsWithOutput(boxName, systemUpdateCommands, false); err != nil {
-			return fmt.Errorf("failed to update system packages: %w", err)
-		}
-
 		if projectConfig != nil && len(projectConfig.SetupCommands) > 0 {
-			fmt.Printf("Installing template packages (%d commands)...\n", len(projectConfig.SetupCommands))
+			ui.Status("updating system packages...")
+			systemUpdateCommands := []string{
+				"apt update -y",
+			}
+			if err := dockerClient.ExecuteSetupCommandsWithOutput(boxName, systemUpdateCommands, false); err != nil {
+				ui.Warning("apt update failed: %v", err)
+			}
+
+			ui.Status("installing template packages (%d commands)...", len(projectConfig.SetupCommands))
 			if err := dockerClient.ExecuteSetupCommandsWithOutput(boxName, projectConfig.SetupCommands, false); err != nil {
 				return fmt.Errorf("failed to execute setup commands: %w", err)
 			}
 		}
 
-		fmt.Printf("Setting up devbox commands in box...\n")
-		if err := dockerClient.SetupDevboxInBoxWithUpdate(boxName, projectName); err != nil {
-			return fmt.Errorf("failed to setup devbox in box: %w", err)
+		ui.Status("setting up coderaft commands in box...")
+		if err := dockerClient.SetupCoderaftInBoxWithUpdate(boxName, projectName); err != nil {
+			return fmt.Errorf("failed to setup coderaft in box: %w", err)
 		}
 
 		project := &config.Project{
@@ -189,42 +189,37 @@ Examples:
 			return fmt.Errorf("failed to save configuration: %w", err)
 		}
 
-		if projectConfig != nil && (templateFlag != "" || generateConfig) {
-			fmt.Printf("Generating lock file (devbox.lock.json)...\n")
-			if err := WriteLockFileForProject(projectName, ""); err != nil {
-				fmt.Printf("Warning: failed to write lock file: %v\n", err)
-			}
-		}
-
-		fmt.Printf("Project '%s' initialized successfully.\n", projectName)
-		fmt.Printf("Workspace: %s\n", workspacePath)
-		fmt.Printf("Box: %s\n", boxName)
-		fmt.Printf("Image: %s\n", baseImage)
+		ui.Blank()
+		ui.Success("project '%s' initialized", projectName)
+		ui.Detail("workspace", workspacePath)
+		ui.Detail("box", boxName)
+		ui.Detail("image", baseImage)
 
 		if projectConfig != nil {
-			fmt.Printf("Configuration: devbox.json\n")
+			ui.Detail("config", "coderaft.json")
 			if len(projectConfig.SetupCommands) > 0 {
-				fmt.Printf("Setup commands: %d executed\n", len(projectConfig.SetupCommands))
+				ui.Detail("setup commands", fmt.Sprintf("%d executed", len(projectConfig.SetupCommands)))
 			}
 			if len(projectConfig.Ports) > 0 {
-				fmt.Printf("Ports: %v\n", projectConfig.Ports)
+				ui.Detail("ports", fmt.Sprintf("%v", projectConfig.Ports))
 			}
 		}
 
 		if cfg.Settings != nil && cfg.Settings.AutoStopOnExit {
 			if idle, err := dockerClient.IsContainerIdle(boxName); err == nil && idle {
-				fmt.Printf("Stopping box '%s' (auto-stop: idle)...\n", boxName)
+				ui.Status("stopping box '%s' (auto-stop: idle)...", boxName)
 				if err := dockerClient.StopBox(boxName); err != nil {
-					fmt.Printf("Warning: failed to stop box: %v\n", err)
+					ui.Warning("failed to stop box: %v", err)
 				}
 			}
 		}
 
-		fmt.Printf("\nNext steps:\n")
-		fmt.Printf("  devbox shell %s       # Open interactive shell\n", projectName)
-		fmt.Printf("  devbox run %s <cmd>   # Run a command\n", projectName)
+		ui.Blank()
+		ui.Info("Next steps:")
+		ui.Info("  coderaft shell %s       # open interactive shell", projectName)
+		ui.Info("  coderaft run %s <cmd>   # run a command", projectName)
 		if projectConfig == nil && !generateConfig {
-			fmt.Printf("  devbox config %s      # Generate devbox.json config\n", projectName)
+			ui.Info("  coderaft config %s      # generate coderaft.json config", projectName)
 		}
 
 		return nil
@@ -234,6 +229,6 @@ Examples:
 func init() {
 	initCmd.Flags().BoolVarP(&forceFlag, "force", "f", false, "Force initialization, overwriting existing project")
 	initCmd.Flags().StringVarP(&templateFlag, "template", "t", "", "Initialize from template (python, nodejs, go, web)")
-	initCmd.Flags().BoolVarP(&generateConfig, "generate-config", "g", false, "Generate devbox.json configuration file")
+	initCmd.Flags().BoolVarP(&generateConfig, "generate-config", "g", false, "Generate coderaft.json configuration file")
 	initCmd.Flags().BoolVarP(&configOnlyFlag, "config-only", "c", false, "Generate configuration file only (don't create box)")
 }

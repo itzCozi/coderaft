@@ -10,7 +10,8 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"devbox/internal/config"
+	"coderaft/internal/config"
+	"coderaft/internal/ui"
 )
 
 type backupManifest struct {
@@ -19,7 +20,7 @@ type backupManifest struct {
 	BoxName      string                `json:"box_name"`
 	CreatedAt    string                `json:"created_at"`
 	ImageTag     string                `json:"image_tag"`
-	DevboxConfig *config.ProjectConfig `json:"devbox_config,omitempty"`
+	CoderaftConfig *config.ProjectConfig `json:"coderaft_config,omitempty"`
 	LockFileJSON json.RawMessage       `json:"lock_file_json,omitempty"`
 }
 
@@ -29,7 +30,7 @@ var (
 
 var backupCmd = &cobra.Command{
 	Use:   "backup <project>",
-	Short: "Backup the project's devbox environment (container state + config)",
+	Short: "Backup the project's coderaft environment (container state + config)",
 	Args:  cobra.ExactArgs(1),
 	RunE: func(cmd *cobra.Command, args []string) error {
 		projectName := args[0]
@@ -52,7 +53,7 @@ var backupCmd = &cobra.Command{
 		}
 
 		ts := time.Now().UTC().Format("20060102-150405")
-		defaultDir := filepath.Join(proj.WorkspacePath, ".devbox_backups", ts)
+		defaultDir := filepath.Join(proj.WorkspacePath, ".coderaft_backups", ts)
 		outDir := backupOutput
 		if strings.TrimSpace(outDir) == "" {
 			outDir = defaultDir
@@ -61,8 +62,8 @@ var backupCmd = &cobra.Command{
 			return fmt.Errorf("failed to create backup directory: %w", err)
 		}
 
-		imageTag := fmt.Sprintf("devbox/%s:backup-%s", projectName, ts)
-		fmt.Printf("Creating image from box '%s'...\n", proj.BoxName)
+		imageTag := fmt.Sprintf("coderaft/%s:backup-%s", projectName, ts)
+		ui.Status("creating image from box '%s'...", proj.BoxName)
 		imgID, err := dockerClient.CommitContainer(proj.BoxName, imageTag)
 		if err != nil {
 			return fmt.Errorf("failed to commit container: %w", err)
@@ -70,7 +71,7 @@ var backupCmd = &cobra.Command{
 		_ = imgID
 
 		imageTar := filepath.Join(outDir, "image.tar")
-		fmt.Printf("Saving image '%s' to %s...\n", imageTag, imageTar)
+		ui.Status("saving image '%s' to %s...", imageTag, imageTar)
 		if err := dockerClient.SaveImage(imageTag, imageTar); err != nil {
 			return fmt.Errorf("failed to save image: %w", err)
 		}
@@ -80,7 +81,7 @@ var backupCmd = &cobra.Command{
 			pcfg = c
 		}
 		var lockRaw json.RawMessage
-		if b, err := os.ReadFile(filepath.Join(proj.WorkspacePath, "devbox.lock.json")); err == nil {
+		if b, err := os.ReadFile(filepath.Join(proj.WorkspacePath, "coderaft.lock.json")); err == nil {
 			lockRaw = json.RawMessage(b)
 		}
 
@@ -90,7 +91,7 @@ var backupCmd = &cobra.Command{
 			BoxName:      proj.BoxName,
 			CreatedAt:    time.Now().UTC().Format(time.RFC3339),
 			ImageTag:     imageTag,
-			DevboxConfig: pcfg,
+			CoderaftConfig: pcfg,
 			LockFileJSON: lockRaw,
 		}
 		manPath := filepath.Join(outDir, "metadata.json")
@@ -99,15 +100,15 @@ var backupCmd = &cobra.Command{
 			return fmt.Errorf("failed to write metadata: %w", err)
 		}
 
-		fmt.Printf("Backup complete\n")
-		fmt.Printf("Directory: %s\n", outDir)
-		fmt.Printf("Image tag: %s\n", imageTag)
-		fmt.Printf("Files: image.tar, metadata.json\n")
+		ui.Success("backup complete")
+		ui.Detail("directory", outDir)
+		ui.Detail("image tag", imageTag)
+		ui.Detail("files", "image.tar, metadata.json")
 		return nil
 	},
 }
 
 func init() {
 	rootCmd.AddCommand(backupCmd)
-	backupCmd.Flags().StringVarP(&backupOutput, "output", "o", "", "Output directory for backup (default: <workspace>/.devbox_backups/<timestamp>)")
+	backupCmd.Flags().StringVarP(&backupOutput, "output", "o", "", "Output directory for backup (default: <workspace>/.coderaft_backups/<timestamp>)")
 }

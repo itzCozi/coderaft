@@ -3,7 +3,7 @@ package main
 import (
 	"testing"
 
-	"devbox/internal/commands"
+	"coderaft/internal/commands"
 )
 
 func TestMainFunction(t *testing.T) {

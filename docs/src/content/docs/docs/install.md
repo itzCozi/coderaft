@@ -1,31 +1,34 @@
 ---
 title: Installation Guide
-description: How to install devbox on your Debian/Ubuntu system
+description: How to install coderaft on your Debian/Ubuntu system
 ---
 
 ```bash
-# Primary (recommended)
-curl -fsSL https://raw.githubusercontent.com/itzcozi/devbox/main/install.sh | bash
+# GitHub (Primaty)
+curl -fsSL https://raw.githubusercontent.com/itzcozi/coderaft/main/install.sh | bash
 
 # Mirror (CDN)
-curl -fsSL https://devbox.ar0.eu/install.sh | bash
+curl -fsSL https://coderaft.ar0.eu/install.sh | bash
 ```
 
-If you encounter a 403 when using the mirror (common in some managed shells like AWS CloudShell), use the primary GitHub Raw URL instead.
+:::note
+
+We recommend GitHub as a reliable hosting solution; many providers may not fully trust our domain. Use the GitHub link for faster downloads and better reliability.
+:::
 
 This script will automatically:
 - Check system compatibility (Debian/Ubuntu only)
 - Install Go, Docker, make, and git if needed
-- Clone the repository and build devbox
-- Install devbox to `/usr/local/bin`
+- Clone the repository and build coderaft
+- Install coderaft to `/usr/local/bin`
 - Set up proper permissions
 
-<sub>Already done here? Head over to the [Quick Start Guide](/docs/start/) to learn how to use devbox.</sub>
+<sub>Already done here? Head over to the [Quick Start Guide](/docs/start/) to learn how to use coderaft.</sub>
 
 ## Manual Build from Source
 ---
 
-If you prefer to build devbox manually or the automatic script doesn't work for your system:
+If you prefer to build coderaft manually or the automatic script doesn't work for your system:
 
 ### Install Dependencies
 ```bash
@@ -39,8 +42,8 @@ sudo apt update \
 ### Build and Install
 ```bash
 # Clone the repository
-git clone https://github.com/itzcozi/devbox.git
-cd devbox
+git clone https://github.com/itzcozi/coderaft.git
+cd coderaft
 
 # Build the binary
 make build
@@ -52,11 +55,11 @@ sudo make install
 ## File Locations
 ---
 
-- **Project files**: `~/devbox/<project>/` (on host)
+- **Project files**: `~/coderaft/<project>/` (on host)
 - **Box workspace**: `/workspace/` (inside box)
-- **Configuration**: `~/.devbox/config.json`
+- **Configuration**: `~/.coderaft/config.json`
 
 ## Next Steps
 ---
 
-Now that you have devbox installed, quickly get started by following the [Quick Start Guide](/docs/start/).
+Now that you have coderaft installed, quickly get started by following the [Quick Start Guide](/docs/start/).

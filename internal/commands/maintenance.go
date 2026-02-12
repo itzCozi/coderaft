@@ -8,6 +8,8 @@ import (
 	"time"
 
 	"github.com/spf13/cobra"
+
+	"coderaft/internal/ui"
 )
 
 var (
@@ -21,8 +23,8 @@ var (
 
 var maintenanceCmd = &cobra.Command{
 	Use:   "maintenance [flags]",
-	Short: "Perform maintenance tasks on devbox projects and boxes",
-	Long: `Perform various maintenance tasks to keep your devbox environment healthy:
+	Short: "Perform maintenance tasks on coderaft projects and boxes",
+	Long: `Perform various maintenance tasks to keep your coderaft environment healthy:
 
 - Update system packages in boxes
 - Check health status of all projects
@@ -32,13 +34,13 @@ var maintenanceCmd = &cobra.Command{
 - System status checks
 
 Examples:
-  devbox maintenance                     # Interactive maintenance menu
-  devbox maintenance --update            # Update all boxes
-  devbox maintenance --health-check      # Check health of all projects
-  devbox maintenance --restart           # Restart all stopped boxes
-  devbox maintenance --rebuild           # Rebuild all boxes
-  devbox maintenance --status            # Show detailed status
-  devbox maintenance --auto-repair       # Auto-fix common issues`,
+  coderaft maintenance                     # Interactive maintenance menu
+  coderaft maintenance --update            # Update all boxes
+  coderaft maintenance --health-check      # Check health of all projects
+  coderaft maintenance --restart           # Restart all stopped boxes
+  coderaft maintenance --rebuild           # Rebuild all boxes
+  coderaft maintenance --status            # Show detailed status
+  coderaft maintenance --auto-repair       # Auto-fix common issues`,
 	Args: cobra.NoArgs,
 	RunE: func(cmd *cobra.Command, args []string) error {
 
@@ -79,7 +81,8 @@ Examples:
 		}
 
 		if len(maintenanceTasks) > 0 {
-			fmt.Printf("\nMaintenance completed successfully.\n")
+			ui.Blank()
+			ui.Success("maintenance completed")
 		}
 
 		return nil
@@ -87,21 +90,23 @@ Examples:
 }
 
 func runInteractiveMaintenance() error {
-	fmt.Printf("Devbox maintenance\n\n")
-	fmt.Printf("Available maintenance options:\n")
-	fmt.Printf("  1. Check system status\n")
-	fmt.Printf("  2. Perform health check on all projects\n")
-	fmt.Printf("  3. Update system packages in all boxes\n")
-	fmt.Printf("  4. Restart stopped boxes\n")
-	fmt.Printf("  5. Rebuild all boxes from latest base images\n")
-	fmt.Printf("  6. Auto-repair common issues\n")
-	fmt.Printf("  7. Full maintenance (options 2-4)\n")
-	fmt.Printf("  q. Quit\n\n")
+	ui.Header("Coderaft Maintenance")
+	ui.Blank()
+	ui.Info("Available options:")
+	ui.Info("  1. Check system status")
+	ui.Info("  2. Health check all projects")
+	ui.Info("  3. Update system packages in all boxes")
+	ui.Info("  4. Restart stopped boxes")
+	ui.Info("  5. Rebuild all boxes from latest images")
+	ui.Info("  6. Auto-repair common issues")
+	ui.Info("  7. Full maintenance (2-4)")
+	ui.Info("  q. Quit")
+	ui.Blank()
 
 	reader := bufio.NewReader(os.Stdin)
 
 	for {
-		fmt.Print("Select an option [1-7, q]: ")
+		ui.Prompt("Select an option [1-7, q]: ")
 		response, err := reader.ReadString('\n')
 		if err != nil {
 			return fmt.Errorf("failed to read input: %w", err)
@@ -123,7 +128,8 @@ func runInteractiveMaintenance() error {
 		case "6":
 			return autoRepairIssues()
 		case "7":
-			fmt.Printf("\nRunning full maintenance...\n")
+			ui.Blank()
+			ui.Status("running full maintenance...")
 			tasks := []func() error{
 				performHealthCheck,
 				updateAllboxes,
@@ -134,39 +140,41 @@ func runInteractiveMaintenance() error {
 					return err
 				}
 			}
-			fmt.Printf("\nFull maintenance completed.\n")
+			ui.Blank()
+			ui.Success("full maintenance completed")
 			return nil
 		case "q", "quit", "exit":
-			fmt.Printf("Maintenance cancelled.\n")
+			ui.Info("maintenance cancelled.")
 			return nil
 		default:
-			fmt.Printf("Invalid option. Please select 1-7 or q.\n")
+			ui.Info("invalid option. please select 1-7 or q.")
 		}
 	}
 }
 
 func performStatusCheck() error {
-	fmt.Printf("Devbox system status check\n")
-	fmt.Printf("=====================================\n\n")
+	ui.Header("System Status")
+	ui.Blank()
 
-	fmt.Printf("Docker status: ")
+	ui.Status("checking docker...")
 	if err := dockerClient.RunDockerCommand([]string{"version", "--format", "Server: {{.Server.Version}}"}); err != nil {
-		fmt.Printf("error: Docker not available: %v\n", err)
+		ui.Error("docker not available: %v", err)
 		return fmt.Errorf("docker is not available: %w", err)
 	}
 
 	cfg, err := configManager.Load()
 	if err != nil {
-		fmt.Printf("error: failed to load config: %v\n", err)
+		ui.Error("failed to load config: %v", err)
 		return fmt.Errorf("failed to load config: %w", err)
 	}
 
 	projects := cfg.GetProjects()
-	fmt.Printf("\nProjects: %d total\n", len(projects))
+	ui.Blank()
+	ui.Info("projects: %d total", len(projects))
 
 	boxes, err := dockerClient.ListBoxes()
 	if err != nil {
-		fmt.Printf("error: failed to list boxes: %v\n", err)
+		ui.Error("failed to list boxes: %v", err)
 		return fmt.Errorf("failed to list docker boxes: %w", err)
 	}
 
@@ -179,33 +187,36 @@ func performStatusCheck() error {
 	}
 
 	var running, stopped, missing int
-	fmt.Printf("\nBox status:\n")
+	ui.Blank()
+	ui.Info("box status:")
 	for projectName, project := range projects {
 		status := boxStatus[project.BoxName]
 		if status == "" {
-			fmt.Printf("  missing %s -> %s\n", projectName, project.BoxName)
+			ui.Item("%s -> %s (missing)", projectName, project.BoxName)
 			missing++
 		} else if strings.Contains(status, "Up") {
-			fmt.Printf("  running %s -> %s\n", projectName, project.BoxName)
+			ui.Item("%s -> %s (running)", projectName, project.BoxName)
 			running++
 		} else {
-			fmt.Printf("  stopped %s -> %s\n", projectName, project.BoxName)
+			ui.Item("%s -> %s (stopped)", projectName, project.BoxName)
 			stopped++
 		}
 	}
 
-	fmt.Printf("\nSummary: %d running, %d stopped, %d missing\n", running, stopped, missing)
+	ui.Blank()
+	ui.Summary("%d running, %d stopped, %d missing", running, stopped, missing)
 
-	fmt.Printf("\nDocker Disk Usage:\n")
+	ui.Blank()
+	ui.Info("docker disk usage:")
 	if err := dockerClient.RunDockerCommand([]string{"system", "df"}); err != nil {
-		fmt.Printf("error: failed to get disk usage: %v\n", err)
+		ui.Error("failed to get disk usage: %v", err)
 	}
 
 	return nil
 }
 
 func performHealthCheck() error {
-	fmt.Printf("Health Check: Scanning all devbox projects...\n")
+	ui.Status("scanning all coderaft projects...")
 
 	cfg, err := configManager.Load()
 	if err != nil {
@@ -214,7 +225,7 @@ func performHealthCheck() error {
 
 	projects := cfg.GetProjects()
 	if len(projects) == 0 {
-		fmt.Printf("No projects to check.\n")
+		ui.Info("no projects to check.")
 		return nil
 	}
 
@@ -233,55 +244,52 @@ func performHealthCheck() error {
 
 	var healthy, unhealthy, missing int
 
-	fmt.Printf("\nProject Health Report:\n")
-	fmt.Printf("----------------------\n")
+	ui.Blank()
+	ui.Info("Health Report:")
 
 	for projectName, project := range projects {
-		fmt.Printf("%s: ", projectName)
-
 		status := boxStatus[project.BoxName]
 		if status == "" {
-			fmt.Printf("error: box missing\n")
+			ui.Item("%s: box missing", projectName)
 			missing++
 			continue
 		}
 
 		if !strings.Contains(status, "Up") {
-			fmt.Printf("warning: box stopped (%s)\n", status)
+			ui.Item("%s: box stopped (%s)", projectName, status)
 			unhealthy++
 			continue
 		}
 
 		if _, err := os.Stat(project.WorkspacePath); os.IsNotExist(err) {
-			fmt.Printf("error: workspace directory missing\n")
+			ui.Item("%s: workspace directory missing", projectName)
 			unhealthy++
 			continue
 		}
 
 		if err := dockerClient.RunDockerCommand([]string{"exec", project.BoxName, "echo", "health-check"}); err != nil {
-			fmt.Printf("error: box not responsive\n")
+			ui.Item("%s: box not responsive", projectName)
 			unhealthy++
 			continue
 		}
 
-		fmt.Printf("Healthy\n")
+		ui.Item("%s: healthy", projectName)
 		healthy++
 	}
 
-	fmt.Printf("\nHealth Summary:\n")
-	fmt.Printf("  healthy: %d\n", healthy)
-	fmt.Printf("  unhealthy: %d\n", unhealthy)
-	fmt.Printf("  missing: %d\n", missing)
+	ui.Blank()
+	ui.Summary("%d healthy, %d unhealthy, %d missing", healthy, unhealthy, missing)
 
 	if unhealthy > 0 || missing > 0 {
-		fmt.Printf("\nhint: Use 'devbox maintenance --auto-repair' to fix common issues\n")
+		ui.Blank()
+		ui.Info("hint: run 'coderaft maintenance --auto-repair' to fix common issues")
 	}
 
 	return nil
 }
 
 func updateAllboxes() error {
-	fmt.Printf("Updating system packages in all devbox boxes...\n")
+	ui.Status("updating system packages in all boxes...")
 
 	cfg, err := configManager.Load()
 	if err != nil {
@@ -290,31 +298,32 @@ func updateAllboxes() error {
 
 	projects := cfg.GetProjects()
 	if len(projects) == 0 {
-		fmt.Printf("No projects to update.\n")
+		ui.Info("no projects to update.")
 		return nil
 	}
 
 	var updated, failed int
 
 	for projectName, project := range projects {
-		fmt.Printf("\nUpdating %s...\n", projectName)
+		ui.Blank()
+		ui.Status("updating %s...", projectName)
 
 		status, err := dockerClient.GetBoxStatus(project.BoxName)
 		if err != nil {
-			fmt.Printf("error: failed to check status for %s: %v\n", projectName, err)
+			ui.Error("failed to check status for %s: %v", projectName, err)
 			failed++
 			continue
 		}
 
 		if status == "not found" {
-			fmt.Printf("warning: box %s not found, skipping\n", project.BoxName)
+			ui.Warning("box %s not found, skipping", project.BoxName)
 			continue
 		}
 
 		if status != "running" {
-			fmt.Printf("Starting %s...\n", project.BoxName)
+			ui.Status("starting %s...", project.BoxName)
 			if err := dockerClient.StartBox(project.BoxName); err != nil {
-				fmt.Printf("error: failed to start %s: %v\n", project.BoxName, err)
+				ui.Error("failed to start %s: %v", project.BoxName, err)
 				failed++
 				continue
 			}
@@ -330,17 +339,16 @@ func updateAllboxes() error {
 		}
 
 		if err := dockerClient.ExecuteSetupCommandsWithOutput(project.BoxName, updateCommands, false); err != nil {
-			fmt.Printf("error: failed to update %s: %v\n", projectName, err)
+			ui.Error("failed to update %s: %v", projectName, err)
 			failed++
 		} else {
-			fmt.Printf("Updated %s successfully\n", projectName)
-
-			_ = WriteLockFileForBox(project.BoxName, projectName, project.WorkspacePath, project.BaseImage, "")
+			ui.Success("%s updated", projectName)
 			updated++
 		}
 	}
 
-	fmt.Printf("\nUpdate Summary: %d updated, %d failed\n", updated, failed)
+	ui.Blank()
+	ui.Summary("%d updated, %d failed", updated, failed)
 	if failed > 0 {
 		return fmt.Errorf("failed to update %d box(s)", failed)
 	}
@@ -349,7 +357,7 @@ func updateAllboxes() error {
 }
 
 func restartStoppedboxes() error {
-	fmt.Printf("Restarting stopped devbox boxes...\n")
+	ui.Status("restarting stopped boxes...")
 
 	cfg, err := configManager.Load()
 	if err != nil {
@@ -358,7 +366,7 @@ func restartStoppedboxes() error {
 
 	projects := cfg.GetProjects()
 	if len(projects) == 0 {
-		fmt.Printf("No projects to restart.\n")
+		ui.Info("no projects to restart.")
 		return nil
 	}
 
@@ -367,31 +375,32 @@ func restartStoppedboxes() error {
 	for projectName, project := range projects {
 		status, err := dockerClient.GetBoxStatus(project.BoxName)
 		if err != nil {
-			fmt.Printf("error: failed to check status for %s: %v\n", projectName, err)
+			ui.Error("failed to check status for %s: %v", projectName, err)
 			failed++
 			continue
 		}
 
 		if status == "not found" {
-			fmt.Printf("warning: box %s not found, skipping\n", project.BoxName)
+			ui.Warning("box %s not found, skipping", project.BoxName)
 			continue
 		}
 
 		if status != "running" {
-			fmt.Printf("Starting %s...\n", projectName)
+			ui.Status("starting %s...", projectName)
 			if err := dockerClient.StartBox(project.BoxName); err != nil {
-				fmt.Printf("error: failed to start %s: %v\n", projectName, err)
+				ui.Error("failed to start %s: %v", projectName, err)
 				failed++
 			} else {
-				fmt.Printf("Started %s\n", projectName)
+				ui.Success("%s started", projectName)
 				restarted++
 			}
 		} else {
-			fmt.Printf("%s already running\n", projectName)
+			ui.Info("%s already running", projectName)
 		}
 	}
 
-	fmt.Printf("\nRestart Summary: %d restarted, %d failed\n", restarted, failed)
+	ui.Blank()
+	ui.Summary("%d restarted, %d failed", restarted, failed)
 	if failed > 0 {
 		return fmt.Errorf("failed to restart %d box(s)", failed)
 	}
@@ -400,10 +409,10 @@ func restartStoppedboxes() error {
 }
 
 func rebuildAllboxes() error {
-	fmt.Printf("Rebuilding all devbox boxes from latest base images...\n")
+	ui.Status("rebuilding all boxes from latest images...")
 
 	if !forceFlag {
-		fmt.Print("This will destroy and recreate all boxes. Continue? (y/N): ")
+		ui.Prompt("This will destroy and recreate all boxes. Continue? (y/N): ")
 		reader := bufio.NewReader(os.Stdin)
 		response, err := reader.ReadString('\n')
 		if err != nil {
@@ -412,7 +421,7 @@ func rebuildAllboxes() error {
 
 		response = strings.ToLower(strings.TrimSpace(response))
 		if response != "y" && response != "yes" {
-			fmt.Printf("Rebuild cancelled.\n")
+			ui.Info("rebuild cancelled.")
 			return nil
 		}
 	}
@@ -424,39 +433,40 @@ func rebuildAllboxes() error {
 
 	projects := cfg.GetProjects()
 	if len(projects) == 0 {
-		fmt.Printf("No projects to rebuild.\n")
+		ui.Info("no projects to rebuild.")
 		return nil
 	}
 
 	var rebuilt, failed int
 
 	for projectName, project := range projects {
-		fmt.Printf("\nRebuilding %s...\n", projectName)
+		ui.Blank()
+		ui.Status("rebuilding %s...", projectName)
 
 		if exists, err := dockerClient.BoxExists(project.BoxName); err != nil {
-			fmt.Printf("error: failed to check if %s exists: %v\n", project.BoxName, err)
+			ui.Error("failed to check if %s exists: %v", project.BoxName, err)
 			failed++
 			continue
 		} else if exists {
-			fmt.Printf("Stopping and removing existing box...\n")
+			ui.Status("stopping and removing existing box...")
 			dockerClient.StopBox(project.BoxName)
 			if err := dockerClient.RemoveBox(project.BoxName); err != nil {
-				fmt.Printf("error: failed to remove %s: %v\n", project.BoxName, err)
+				ui.Error("failed to remove %s: %v", project.BoxName, err)
 				failed++
 				continue
 			}
 		}
 
-		fmt.Printf("Recreating box...\n")
+		ui.Status("recreating box...")
 
 		projectConfig, err := configManager.LoadProjectConfig(project.WorkspacePath)
 		if err != nil {
-			fmt.Printf("warning: could not load project config: %v\n", err)
+			ui.Warning("could not load project config: %v", err)
 		}
 
 		baseImage := cfg.GetEffectiveBaseImage(project, projectConfig)
 		if err := dockerClient.PullImage(baseImage); err != nil {
-			fmt.Printf("error: failed to pull %s: %v\n", baseImage, err)
+			ui.Error("failed to pull %s: %v", baseImage, err)
 			failed++
 			continue
 		}
@@ -468,19 +478,19 @@ func rebuildAllboxes() error {
 
 		boxID, err := dockerClient.CreateBox(project.BoxName, baseImage, project.WorkspacePath, workspaceBox)
 		if err != nil {
-			fmt.Printf("error: failed to create %s: %v\n", project.BoxName, err)
+			ui.Error("failed to create %s: %v", project.BoxName, err)
 			failed++
 			continue
 		}
 
 		if err := dockerClient.StartBox(boxID); err != nil {
-			fmt.Printf("error: failed to start %s: %v\n", project.BoxName, err)
+			ui.Error("failed to start %s: %v", project.BoxName, err)
 			failed++
 			continue
 		}
 
 		if err := dockerClient.WaitForBox(project.BoxName, 30*time.Second); err != nil {
-			fmt.Printf("error: box %s failed to start: %v\n", project.BoxName, err)
+			ui.Error("box %s failed to start: %v", project.BoxName, err)
 			failed++
 			continue
 		}
@@ -490,26 +500,25 @@ func rebuildAllboxes() error {
 			"apt full-upgrade -y",
 		}
 		if err := dockerClient.ExecuteSetupCommandsWithOutput(project.BoxName, updateCommands, false); err != nil {
-			fmt.Printf("warning: failed to update system packages: %v\n", err)
+			ui.Warning("failed to update system packages: %v", err)
 		}
 
 		if projectConfig != nil && len(projectConfig.SetupCommands) > 0 {
 			if err := dockerClient.ExecuteSetupCommandsWithOutput(project.BoxName, projectConfig.SetupCommands, false); err != nil {
-				fmt.Printf("warning: failed to execute setup commands: %v\n", err)
+				ui.Warning("failed to execute setup commands: %v", err)
 			}
 		}
 
-		if err := dockerClient.SetupDevboxInBoxWithUpdate(project.BoxName, projectName); err != nil {
-			fmt.Printf("warning: failed to setup devbox environment: %v\n", err)
+		if err := dockerClient.SetupCoderaftInBoxWithUpdate(project.BoxName, projectName); err != nil {
+			ui.Warning("failed to setup coderaft environment: %v", err)
 		}
 
-		_ = WriteLockFileForBox(project.BoxName, projectName, project.WorkspacePath, project.BaseImage, "")
-
-		fmt.Printf("Rebuilt %s successfully\n", projectName)
+		ui.Success("%s rebuilt", projectName)
 		rebuilt++
 	}
 
-	fmt.Printf("\nRebuild Summary: %d rebuilt, %d failed\n", rebuilt, failed)
+	ui.Blank()
+	ui.Summary("%d rebuilt, %d failed", rebuilt, failed)
 	if failed > 0 {
 		return fmt.Errorf("failed to rebuild %d box(s)", failed)
 	}
@@ -518,7 +527,7 @@ func rebuildAllboxes() error {
 }
 
 func autoRepairIssues() error {
-	fmt.Printf("Auto-repairing common devbox issues...\n")
+	ui.Status("auto-repairing common issues...")
 
 	cfg, err := configManager.Load()
 	if err != nil {
@@ -527,21 +536,22 @@ func autoRepairIssues() error {
 
 	projects := cfg.GetProjects()
 	if len(projects) == 0 {
-		fmt.Printf("No projects to repair.\n")
+		ui.Info("no projects to repair.")
 		return nil
 	}
 
 	var repaired, failed int
 
 	for projectName, project := range projects {
-		fmt.Printf("\nChecking %s...\n", projectName)
+		ui.Blank()
+		ui.Status("checking %s...", projectName)
 
 		issuesFound := false
 
 		if _, err := os.Stat(project.WorkspacePath); os.IsNotExist(err) {
-			fmt.Printf("Creating missing workspace directory...\n")
+			ui.Status("creating missing workspace directory...")
 			if err := os.MkdirAll(project.WorkspacePath, 0755); err != nil {
-				fmt.Printf("error: failed to create workspace: %v\n", err)
+				ui.Error("failed to create workspace: %v", err)
 				failed++
 				continue
 			}
@@ -550,13 +560,13 @@ func autoRepairIssues() error {
 
 		status, err := dockerClient.GetBoxStatus(project.BoxName)
 		if err != nil {
-			fmt.Printf("error: failed to check box status: %v\n", err)
+			ui.Error("failed to check box status: %v", err)
 			failed++
 			continue
 		}
 
 		if status == "not found" {
-			fmt.Printf("Recreating missing box...\n")
+			ui.Status("recreating missing box...")
 
 			projectConfig, _ := configManager.LoadProjectConfig(project.WorkspacePath)
 			baseImage := cfg.GetEffectiveBaseImage(project, projectConfig)
@@ -568,26 +578,26 @@ func autoRepairIssues() error {
 
 			boxID, err := dockerClient.CreateBox(project.BoxName, baseImage, project.WorkspacePath, workspaceBox)
 			if err != nil {
-				fmt.Printf("error: failed to recreate box: %v\n", err)
+				ui.Error("failed to recreate box: %v", err)
 				failed++
 				continue
 			}
 
 			if err := dockerClient.StartBox(boxID); err != nil {
-				fmt.Printf("error: failed to start box: %v\n", err)
+				ui.Error("failed to start box: %v", err)
 				failed++
 				continue
 			}
 
-			if err := dockerClient.SetupDevboxInBoxWithUpdate(project.BoxName, projectName); err != nil {
-				fmt.Printf("warning: failed to setup devbox environment: %v\n", err)
+			if err := dockerClient.SetupCoderaftInBoxWithUpdate(project.BoxName, projectName); err != nil {
+				ui.Warning("failed to setup coderaft environment: %v", err)
 			}
 
 			issuesFound = true
 		} else if status != "running" {
-			fmt.Printf("Starting stopped box...\n")
+			ui.Status("starting stopped box...")
 			if err := dockerClient.StartBox(project.BoxName); err != nil {
-				fmt.Printf("error: failed to start box: %v\n", err)
+				ui.Error("failed to start box: %v", err)
 				failed++
 				continue
 			}
@@ -596,10 +606,10 @@ func autoRepairIssues() error {
 
 		if status != "not found" {
 			if err := dockerClient.RunDockerCommand([]string{"exec", project.BoxName, "echo", "test"}); err != nil {
-				fmt.Printf("Box unresponsive, restarting...\n")
+				ui.Status("box unresponsive, restarting...")
 				dockerClient.StopBox(project.BoxName)
 				if err := dockerClient.StartBox(project.BoxName); err != nil {
-					fmt.Printf("error: failed to restart box: %v\n", err)
+					ui.Error("failed to restart box: %v", err)
 					failed++
 					continue
 				}
@@ -608,14 +618,15 @@ func autoRepairIssues() error {
 		}
 
 		if issuesFound {
-			fmt.Printf("Repaired %s\n", projectName)
+			ui.Success("%s repaired", projectName)
 			repaired++
 		} else {
-			fmt.Printf("%s is healthy\n", projectName)
+			ui.Info("%s is healthy", projectName)
 		}
 	}
 
-	fmt.Printf("\nAuto-repair Summary: %d repaired, %d failed\n", repaired, failed)
+	ui.Blank()
+	ui.Summary("%d repaired, %d failed", repaired, failed)
 	if failed > 0 {
 		return fmt.Errorf("failed to repair %d project(s)", failed)
 	}

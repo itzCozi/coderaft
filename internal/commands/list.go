@@ -5,6 +5,8 @@ import (
 	"strings"
 
 	"github.com/spf13/cobra"
+
+	"coderaft/internal/ui"
 )
 
 var (
@@ -13,8 +15,8 @@ var (
 
 var listCmd = &cobra.Command{
 	Use:   "list",
-	Short: "List all devbox projects and their status",
-	Long:  `Display all managed devbox projects along with their box status.`,
+	Short: "List all coderaft projects and their status",
+	Long:  `Display all managed coderaft projects along with their box status.`,
 	Args:  cobra.NoArgs,
 	RunE: func(cmd *cobra.Command, args []string) error {
 
@@ -25,8 +27,8 @@ var listCmd = &cobra.Command{
 
 		projects := cfg.GetProjects()
 		if len(projects) == 0 {
-			fmt.Println("No devbox projects found.")
-			fmt.Println("Create a new project with: devbox init <project-name>")
+			ui.Info("no coderaft projects found.")
+			ui.Info("create a new project with: coderaft init <project-name>")
 			return nil
 		}
 
@@ -44,7 +46,7 @@ var listCmd = &cobra.Command{
 			}
 		}
 
-		fmt.Printf("DEVBOX PROJECTS\n")
+		ui.Header("coderaft projects")
 		if verboseFlag {
 			fmt.Printf("%-20s %-20s %-15s %-12s %s\n", "PROJECT", "BOX", "STATUS", "CONFIG", "WORKSPACE")
 			fmt.Printf("%-20s %-20s %-15s %-12s %s\n",
@@ -70,12 +72,12 @@ var listCmd = &cobra.Command{
 
 			configStatus := "none"
 			if project.ConfigFile != "" {
-				configStatus = "devbox.json"
+				configStatus = "coderaft.json"
 			} else {
 
 				projectConfig, err := configManager.LoadProjectConfig(project.WorkspacePath)
 				if err == nil && projectConfig != nil {
-					configStatus = "devbox.json"
+					configStatus = "coderaft.json"
 				}
 			}
 
@@ -98,29 +100,32 @@ var listCmd = &cobra.Command{
 				projectConfig, err := configManager.LoadProjectConfig(project.WorkspacePath)
 				if err == nil && projectConfig != nil {
 					if projectConfig.BaseImage != "" && projectConfig.BaseImage != project.BaseImage {
-						fmt.Printf("  - Base image: %s (override)\n", projectConfig.BaseImage)
+						ui.Item("base image: %s (override)", projectConfig.BaseImage)
 					}
 					if len(projectConfig.Ports) > 0 {
-						fmt.Printf("  - Ports: %s\n", strings.Join(projectConfig.Ports, ", "))
+						ui.Item("ports: %s", strings.Join(projectConfig.Ports, ", "))
 					}
 					if len(projectConfig.SetupCommands) > 0 {
-						fmt.Printf("  - Setup commands: %d\n", len(projectConfig.SetupCommands))
+						ui.Item("setup commands: %d", len(projectConfig.SetupCommands))
 					}
 				}
 			}
 		}
 
-		fmt.Printf("\nTotal projects: %d\n", len(projects))
+		ui.Blank()
+		ui.Info("total projects: %d", len(projects))
 
 		if verboseFlag {
 
 			if cfg.Settings != nil {
-				fmt.Printf("\nGlobal settings:\n")
-				fmt.Printf("  Default base image: %s\n", cfg.Settings.DefaultBaseImage)
-				fmt.Printf("  Auto update: %t\n", cfg.Settings.AutoUpdate)
+				ui.Blank()
+				ui.Header("global settings")
+				ui.Detail("default base image", cfg.Settings.DefaultBaseImage)
+				ui.Detail("auto update", fmt.Sprintf("%t", cfg.Settings.AutoUpdate))
 			}
 		} else {
-			fmt.Printf("\nUse --verbose for detailed information including configurations.\n")
+			ui.Blank()
+			ui.Info("use --verbose for detailed information including configurations.")
 		}
 
 		return nil

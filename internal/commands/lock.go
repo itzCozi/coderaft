@@ -9,6 +9,8 @@ import (
 	"time"
 
 	"github.com/spf13/cobra"
+
+	"coderaft/internal/ui"
 )
 
 type lockFile struct {
@@ -73,17 +75,129 @@ var (
 
 var lockCmd = &cobra.Command{
 	Use:   "lock <project>",
-	Short: "Generate a comprehensive devbox.lock.json for a project",
+	Short: "Generate a comprehensive coderaft.lock.json for a project",
 	Args:  cobra.ExactArgs(1),
 	RunE: func(cmd *cobra.Command, args []string) error {
 		projectName := args[0]
-		return WriteLockFileForProject(projectName, lockOutput)
+
+		cfg, err := configManager.Load()
+		if err != nil {
+			return fmt.Errorf("failed to load configuration: %w", err)
+		}
+		proj, ok := cfg.GetProject(projectName)
+		if !ok {
+			return fmt.Errorf("project '%s' not found. Run 'coderaft init %s' first", projectName, projectName)
+		}
+
+		exists, err := dockerClient.BoxExists(proj.BoxName)
+		if err != nil {
+			return err
+		}
+		if !exists {
+			return fmt.Errorf("box '%s' does not exist. Start it with 'coderaft up %s'", proj.BoxName, projectName)
+		}
+		status, err := dockerClient.GetBoxStatus(proj.BoxName)
+		if err != nil {
+			return err
+		}
+		if status != "running" {
+			if err := dockerClient.StartBox(proj.BoxName); err != nil {
+				return fmt.Errorf("failed to start box '%s': %w", proj.BoxName, err)
+			}
+		}
+
+		imgName := proj.BaseImage
+		digest, imgID, imgErr := dockerClient.GetImageDigestInfo(imgName)
+		if imgErr != nil || digest == "" {
+
+			cid, err := dockerClient.GetContainerID(proj.BoxName)
+			if err == nil && cid != "" {
+				d2, id2, _ := dockerClient.GetImageDigestInfo(cid)
+				if d2 != "" || id2 != "" {
+					digest, imgID = d2, id2
+				}
+			}
+		}
+
+		mounts, _ := dockerClient.GetMounts(proj.BoxName)
+		ports, _ := dockerClient.GetPortMappings(proj.BoxName)
+
+		envMap, workdir, user, restart, labels, capabilities, resources, network := dockerClient.GetContainerMeta(proj.BoxName)
+
+		ui.Status("gathering package information...")
+		aptList, pipList, npmList, yarnList, pnpmList := dockerClient.QueryPackagesParallel(proj.BoxName)
+
+		aptSnapshot, aptSources, aptRelease := dockerClient.GetAptSources(proj.BoxName)
+		pipIndex, pipExtras := dockerClient.GetPipRegistries(proj.BoxName)
+		npmReg, yarnReg, pnpmReg := dockerClient.GetNodeRegistries(proj.BoxName)
+
+		lf := lockFile{
+			Version:   1,
+			Project:   proj.Name,
+			BoxName:   proj.BoxName,
+			CreatedAt: time.Now().UTC().Format(time.RFC3339),
+			BaseImage: lockImage{Name: imgName, Digest: digest, ID: imgID},
+			Container: lockContainer{
+				WorkingDir:   workdir,
+				User:         user,
+				Restart:      restart,
+				Network:      network,
+				Ports:        ports,
+				Volumes:      mounts,
+				Labels:       labels,
+				Environment:  envMap,
+				Capabilities: capabilities,
+				Resources:    resources,
+			},
+			Packages: lockPackages{
+				Apt:  aptList,
+				Pip:  pipList,
+				Npm:  npmList,
+				Yarn: yarnList,
+				Pnpm: pnpmList,
+			},
+			Registries: lockRegistries{
+				PipIndexURL:   pipIndex,
+				PipExtraIndex: pipExtras,
+				NpmRegistry:   npmReg,
+				YarnRegistry:  yarnReg,
+				PnpmRegistry:  pnpmReg,
+				Env:           envMap,
+			},
+			AptSources: lockAptSources{
+				SnapshotURL:   aptSnapshot,
+				SourcesLists:  aptSources,
+				PinnedRelease: aptRelease,
+			},
+		}
+
+		if pcfg, err := configManager.LoadProjectConfig(proj.WorkspacePath); err == nil && pcfg != nil {
+			if len(pcfg.SetupCommands) > 0 {
+				lf.SetupScript = pcfg.SetupCommands
+			}
+		}
+
+		outPath := lockOutput
+		if strings.TrimSpace(outPath) == "" {
+			outPath = filepath.Join(proj.WorkspacePath, "coderaft.lock.json")
+		}
+
+		b, err := json.MarshalIndent(lf, "", "  ")
+		if err != nil {
+			return fmt.Errorf("failed to marshal lock file: %w", err)
+		}
+		if err := os.WriteFile(outPath, b, 0644); err != nil {
+			return fmt.Errorf("failed to write lock file: %w", err)
+		}
+
+		ui.Success("wrote lock file: %s", outPath)
+		return nil
 	},
 }
 
 func init() {
 	rootCmd.AddCommand(lockCmd)
-	lockCmd.Flags().StringVarP(&lockOutput, "output", "o", "", "Output path for lock file (default: <workspace>/devbox.lock.json)")
+	lockCmd.Flags().StringVarP(&lockOutput, "output", "o", "", "Output path for lock file (default: <workspace>/coderaft.lock.json)")
 }
 
 func WriteLockFileForProject(projectName string, outPath string) error {

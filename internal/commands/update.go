@@ -9,6 +9,8 @@ import (
 	"time"
 
 	"github.com/spf13/cobra"
+
+	"coderaft/internal/ui"
 )
 
 var updateCmd = &cobra.Command{
@@ -43,7 +45,7 @@ func updateSingleProject(projectName string) error {
 	projectConfig, _ := configManager.LoadProjectConfig(project.WorkspacePath)
 	baseImage := cfg.GetEffectiveBaseImage(project, projectConfig)
 
-	fmt.Printf("Pulling latest base image for '%s': %s\n", projectName, baseImage)
+	ui.Status("pulling latest image for '%s': %s", projectName, baseImage)
 	if err := dockerClient.RunDockerCommand([]string{"pull", baseImage}); err != nil {
 		return fmt.Errorf("failed to pull base image %s: %w", baseImage, err)
 	}
@@ -53,7 +55,7 @@ func updateSingleProject(projectName string) error {
 		return fmt.Errorf("failed to check box existence: %w", err)
 	}
 	if existsBox {
-		fmt.Printf("Stopping and removing existing box '%s'...\n", project.BoxName)
+		ui.Status("stopping and removing existing box '%s'...", project.BoxName)
 
 		_ = dockerClient.StopBox(project.BoxName)
 		if err := dockerClient.RemoveBox(project.BoxName); err != nil {
@@ -73,7 +75,7 @@ func updateSingleProject(projectName string) error {
 		}
 	}
 
-	fmt.Printf("Recreating box '%s' with image '%s'...\n", project.BoxName, baseImage)
+	ui.Status("recreating box '%s' with image '%s'...", project.BoxName, baseImage)
 	boxID, err := dockerClient.CreateBoxWithConfig(project.BoxName, baseImage, project.WorkspacePath, workspaceBox, configMap)
 	if err != nil {
 		return fmt.Errorf("failed to create box: %w", err)
@@ -92,13 +94,13 @@ func updateSingleProject(projectName string) error {
 		"apt full-upgrade -y",
 	}
 	if err := dockerClient.ExecuteSetupCommandsWithOutput(project.BoxName, updateCommands, false); err != nil {
-		fmt.Printf("warning: failed to update system packages: %v\n", err)
+		ui.Warning("failed to update system packages: %v", err)
 	}
 
 	if project.WorkspacePath != "" {
-		lockfilePath := filepath.Join(project.WorkspacePath, "devbox.lock")
+		lockfilePath := filepath.Join(project.WorkspacePath, "coderaft.lock")
 		if _, err := os.Stat(lockfilePath); err == nil {
-			fmt.Printf("Replaying recorded package installs from devbox.lock...\n")
+			ui.Info("replaying recorded package installs from coderaft.lock...")
 			if data, readErr := os.ReadFile(lockfilePath); readErr == nil {
 				lines := strings.Split(string(data), "\n")
 				var cmds []string
@@ -111,7 +113,7 @@ func updateSingleProject(projectName string) error {
 				}
 				if len(cmds) > 0 {
 					if err := dockerClient.ExecuteSetupCommandsWithOutput(project.BoxName, cmds, false); err != nil {
-						fmt.Printf("warning: failed to replay devbox.lock commands: %v\n", err)
+						ui.Warning("failed to replay coderaft.lock commands: %v", err)
 					}
 				}
 			}
@@ -120,12 +122,12 @@ func updateSingleProject(projectName string) error {
 
 	if projectConfig != nil && len(projectConfig.SetupCommands) > 0 {
 		if err := dockerClient.ExecuteSetupCommandsWithOutput(project.BoxName, projectConfig.SetupCommands, false); err != nil {
-			fmt.Printf("warning: failed to execute setup commands: %v\n", err)
+			ui.Warning("failed to execute setup commands: %v", err)
 		}
 	}
 
-	if err := dockerClient.SetupDevboxInBoxWithUpdate(project.BoxName, projectName); err != nil {
-		fmt.Printf("warning: failed to setup devbox environment: %v\n", err)
+	if err := dockerClient.SetupCoderaftInBoxWithUpdate(project.BoxName, projectName); err != nil {
+		ui.Warning("failed to setup coderaft environment: %v", err)
 	}
 
 	if project.BaseImage != baseImage {
@@ -135,11 +137,7 @@ func updateSingleProject(projectName string) error {
 		}
 	}
 
-	fmt.Printf("Updated '%s' successfully\n", projectName)
-
-	if err := WriteLockFileForProject(projectName, ""); err != nil {
-		fmt.Printf("warning: failed to write lock file: %v\n", err)
-	}
+	ui.Success("'%s' updated", projectName)
 	return nil
 }
 
@@ -151,27 +149,24 @@ func updateAllProjects() error {
 
 	projects := cfg.GetProjects()
 	if len(projects) == 0 {
-		fmt.Printf("No projects to update.\n")
+		ui.Info("no projects to update.")
 		return nil
 	}
 
 	var updated, failed int
 	for projectName := range projects {
 		if err := updateSingleProject(projectName); err != nil {
-			fmt.Printf("error: failed to update %s: %v\n", projectName, err)
+			ui.Error("failed to update %s: %v", projectName, err)
 			failed++
 		} else {
 			updated++
 		}
 	}
 
-	fmt.Printf("\nUpdate Summary: %d updated, %d failed\n", updated, failed)
+	ui.Blank()
+	ui.Summary("%d updated, %d failed", updated, failed)
 	if failed > 0 {
 		return fmt.Errorf("failed to update %d project(s)", failed)
 	}
 	return nil
-}
-
-func init() {
-
 }
