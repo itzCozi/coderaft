@@ -89,14 +89,13 @@ func runHooksInstall(projectName string) error {
 	hookPath := filepath.Join(hooksDir, "pre-commit")
 	script := hookScript(projectName)
 
-	
 	if data, err := os.ReadFile(hookPath); err == nil {
 		content := string(data)
 		if strings.Contains(content, hookMarker) {
 			ui.Warning("coderaft pre-commit hook is already installed")
 			return nil
 		}
-		
+
 		script = "\n" + script
 		f, err := os.OpenFile(hookPath, os.O_APPEND|os.O_WRONLY, 0755)
 		if err != nil {
@@ -110,7 +109,6 @@ func runHooksInstall(projectName string) error {
 		return nil
 	}
 
-	
 	if err := os.WriteFile(hookPath, []byte(script), 0755); err != nil {
 		return fmt.Errorf("failed to write hook: %w", err)
 	}
@@ -144,8 +142,6 @@ func runHooksRemove(projectName string) error {
 		return nil
 	}
 
-	
-	
 	lines := strings.Split(content, "\n")
 	var kept []string
 	skip := false
@@ -158,14 +154,14 @@ func runHooksRemove(projectName string) error {
 		}
 		if skip {
 			trimmed := strings.TrimSpace(line)
-			
+
 			if strings.HasPrefix(trimmed, "if ") || strings.HasPrefix(trimmed, "if[") {
 				depth++
 			}
-			
+
 			if trimmed == "fi" {
 				if depth <= 1 {
-					
+
 					skip = false
 					continue
 				}
@@ -178,7 +174,7 @@ func runHooksRemove(projectName string) error {
 
 	result := strings.TrimSpace(strings.Join(kept, "\n"))
 	if result == "" || result == "#!/bin/sh" {
-		
+
 		if err := os.Remove(hookPath); err != nil {
 			return fmt.Errorf("failed to remove hook: %w", err)
 		}

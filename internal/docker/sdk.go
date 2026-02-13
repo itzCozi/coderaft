@@ -66,7 +66,6 @@ func (s *sdkClient) pullImage(ctx context.Context, ref string) error {
 	}
 	defer reader.Close()
 
-	
 	decoder := json.NewDecoder(reader)
 	for {
 		var msg struct {
@@ -76,7 +75,7 @@ func (s *sdkClient) pullImage(ctx context.Context, ref string) error {
 			if err == io.EOF {
 				break
 			}
-			
+
 			break
 		}
 		if msg.Error != "" {
@@ -402,11 +401,11 @@ func applyProjectConfigSDK(
 						volumeStr = home + volumeStr[1:]
 					}
 				}
-				
+
 				parts := strings.SplitN(volumeStr, ":", 3)
 				var source, target string
 				if len(parts) == 3 && len(parts[0]) == 1 && parts[0][0] >= 'A' && parts[0][0] <= 'Z' || (len(parts) == 3 && len(parts[0]) == 1 && parts[0][0] >= 'a' && parts[0][0] <= 'z') {
-					
+
 					source = parts[0] + ":" + parts[1]
 					target = parts[2]
 				} else if len(parts) >= 2 {

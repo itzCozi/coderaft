@@ -356,7 +356,6 @@ rm -rf ~/.coderaft/
 # rm -rf ~/coderaft/  # This deletes your code!
 
 # Reinstall coderaft if needed
-curl -fsSL https://raw.githubusercontent.com/itzcozi/coderaft/main/install.sh | bash
 ```
 
 ##### "Recover project after Island deletion"

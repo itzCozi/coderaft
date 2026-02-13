@@ -112,7 +112,6 @@ var statusCmd = &cobra.Command{
 			ui.Detail("mounts", strings.Join(mounts, ", "))
 		}
 
-		
 		if pcfg, err := configManager.LoadProjectConfig(project.WorkspacePath); err == nil && pcfg != nil && pcfg.HealthCheck != nil {
 			if len(pcfg.HealthCheck.Test) > 0 {
 				ui.Detail("health check", strings.Join(pcfg.HealthCheck.Test, " "))

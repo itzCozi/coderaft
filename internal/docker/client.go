@@ -616,7 +616,7 @@ func AttachShell(islandName string, projectName string) error {
 	cmd.Stderr = os.Stderr
 
 	if err := cmd.Run(); err != nil {
-		
+
 		if exitErr, ok := err.(*exec.ExitError); ok {
 			code := exitErr.ExitCode()
 			if code == 130 || code == 137 || code == 0 {

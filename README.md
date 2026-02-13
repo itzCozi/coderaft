@@ -36,12 +36,18 @@ coderaft focuses on fast, disposable, Docker-native development environments wit
 
 ```bash
 curl -fsSL https://raw.githubusercontent.com/itzcozi/coderaft/main/install.sh | bash
+
+# Short link (optional)
+curl -fsSL https://coderaft.ar0.eu/install.sh | bash
 ```
 
 ### macOS
 
 ```bash
 curl -fsSL https://raw.githubusercontent.com/itzcozi/coderaft/main/install-macos.sh | bash
+
+# Short link (optional)
+curl -fsSL https://coderaft.ar0.eu/install-macos.sh | bash
 ```
 
 Or manually with Homebrew:
@@ -57,6 +63,9 @@ make build && sudo make install
 ```powershell
 # PowerShell (run as Administrator)
 irm https://raw.githubusercontent.com/itzcozi/coderaft/main/install.ps1 | iex
+
+# Short link (optional)
+irm https://coderaft.ar0.eu/install.ps1 | iex
 ```
 
 Or manually:

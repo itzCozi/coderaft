@@ -40,7 +40,6 @@ Exit code 0 means the island matches. Non-zero means drift was detected.`,
 		ctx, cancel := context.WithTimeout(context.Background(), timeout)
 		defer cancel()
 
-		
 		type verifyResult struct {
 			err error
 		}
@@ -95,7 +94,6 @@ func runVerify(projectName string) error {
 		}
 	}
 
-	
 	aptSnapshot, aptSources, aptRelease := dockerClient.GetAptSources(proj.IslandName)
 	npmReg, yarnReg, pnpmReg := dockerClient.GetNodeRegistries(proj.IslandName)
 	pipIndex, pipExtras := dockerClient.GetPipRegistries(proj.IslandName)
@@ -104,14 +102,12 @@ func runVerify(projectName string) error {
 	livePorts, _ := dockerClient.GetPortMappings(proj.IslandName)
 	liveMounts, _ := dockerClient.GetMounts(proj.IslandName)
 
-	
 	sort.Strings(aptList)
 	sort.Strings(pipList)
 	sort.Strings(npmList)
 	sort.Strings(yarnList)
 	sort.Strings(pnpmList)
 
-	
 	if lf.Checksum != "" {
 		ui.Status("verifying lock file checksum...")
 		liveLf := lockFile{
@@ -128,7 +124,7 @@ func runVerify(projectName string) error {
 				Capabilities: capabilities,
 				Resources:    resources,
 			},
-			SetupScript: lf.SetupScript, 
+			SetupScript: lf.SetupScript,
 			Packages: lockPackages{
 				Apt:  aptList,
 				Pip:  pipList,
@@ -150,7 +146,6 @@ func runVerify(projectName string) error {
 			},
 		}
 
-		
 		if lf.BaseImage.Digest != "" {
 			if liveDigest, _, _ := dockerClient.GetImageDigestInfo(lf.BaseImage.Name); liveDigest != "" {
 				liveLf.BaseImage.Digest = liveDigest
@@ -168,7 +163,6 @@ func runVerify(projectName string) error {
 
 	var drifts []string
 
-	
 	if lf.BaseImage.Digest != "" {
 		liveDigest, _, _ := dockerClient.GetImageDigestInfo(lf.BaseImage.Name)
 		if liveDigest != "" && liveDigest != lf.BaseImage.Digest {
@@ -176,7 +170,6 @@ func runVerify(projectName string) error {
 		}
 	}
 
-	
 	if lf.Container.WorkingDir != "" && lf.Container.WorkingDir != workdir {
 		drifts = append(drifts, fmt.Sprintf("working_dir mismatch: lock=%s current=%s", lf.Container.WorkingDir, workdir))
 	}
@@ -217,7 +210,6 @@ func runVerify(projectName string) error {
 		}
 	}
 
-	
 	if lf.AptSources.SnapshotURL != "" && normalizeURL(lf.AptSources.SnapshotURL) != normalizeURL(aptSnapshot) {
 		drifts = append(drifts, fmt.Sprintf("APT snapshot mismatch: lock=%s current=%s", lf.AptSources.SnapshotURL, aptSnapshot))
 	}
@@ -249,7 +241,6 @@ func runVerify(projectName string) error {
 		drifts = append(drifts, fmt.Sprintf("pnpm registry mismatch: lock=%s current=%s", lf.Registries.PnpmRegistry, pnpmReg))
 	}
 
-	
 	drifts = append(drifts, packageDiff("apt", "=", lf.Packages.Apt, aptList)...)
 	drifts = append(drifts, packageDiff("pip", "==", lf.Packages.Pip, pipList)...)
 	drifts = append(drifts, packageDiff("npm", "@", lf.Packages.Npm, npmList)...)
@@ -270,9 +261,6 @@ func runVerify(projectName string) error {
 	}
 	return nil
 }
-
-
-
 
 func packageDiff(manager, sep string, locked, live []string) []string {
 	lockMap := parseMap(locked, sep)

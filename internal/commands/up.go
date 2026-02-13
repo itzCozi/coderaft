@@ -153,8 +153,6 @@ var upCmd = &cobra.Command{
 		ui.Detail("image", baseImage)
 		ui.Info("hint: run 'coderaft shell %s' to enter the island.", projectName)
 
-		
-		
 		if cfg.Settings != nil && cfg.Settings.AutoApplyLock {
 			lockPath := filepath.Join(cwd, "coderaft.lock.json")
 			if _, err := os.Stat(lockPath); err == nil {
@@ -164,10 +162,8 @@ var upCmd = &cobra.Command{
 			}
 		}
 
-		
 		_ = WriteLockFileForIsland(IslandName, projectName, cwd, baseImage, "")
 
-		
 		verifyDigestAgainstLock(cwd, baseImage)
 
 		if cfg.Settings != nil && cfg.Settings.AutoStopOnExit && !keepRunningUpFlag {
@@ -187,14 +183,11 @@ func init() {
 	upCmd.Flags().BoolVar(&keepRunningUpFlag, "keep-running", false, "Keep the island running after 'up' finishes")
 }
 
-
-
-
 func verifyDigestAgainstLock(workspacePath, baseImage string) {
 	lockPath := filepath.Join(workspacePath, "coderaft.lock.json")
 	data, err := os.ReadFile(lockPath)
 	if err != nil {
-		return 
+		return
 	}
 	var lf struct {
 		BaseImage struct {

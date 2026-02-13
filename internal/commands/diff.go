@@ -70,7 +70,6 @@ func runDiff(projectName string) error {
 		}
 	}
 
-	
 	envMap, workdir, user, restart, labels, capabilities, resources, network := dockerClient.GetContainerMeta(proj.IslandName)
 	livePorts, _ := dockerClient.GetPortMappings(proj.IslandName)
 	liveMounts, _ := dockerClient.GetMounts(proj.IslandName)
@@ -82,7 +81,6 @@ func runDiff(projectName string) error {
 
 	var sections []string
 
-	
 	sec := diffSection("Base Image", []diffLine{
 		diffField("name", lf.BaseImage.Name, lf.BaseImage.Name),
 		diffField("digest", lf.BaseImage.Digest, liveDigest),
@@ -91,7 +89,6 @@ func runDiff(projectName string) error {
 		sections = append(sections, sec)
 	}
 
-	
 	var containerLines []diffLine
 	containerLines = append(containerLines, diffField("working_dir", lf.Container.WorkingDir, workdir))
 	containerLines = append(containerLines, diffField("user", lf.Container.User, user))
@@ -108,7 +105,6 @@ func runDiff(projectName string) error {
 		sections = append(sections, sec)
 	}
 
-	
 	for _, pm := range []struct {
 		name, sep string
 		locked    []string
@@ -126,7 +122,6 @@ func runDiff(projectName string) error {
 		}
 	}
 
-	
 	var regLines []diffLine
 	regLines = append(regLines, diffField("pip_index_url", lf.Registries.PipIndexURL, pipIndex))
 	regLines = append(regLines, diffSlice("pip_extra_index_urls", lf.Registries.PipExtraIndex, pipExtras))
@@ -138,7 +133,6 @@ func runDiff(projectName string) error {
 		sections = append(sections, sec)
 	}
 
-	
 	var aptLines []diffLine
 	aptLines = append(aptLines, diffField("snapshot_url", lf.AptSources.SnapshotURL, aptSnapshot))
 	aptLines = append(aptLines, diffSlice("sources_lists", lf.AptSources.SourcesLists, aptSources))
@@ -160,7 +154,6 @@ func runDiff(projectName string) error {
 	}
 	return nil
 }
-
 
 type diffLine string
 

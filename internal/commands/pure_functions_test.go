@@ -6,10 +6,6 @@ import (
 	"testing"
 )
 
-
-
-
-
 func TestComputeLockChecksum_Deterministic(t *testing.T) {
 	lf := &lockFile{
 		BaseImage: lockImage{Name: "ubuntu:22.04", Digest: "sha256:abc123"},
@@ -51,7 +47,7 @@ func TestComputeLockChecksum_Deterministic(t *testing.T) {
 	if !strings.HasPrefix(cs1, "sha256:") {
 		t.Fatalf("expected sha256: prefix, got %s", cs1)
 	}
-	if len(cs1) != 7+64 { 
+	if len(cs1) != 7+64 {
 		t.Fatalf("unexpected checksum length: %d", len(cs1))
 	}
 }
@@ -63,7 +59,6 @@ func TestComputeLockChecksum_ChangesOnDifferentInput(t *testing.T) {
 	}
 	csBase := computeLockChecksum(&base)
 
-	
 	altered := base
 	altered.BaseImage.Name = "debian:bookworm"
 	csAltered := computeLockChecksum(&altered)
@@ -71,21 +66,18 @@ func TestComputeLockChecksum_ChangesOnDifferentInput(t *testing.T) {
 		t.Fatal("changing base_image.name should change checksum")
 	}
 
-	
 	altered2 := base
 	altered2.Packages.Apt = []string{"git=1:2.40.0-1"}
 	if csBase == computeLockChecksum(&altered2) {
 		t.Fatal("changing a package version should change checksum")
 	}
 
-	
 	altered3 := base
 	altered3.Container.Gpus = "all"
 	if csBase == computeLockChecksum(&altered3) {
 		t.Fatal("adding GPU setting should change checksum")
 	}
 
-	
 	altered4 := base
 	altered4.SetupScript = []string{"echo hello"}
 	if csBase == computeLockChecksum(&altered4) {
@@ -111,10 +103,6 @@ func TestComputeLockChecksum_MapOrderInsensitive(t *testing.T) {
 	}
 }
 
-
-
-
-
 func TestEscapeBash(t *testing.T) {
 	tests := []struct {
 		in, want string
@@ -134,10 +122,6 @@ func TestEscapeBash(t *testing.T) {
 		}
 	}
 }
-
-
-
-
 
 func TestParseMap_AptSeparator(t *testing.T) {
 	lines := []string{"git=1:2.39.2-1", "curl=7.88.1-10", ""}
@@ -170,7 +154,7 @@ func TestParseMap_NpmAtSeparator(t *testing.T) {
 	if got["express"] != "4.18.2" {
 		t.Errorf("expected express=4.18.2, got %q", got["express"])
 	}
-	
+
 	if got["@types/node"] != "20.4.5" {
 		t.Errorf("expected @types/node=20.4.5, got %v", got)
 	}
@@ -186,10 +170,6 @@ func TestParseMap_EmptyAndWhitespace(t *testing.T) {
 		t.Errorf("expected git=1.0, got %q", got["git"])
 	}
 }
-
-
-
-
 
 func TestKeysNotIn(t *testing.T) {
 	a := map[string]string{"a": "1", "b": "2", "c": "3"}
@@ -211,10 +191,6 @@ func TestKeysNotIn_Empty(t *testing.T) {
 		t.Errorf("expected empty, got %v", keys)
 	}
 }
-
-
-
-
 
 func TestValidateRegistryURL_Valid(t *testing.T) {
 	valid := []string{
@@ -243,10 +219,6 @@ func TestValidateRegistryURL_Invalid(t *testing.T) {
 	}
 }
 
-
-
-
-
 func TestNormalizeURL(t *testing.T) {
 	tests := []struct {
 		in, want string
@@ -262,10 +234,6 @@ func TestNormalizeURL(t *testing.T) {
 	}
 }
 
-
-
-
-
 func TestStringSetEqual(t *testing.T) {
 	tests := []struct {
 		a, b []string
@@ -277,7 +245,7 @@ func TestStringSetEqual(t *testing.T) {
 		{[]string{"a", "b"}, []string{"a", "c"}, false},
 		{[]string{"a"}, []string{"a", "b"}, false},
 		{[]string{" a ", " b "}, []string{"b", "a"}, true},
-		{[]string{"", "a"}, []string{"a"}, true}, 
+		{[]string{"", "a"}, []string{"a"}, true},
 	}
 	for i, tt := range tests {
 		if got := stringSetEqual(tt.a, tt.b); got != tt.want {
@@ -285,10 +253,6 @@ func TestStringSetEqual(t *testing.T) {
 		}
 	}
 }
-
-
-
-
 
 func TestPackageDiff_NoDrift(t *testing.T) {
 	locked := []string{"git=1:2.39.2-1", "curl=7.88.1-10"}
@@ -345,10 +309,6 @@ func TestPackageDiff_Changed(t *testing.T) {
 		t.Errorf("expected changed flask entry, got %v", drifts)
 	}
 }
-
-
-
-
 
 func TestBuildReconcileActions_NoChanges(t *testing.T) {
 	pkgs := lockPackages{
@@ -471,7 +431,7 @@ func TestBuildReconcileActions_BatchedAptRemove(t *testing.T) {
 		Apt: []string{"git=1:2.39.2-1"},
 	}
 	cmds := buildReconcileActions(pkgs, []string{"git=1:2.39.2-1", "vim=9.0.1-1", "nano=7.2-1"}, nil, nil, nil, nil)
-	
+
 	removeCount := 0
 	for _, c := range cmds {
 		if strings.Contains(c, "apt-get remove") {

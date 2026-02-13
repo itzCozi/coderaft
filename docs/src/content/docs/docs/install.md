@@ -33,6 +33,9 @@ This script will automatically:
 
 ```bash
 curl -fsSL https://raw.githubusercontent.com/itzcozi/coderaft/main/install-macos.sh | bash
+
+# Short link (optional)
+curl -fsSL https://coderaft.ar0.eu/install-macos.sh | bash
 ```
 
 This script will:
@@ -65,6 +68,9 @@ On Apple Silicon Macs (M1/M2/M3/M4), Docker Desktop and Go handle ARM64 natively
 ```powershell
 # Run in PowerShell (as Administrator recommended)
 irm https://raw.githubusercontent.com/itzcozi/coderaft/main/install.ps1 | iex
+
+# Short link (optional)
+irm https://coderaft.ar0.eu/install.ps1 | iex
 ```
 
 This script will:

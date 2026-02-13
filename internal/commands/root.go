@@ -27,12 +27,11 @@ var rootCmd = &cobra.Command{
 
 		switch runtime.GOOS {
 		case "linux", "darwin", "windows":
-			
+
 		default:
 			return fmt.Errorf("unsupported platform: %s. coderaft supports Linux, macOS, and Windows", runtime.GOOS)
 		}
 
-		
 		switch cmd.Name() {
 		case "version", "completion", "help":
 			return nil
@@ -79,14 +78,12 @@ func Execute() error {
 }
 
 func init() {
-	
-	
+
 	rootCmd.SilenceErrors = true
 	rootCmd.SilenceUsage = true
 
 	rootCmd.PersistentFlags().BoolVar(&ui.Verbose, "verbose", false, "Show detailed progress messages")
 
-	
 	rootCmd.AddCommand(initCmd)
 	rootCmd.AddCommand(upCmd)
 	rootCmd.AddCommand(shellCmd)
@@ -96,19 +93,16 @@ func init() {
 	rootCmd.AddCommand(listCmd)
 	rootCmd.AddCommand(statusCmd)
 
-	
 	rootCmd.AddCommand(configCmd)
 	rootCmd.AddCommand(templatesCmd)
 	rootCmd.AddCommand(devcontainerCmd)
 
-	
 	rootCmd.AddCommand(lockCmd)
 	rootCmd.AddCommand(applyCmd)
 	rootCmd.AddCommand(verifyCmd)
 	rootCmd.AddCommand(backupCmd)
 	rootCmd.AddCommand(restoreCmd)
 
-	
 	rootCmd.AddCommand(cleanupCmd)
 	rootCmd.AddCommand(maintenanceCmd)
 	rootCmd.AddCommand(updateCmd)

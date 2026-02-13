@@ -68,7 +68,7 @@ var backupCmd = &cobra.Command{
 		if err != nil {
 			return fmt.Errorf("failed to commit island: %w", err)
 		}
-		_ = imgID 
+		_ = imgID
 
 		imageTar := filepath.Join(outDir, "image.tar")
 		ui.Status("saving image '%s' to %s...", imageTag, imageTar)

@@ -66,7 +66,6 @@ func (ic *ImageCache) GenerateDockerfile(cfg *BuildImageConfig) string {
 
 	b.WriteString(fmt.Sprintf("FROM %s\n\n", cfg.BaseImage))
 
-	
 	envKeys := make([]string, 0, len(cfg.Environment))
 	for k := range cfg.Environment {
 		envKeys = append(envKeys, k)
@@ -79,7 +78,6 @@ func (ic *ImageCache) GenerateDockerfile(cfg *BuildImageConfig) string {
 		b.WriteString("\n")
 	}
 
-	
 	labelKeys := make([]string, 0, len(cfg.Labels))
 	for k := range cfg.Labels {
 		labelKeys = append(labelKeys, k)
@@ -240,14 +238,14 @@ func (ic *ImageCache) CleanupImageCache(projectName string) error {
 }
 
 func extractAptPackages(cmd string) []string {
-	
+
 	cmd = strings.TrimPrefix(cmd, "DEBIAN_FRONTEND=noninteractive ")
 	cmd = strings.TrimPrefix(cmd, "apt install ")
 	cmd = strings.TrimPrefix(cmd, "apt-get install ")
 
 	var pkgs []string
 	for _, token := range strings.Fields(cmd) {
-		
+
 		if strings.HasPrefix(token, "-") {
 			continue
 		}

@@ -229,9 +229,6 @@ func (optSetup *OptimizedSetup) FastUp(projectConfig *config.ProjectConfig, proj
 	return nil
 }
 
-
-
-
 var allowedHistoryPrefixes = []string{
 	"apt ", "apt-get ", "pip ", "pip3 ", "npm ", "yarn ", "pnpm ", "corepack ",
 }

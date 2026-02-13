@@ -15,8 +15,6 @@ import (
 	"coderaft/internal/ui"
 )
 
-
-
 func dockerCmd() string {
 	return engine.Cmd()
 }

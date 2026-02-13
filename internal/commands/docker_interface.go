@@ -7,19 +7,10 @@ import (
 	"coderaft/internal/docker"
 )
 
-
-
-
-
-
-
-
 type DockerEngine interface {
-	
 	Close() error
 	IsDockerAvailableWith() error
 
-	
 	PullImage(ref string) error
 	ImageExists(ref string) bool
 	GetImageDigestInfo(ref string) (digest string, imageID string, err error)
@@ -27,7 +18,6 @@ type DockerEngine interface {
 	SaveImage(imageRef, tarPath string) error
 	LoadImage(tarPath string) (string, error)
 
-	
 	CreateIsland(name, image, workspaceHost, workspaceIsland string) (string, error)
 	CreateIslandWithConfig(name, image, workspaceHost, workspaceIsland string, projectConfig interface{}) (string, error)
 	StartIsland(islandID string) error
@@ -38,7 +28,6 @@ type DockerEngine interface {
 	WaitForIsland(islandName string, timeout time.Duration) error
 	ListIslands() ([]docker.IslandInfo, error)
 
-	
 	GetContainerID(islandName string) (string, error)
 	GetContainerStats(islandName string) (*docker.ContainerStats, error)
 	GetUptime(islandName string) (time.Duration, error)
@@ -48,13 +37,11 @@ type DockerEngine interface {
 	IsIslandInitialized(islandName string) bool
 	IsContainerIdle(islandName string) (bool, error)
 
-	
 	GetAptSources(islandName string) (snapshotURL string, sources []string, release string)
 	GetPipRegistries(islandName string) (indexURL string, extra []string)
 	GetNodeRegistries(islandName string) (npmReg, yarnReg, pnpmReg string)
 	QueryPackagesParallel(islandName string) (aptList, pipList, npmList, yarnList, pnpmList []string)
 
-	
 	SetupCoderaftOnIsland(islandName, projectName string) error
 	SetupCoderaftOnIslandWithUpdate(islandName, projectName string) error
 	ExecuteSetupCommandsWithOutput(islandName string, commands []string, showOutput bool) error
@@ -62,6 +49,5 @@ type DockerEngine interface {
 	RunDockerCommand(args []string) error
 	SDKExecFunc() func(ctx context.Context, containerID string, cmd []string, showOutput bool) (string, string, int, error)
 }
-
 
 var _ DockerEngine = (*docker.Client)(nil)

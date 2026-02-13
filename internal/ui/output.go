@@ -5,8 +5,6 @@ import (
 	"os"
 )
 
-
-
 var Verbose bool
 
 func Status(msg string, args ...interface{}) {

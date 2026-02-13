@@ -52,13 +52,11 @@ func runExport(projectName string) error {
 		return fmt.Errorf("island '%s' not found; run 'coderaft up %s' first", proj.IslandName, projectName)
 	}
 
-	
 	outPath := exportOutput
 	if outPath == "" {
 		outPath = filepath.Join(proj.WorkspacePath, fmt.Sprintf("%s-export-%s.tar.gz", projectName, time.Now().Format("20060102-150405")))
 	}
 
-	
 	ui.Status("snapping island state...")
 	imageTag := fmt.Sprintf("coderaft-export/%s:export-%d", projectName, time.Now().Unix())
 	imgID, err := dockerClient.CommitContainer(proj.IslandName, imageTag)
@@ -67,7 +65,6 @@ func runExport(projectName string) error {
 	}
 	ui.Detail("image", imgID)
 
-	
 	tmpDir, err := os.MkdirTemp("", "coderaft-export-*")
 	if err != nil {
 		return fmt.Errorf("failed to create temp dir: %w", err)
@@ -80,7 +77,6 @@ func runExport(projectName string) error {
 		return fmt.Errorf("failed to save image: %w", err)
 	}
 
-	
 	ui.Status("building export archive...")
 	outFile, err := os.Create(outPath)
 	if err != nil {
@@ -94,12 +90,10 @@ func runExport(projectName string) error {
 	tw := tar.NewWriter(gw)
 	defer tw.Close()
 
-	
 	if err := addFileToTar(tw, imageTar, "image.tar"); err != nil {
 		return fmt.Errorf("failed to add image to archive: %w", err)
 	}
 
-	
 	configPath := filepath.Join(proj.WorkspacePath, "coderaft.json")
 	if _, err := os.Stat(configPath); err == nil {
 		if err := addFileToTar(tw, configPath, "coderaft.json"); err != nil {
@@ -107,7 +101,6 @@ func runExport(projectName string) error {
 		}
 	}
 
-	
 	lockPath := filepath.Join(proj.WorkspacePath, "coderaft.lock.json")
 	if _, err := os.Stat(lockPath); err == nil {
 		if err := addFileToTar(tw, lockPath, "coderaft.lock.json"); err != nil {
@@ -115,7 +108,6 @@ func runExport(projectName string) error {
 		}
 	}
 
-	
 	manifest := map[string]interface{}{
 		"version":     1,
 		"project":     projectName,
@@ -128,7 +120,6 @@ func runExport(projectName string) error {
 		return fmt.Errorf("failed to add manifest to archive: %w", err)
 	}
 
-	
 	_ = dockerClient.RunDockerCommand([]string{"rmi", imageTag})
 
 	ui.Success("exported to %s", outPath)

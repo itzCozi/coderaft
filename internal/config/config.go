@@ -97,8 +97,6 @@ func NewConfigManager() (*ConfigManager, error) {
 	return &ConfigManager{configPath: configPath}, nil
 }
 
-
-
 func NewConfigManagerWithPath(configDir string) (*ConfigManager, error) {
 	if err := os.MkdirAll(configDir, 0755); err != nil {
 		return nil, fmt.Errorf("failed to create config directory: %w", err)
@@ -157,14 +155,12 @@ func (cm *ConfigManager) Save(config *Config) error {
 		return fmt.Errorf("failed to marshal config: %w", err)
 	}
 
-	
-	
 	tmpPath := cm.configPath + ".tmp"
 	if err := os.WriteFile(tmpPath, data, 0644); err != nil {
 		return fmt.Errorf("failed to write config file: %w", err)
 	}
 	if err := os.Rename(tmpPath, cm.configPath); err != nil {
-		
+
 		os.Remove(tmpPath)
 		if err := os.WriteFile(cm.configPath, data, 0644); err != nil {
 			return fmt.Errorf("failed to write config file: %w", err)
@@ -285,14 +281,14 @@ func durationLike(s string) bool {
 	if len(s) == 0 {
 		return false
 	}
-	
+
 	for _, suf := range []string{"ns", "us", "ms", "s", "m", "h"} {
 		if strings.HasSuffix(s, suf) {
 			prefix := s[:len(s)-len(suf)]
 			if len(prefix) == 0 {
 				return false
 			}
-			
+
 			hasDot := false
 			for _, c := range prefix {
 				if c == '.' {

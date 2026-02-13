@@ -160,7 +160,6 @@ func WriteLockFileForIsland(IslandName, projectName, workspacePath, baseImage, o
 	ui.Status("gathering package information...")
 	aptList, pipList, npmList, yarnList, pnpmList := dockerClient.QueryPackagesParallel(IslandName)
 
-	
 	sort.Strings(aptList)
 	sort.Strings(pipList)
 	sort.Strings(npmList)
@@ -171,7 +170,6 @@ func WriteLockFileForIsland(IslandName, projectName, workspacePath, baseImage, o
 	pipIndex, pipExtras := dockerClient.GetPipRegistries(IslandName)
 	npmReg, yarnReg, pnpmReg := dockerClient.GetNodeRegistries(IslandName)
 
-	
 	var gpuConfig string
 	if pcfg, pcfgErr := configManager.LoadProjectConfig(workspacePath); pcfgErr == nil && pcfg != nil {
 		gpuConfig = pcfg.Gpus
@@ -223,7 +221,6 @@ func WriteLockFileForIsland(IslandName, projectName, workspacePath, baseImage, o
 		}
 	}
 
-	
 	lf.Checksum = computeLockChecksum(&lf)
 
 	finalOut := strings.TrimSpace(outPath)
@@ -243,20 +240,12 @@ func WriteLockFileForIsland(IslandName, projectName, workspacePath, baseImage, o
 	return nil
 }
 
-
-
-
-
-
-
 func computeLockChecksum(lf *lockFile) string {
 	h := sha256.New()
 
-	
 	h.Write([]byte(lf.BaseImage.Name))
 	h.Write([]byte(lf.BaseImage.Digest))
 
-	
 	h.Write([]byte("container:"))
 	h.Write([]byte(lf.Container.WorkingDir))
 	h.Write([]byte(lf.Container.User))
@@ -291,17 +280,14 @@ func computeLockChecksum(lf *lockFile) string {
 	writeSortedMap("labels:", lf.Container.Labels)
 	writeSortedMap("resources:", lf.Container.Resources)
 
-	
 	writeList("setup:", lf.SetupScript)
 
-	
 	writeList("apt:", lf.Packages.Apt)
 	writeList("pip:", lf.Packages.Pip)
 	writeList("npm:", lf.Packages.Npm)
 	writeList("yarn:", lf.Packages.Yarn)
 	writeList("pnpm:", lf.Packages.Pnpm)
 
-	
 	h.Write([]byte(lf.Registries.PipIndexURL))
 	for _, u := range lf.Registries.PipExtraIndex {
 		h.Write([]byte(u))
@@ -310,7 +296,6 @@ func computeLockChecksum(lf *lockFile) string {
 	h.Write([]byte(lf.Registries.YarnRegistry))
 	h.Write([]byte(lf.Registries.PnpmRegistry))
 
-	
 	h.Write([]byte(lf.AptSources.SnapshotURL))
 	for _, s := range lf.AptSources.SourcesLists {
 		h.Write([]byte(s))

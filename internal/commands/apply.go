@@ -67,8 +67,6 @@ Use --dry-run to preview the changes without modifying the island.`,
 	},
 }
 
-
-
 func validateRegistryURL(name, rawURL string) error {
 	if rawURL == "" {
 		return nil
@@ -104,7 +102,6 @@ func runApply(ctx context.Context, projectName string) error {
 		return fmt.Errorf("invalid lockfile: %w", err)
 	}
 
-	
 	registryChecks := []struct{ name, url string }{
 		{"pip", lf.Registries.PipIndexURL},
 		{"npm", lf.Registries.NpmRegistry},
@@ -139,7 +136,6 @@ func runApply(ctx context.Context, projectName string) error {
 		}
 	}
 
-	
 	envMap, workdir, user, restart, _, capabilities, resources, network := dockerClient.GetContainerMeta(proj.IslandName)
 	var containerWarnings []string
 	if lf.Container.WorkingDir != "" && lf.Container.WorkingDir != workdir {
@@ -250,7 +246,6 @@ func runApply(ctx context.Context, projectName string) error {
 		return nil
 	}
 
-	
 	ui.Status("creating pre-apply snapshot for rollback safety...")
 	snapshotTag := fmt.Sprintf("coderaft-snapshot/%s:pre-apply-%d", projectName, time.Now().Unix())
 	_, snapshotErr := dockerClient.CommitContainer(proj.IslandName, snapshotTag)
@@ -275,7 +270,6 @@ func runApply(ctx context.Context, projectName string) error {
 		}
 	}
 
-	
 	if snapshotTag != "" {
 		ui.Status("cleaning up pre-apply snapshot...")
 		_ = dockerClient.RunDockerCommand([]string{"rmi", snapshotTag})
@@ -284,9 +278,6 @@ func runApply(ctx context.Context, projectName string) error {
 	ui.Success("applied lockfile: registries/sources configured and packages reconciled")
 	return nil
 }
-
-
-
 
 func escapeBash(s string) string {
 	s = strings.ReplaceAll(s, `\`, `\\`)

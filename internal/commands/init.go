@@ -161,7 +161,6 @@ Examples:
 			return fmt.Errorf("island failed to start: %w", err)
 		}
 
-		
 		updateCommands := []string{
 			"apt update -y",
 		}

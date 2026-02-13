@@ -14,8 +14,7 @@ func TestVersionCommand(t *testing.T) {
 
 	output := buf.String()
 	if output == "" {
-		
-		
+
 		if versionCmd.Use != "version" {
 			t.Errorf("Expected Use to be 'version', got %q", versionCmd.Use)
 		}
