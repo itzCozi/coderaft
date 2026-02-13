@@ -115,6 +115,10 @@ func validateProjectName(name string) error {
 		return fmt.Errorf("project name cannot be empty")
 	}
 
+	if len(name) > 64 {
+		return fmt.Errorf("project name cannot exceed 64 characters")
+	}
+
 	matched, err := regexp.MatchString("^[a-zA-Z0-9_-]+$", name)
 	if err != nil {
 		return fmt.Errorf("error validating project name: %w", err)

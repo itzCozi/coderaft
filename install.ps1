@@ -1,12 +1,12 @@
 #Requires -Version 5.1
 <#
 .SYNOPSIS
-    Installs coderaft on Windows.
+    Installs coderaft on Windows by building from source.
 
 .DESCRIPTION
-    This script downloads (or builds) the coderaft binary and installs it
-    to a directory on the user's PATH. It also verifies that Docker Desktop
-    is available.
+    This script clones the coderaft repository from the main branch,
+    builds the binary using Go, and installs it to a directory on the user's PATH.
+    It also verifies that Docker Desktop is available.
 
 .PARAMETER InstallDir
     The directory to install coderaft into. Defaults to "$env:LOCALAPPDATA\coderaft\bin".
@@ -20,6 +20,7 @@
 
     # One-liner from GitHub (run in PowerShell as Administrator):
     irm https://raw.githubusercontent.com/itzcozi/coderaft/main/install.ps1 | iex
+    # or mirror: irm https://coderaft.ar0.eu/install.ps1 | iex
 #>
 
 [CmdletBinding()]
@@ -88,12 +89,24 @@ if (Test-CommandExists 'docker') {
     exit 1
 }
 
-# Check for Git (needed if building from source)
-$hasGit = Test-CommandExists 'git'
-$hasGo  = Test-CommandExists 'go'
+# Check for Git
+if (-not (Test-CommandExists 'git')) {
+    Write-Err "Git is required. Please install Git:"
+    Write-Info "  https://git-scm.com/download/win"
+    exit 1
+}
+Write-Ok "Git found: $(git --version)"
+
+# Check for Go
+if (-not (Test-CommandExists 'go')) {
+    Write-Err "Go is required. Please install Go:"
+    Write-Info "  https://go.dev/dl/"
+    exit 1
+}
+Write-Ok "Go found: $(go version)"
 
 # =============================================================================
-# Determine install method
+# Build from source
 # =============================================================================
 
 $binaryName = "coderaft.exe"
@@ -101,53 +114,27 @@ $tempDir = Join-Path ([System.IO.Path]::GetTempPath()) "coderaft-install-$(Get-R
 New-Item -ItemType Directory -Path $tempDir -Force | Out-Null
 
 try {
-    # Try downloading a pre-built release first
-    $releaseBinary = "coderaft-windows-$arch.exe"
-    $downloadUrl = "https://github.com/itzcozi/coderaft/releases/latest/download/$releaseBinary"
+    Write-Info "Cloning coderaft repository..."
+    git clone --depth 1 https://github.com/itzcozi/coderaft.git (Join-Path $tempDir "coderaft-src") 2>&1 | Out-Null
+    if ($LASTEXITCODE -ne 0) {
+        Write-Err "Failed to clone repository."
+        exit 1
+    }
 
-    Write-Info "Attempting to download pre-built binary..."
+    Push-Location (Join-Path $tempDir "coderaft-src")
     try {
-        $webClient = New-Object System.Net.WebClient
-        $webClient.Headers.Add("User-Agent", "coderaft-installer/1.0")
-        $destPath = Join-Path $tempDir $binaryName
-        $webClient.DownloadFile($downloadUrl, $destPath)
-        Write-Ok "Downloaded pre-built binary."
-    } catch {
-        Write-Warn "Pre-built binary not available. Building from source..."
-
-        if (-not $hasGit) {
-            Write-Err "Git is required to build from source. Please install Git:"
-            Write-Info "  https://git-scm.com/download/win"
-            exit 1
-        }
-        if (-not $hasGo) {
-            Write-Err "Go is required to build from source. Please install Go:"
-            Write-Info "  https://go.dev/dl/"
-            exit 1
-        }
-
-        Write-Info "Cloning coderaft repository..."
-        git clone --depth 1 https://github.com/itzcozi/coderaft.git (Join-Path $tempDir "coderaft-src") 2>&1 | Out-Null
+        Write-Info "Building coderaft..."
+        $env:CGO_ENABLED = "0"
+        $env:GOOS = "windows"
+        $env:GOARCH = $arch
+        go build -o (Join-Path $tempDir $binaryName) ./cmd/coderaft
         if ($LASTEXITCODE -ne 0) {
-            Write-Err "Failed to clone repository."
+            Write-Err "Build failed."
             exit 1
         }
-
-        Push-Location (Join-Path $tempDir "coderaft-src")
-        try {
-            Write-Info "Building coderaft..."
-            $env:CGO_ENABLED = "0"
-            $env:GOOS = "windows"
-            $env:GOARCH = $arch
-            go build -o (Join-Path $tempDir $binaryName) ./cmd/coderaft
-            if ($LASTEXITCODE -ne 0) {
-                Write-Err "Build failed."
-                exit 1
-            }
-            Write-Ok "Build succeeded."
-        } finally {
-            Pop-Location
-        }
+        Write-Ok "Build succeeded."
+    } finally {
+        Pop-Location
     }
 
     # =============================================================================

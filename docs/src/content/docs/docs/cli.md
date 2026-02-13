@@ -60,13 +60,13 @@ coderaft up [--dotfiles <path>] [--keep-running]
 
 **Behavior:**
 - Reads `./coderaft.json`
-- Creates/starts a Island named `coderaft_<name>` where `<name>` comes from `coderaft.json`'s `name` (or the folder name)
+- Creates/starts an Island named `coderaft_<name>` where `<name>` comes from `coderaft.json`'s `name` (or the folder name)
 - Applies ports, env, and volumes from configuration
 - Runs a system update, then `setup_commands`
 - Installs the coderaft wrapper for nice shell UX
- - Records package installations you perform inside the Island to `coderaft.history` (apt/pip/npm/yarn/pnpm). On rebuilds, these commands are replayed to reproduce the environment.
- - If global setting `auto_stop_on_exit` is enabled (default), `coderaft up` stops the container right away if it is idle (no exposed ports and only the init process running). Use `--keep-running` to leave it running.
- - When `auto_stop_on_exit` is enabled and your `coderaft.json` does not specify a `restart` policy, coderaft uses `--restart no` to prevent the container from auto-restarting after being stopped.
+- Records package installations you perform inside the Island to `coderaft.history` (apt/pip/npm/yarn/pnpm). On rebuilds, these commands are replayed to reproduce the environment.
+- If global setting `auto_stop_on_exit` is enabled (default), `coderaft up` stops the container right away if it is idle (no exposed ports and only the init process running). Use `--keep-running` to leave it running.
+- When `auto_stop_on_exit` is enabled and your `coderaft.json` does not specify a `restart` policy, coderaft uses `--restart no` to prevent the container from auto-restarting after being stopped.
 
 **Examples:**
 ```bash
@@ -330,8 +330,8 @@ coderaft lock myproject -o ./env/coderaft.lock.json
   "created_at": "2026-02-12T20:41:51Z",
   "checksum": "sha256:a1b2c3d4e5f6...",
   "base_image": {
-    "name": "ubuntu:latest",
-    "digest": "ubuntu@sha256:...",
+    "name": "buildpack-deps:bookworm",
+    "digest": "buildpack-deps@sha256:...",
     "id": "sha256:..."
   },
   "container": {
@@ -713,6 +713,14 @@ coderaft config show <project>
 
 Note: Template listing and management has moved to the top-level `coderaft templates` command.
 
+#### `coderaft config schema`
+Print the JSON Schema for coderaft.json, useful for editor validation and autocompletion.
+
+**Syntax:**
+```bash
+coderaft config schema
+```
+
 #### `coderaft config global`
 Show global coderaft configuration.
 
@@ -842,7 +850,7 @@ coderaft update [project]
 - When a project is specified, only that environment is updated
 - With no project, all registered projects are updated
 - Pulls the latest base image, recreates the Island with current coderaft.json config, and re-runs setup commands
- - Replays package install commands from `coderaft.history` to restore your previously installed packages
+- Replays package install commands from `coderaft.history` to restore your previously installed packages
 
 **Options:**
 - None currently. Uses your existing configuration in `coderaft.json` if present.
@@ -860,7 +868,7 @@ coderaft update
 - Your files remain in ~/coderaft/<project>/ and are re-mounted into the new Island
 - If the project has a coderaft.json, its settings (ports, env, volumes, etc.) are applied on rebuild
 - System packages inside the Island are updated as part of the rebuild
- - If the Island exists, it will be stopped and replaced; if missing, it will be created
+- If the Island exists, it will be stopped and replaced; if missing, it will be created
 
 ### `coderaft hooks`
 
@@ -1005,8 +1013,6 @@ source <(coderaft completion bash)
 
 # Install for all sessions (Linux)
 sudo coderaft completion bash > /etc/bash_completion.d/coderaft
-
-
 ```
 
 **Zsh:**
@@ -1053,7 +1059,7 @@ coderaft templates show <TAB>     # Shows: available-template-names
 Coderaft creates Islands (Docker containers) with these characteristics:
 
 - **Name**: `coderaft_<project>`
-- **Base Image**: `ubuntu:latest` (configurable)
+- **Base Image**: `buildpack-deps:bookworm` (configurable)
 - **Working Directory**: `/island`
 - **Mount**: `~/coderaft/<project>` → `/island`
 - **Restart Policy**: `unless-stopped` (or `no` when `auto_stop_on_exit` is enabled and no explicit policy is set)
@@ -1066,7 +1072,7 @@ docker create --name coderaft_myproject \
   --restart unless-stopped \
   -v ~/coderaft/myproject:/island \
   -w /island \
-  ubuntu:latest sleep infinity
+  buildpack-deps:bookworm sleep infinity
 
 # coderaft shell myproject
 docker start coderaft_myproject

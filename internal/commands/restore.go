@@ -58,6 +58,9 @@ var restoreCmd = &cobra.Command{
 		if imageRef == "" {
 			imageRef = imgID
 		}
+		if strings.TrimSpace(imageRef) == "" {
+			return fmt.Errorf("failed to determine image reference from backup")
+		}
 
 		exists, err := dockerClient.IslandExists(proj.IslandName)
 		if err == nil && exists {

@@ -113,7 +113,7 @@ func (cm *ConfigManager) Load() (*Config, error) {
 	config := &Config{
 		Projects: make(map[string]*Project),
 		Settings: &GlobalSettings{
-			DefaultBaseImage: "ubuntu:noble",
+			DefaultBaseImage: "buildpack-deps:bookworm",
 			AutoUpdate:       true,
 			AutoStopOnExit:   true,
 			AutoApplyLock:    true,
@@ -139,7 +139,7 @@ func (cm *ConfigManager) Load() (*Config, error) {
 
 	if config.Settings == nil {
 		config.Settings = &GlobalSettings{
-			DefaultBaseImage: "ubuntu:noble",
+			DefaultBaseImage: "buildpack-deps:bookworm",
 			AutoUpdate:       true,
 			AutoStopOnExit:   true,
 			AutoApplyLock:    true,
@@ -156,13 +156,13 @@ func (cm *ConfigManager) Save(config *Config) error {
 	}
 
 	tmpPath := cm.configPath + ".tmp"
-	if err := os.WriteFile(tmpPath, data, 0644); err != nil {
+	if err := os.WriteFile(tmpPath, data, 0600); err != nil {
 		return fmt.Errorf("failed to write config file: %w", err)
 	}
 	if err := os.Rename(tmpPath, cm.configPath); err != nil {
 
 		os.Remove(tmpPath)
-		if err := os.WriteFile(cm.configPath, data, 0644); err != nil {
+		if err := os.WriteFile(cm.configPath, data, 0600); err != nil {
 			return fmt.Errorf("failed to write config file: %w", err)
 		}
 	}
@@ -309,7 +309,7 @@ func durationLike(s string) bool {
 func (cm *ConfigManager) GetDefaultProjectConfig(projectName string) *ProjectConfig {
 	return &ProjectConfig{
 		Name:        projectName,
-		BaseImage:   "ubuntu:noble",
+		BaseImage:   "buildpack-deps:bookworm",
 		WorkingDir:  "/island",
 		Shell:       "/bin/bash",
 		User:        "root",
@@ -326,7 +326,7 @@ func (cm *ConfigManager) CreateProjectConfigFromTemplate(templateName, projectNa
 	templates := map[string]*ProjectConfig{
 		"python": {
 			Name:      projectName,
-			BaseImage: "ubuntu:noble",
+			BaseImage: "buildpack-deps:bookworm",
 			SetupCommands: []string{
 				"apt update -y",
 				"DEBIAN_FRONTEND=noninteractive apt install -y --no-install-recommends python3 python3-pip python3-venv python3-dev build-essential ca-certificates",
@@ -342,7 +342,7 @@ func (cm *ConfigManager) CreateProjectConfigFromTemplate(templateName, projectNa
 		},
 		"nodejs": {
 			Name:      projectName,
-			BaseImage: "ubuntu:noble",
+			BaseImage: "buildpack-deps:bookworm",
 			SetupCommands: []string{
 				"apt update -y",
 				"DEBIAN_FRONTEND=noninteractive apt install -y --no-install-recommends curl ca-certificates gnupg build-essential",
@@ -360,7 +360,7 @@ func (cm *ConfigManager) CreateProjectConfigFromTemplate(templateName, projectNa
 		},
 		"go": {
 			Name:      projectName,
-			BaseImage: "ubuntu:noble",
+			BaseImage: "buildpack-deps:bookworm",
 			SetupCommands: []string{
 				"apt update -y",
 				"DEBIAN_FRONTEND=noninteractive apt install -y --no-install-recommends wget git build-essential ca-certificates",
@@ -378,7 +378,7 @@ func (cm *ConfigManager) CreateProjectConfigFromTemplate(templateName, projectNa
 		},
 		"web": {
 			Name:      projectName,
-			BaseImage: "ubuntu:noble",
+			BaseImage: "buildpack-deps:bookworm",
 			SetupCommands: []string{
 				"apt update -y",
 				"DEBIAN_FRONTEND=noninteractive apt install -y --no-install-recommends python3 python3-pip nodejs npm nginx git curl wget ca-certificates gnupg",
@@ -462,7 +462,15 @@ func (cm *ConfigManager) LoadUserTemplate(name string) (*ConfigTemplate, error) 
 	if err != nil {
 		return nil, fmt.Errorf("failed to get templates directory: %w", err)
 	}
+
+	if strings.Contains(name, "/") || strings.Contains(name, "\\") || strings.Contains(name, "..") || name == "." {
+		return nil, fmt.Errorf("invalid template name: %s", name)
+	}
 	path := filepath.Join(dir, name+".json")
+
+	if !strings.HasPrefix(filepath.Clean(path), filepath.Clean(dir)) {
+		return nil, fmt.Errorf("invalid template path")
+	}
 	b, err := os.ReadFile(path)
 	if err != nil {
 		return nil, fmt.Errorf("failed to read template file: %w", err)
@@ -482,11 +490,20 @@ func (cm *ConfigManager) SaveUserTemplate(tpl *ConfigTemplate) error {
 	if tpl.Name == "" {
 		return fmt.Errorf("template name is required")
 	}
+
+	if strings.Contains(tpl.Name, "/") || strings.Contains(tpl.Name, "\\") || strings.Contains(tpl.Name, "..") || tpl.Name == "." {
+		return fmt.Errorf("invalid template name: %s", tpl.Name)
+	}
 	b, err := json.MarshalIndent(tpl, "", "  ")
 	if err != nil {
 		return fmt.Errorf("failed to marshal template: %w", err)
 	}
-	if err := os.WriteFile(filepath.Join(dir, tpl.Name+".json"), b, 0644); err != nil {
+	path := filepath.Join(dir, tpl.Name+".json")
+
+	if !strings.HasPrefix(filepath.Clean(path), filepath.Clean(dir)) {
+		return fmt.Errorf("invalid template path")
+	}
+	if err := os.WriteFile(path, b, 0600); err != nil {
 		return fmt.Errorf("failed to write template file: %w", err)
 	}
 	return nil
@@ -497,7 +514,15 @@ func (cm *ConfigManager) DeleteUserTemplate(name string) error {
 	if err != nil {
 		return fmt.Errorf("failed to get templates directory: %w", err)
 	}
+
+	if strings.Contains(name, "/") || strings.Contains(name, "\\") || strings.Contains(name, "..") || name == "." {
+		return fmt.Errorf("invalid template name: %s", name)
+	}
 	path := filepath.Join(dir, name+".json")
+
+	if !strings.HasPrefix(filepath.Clean(path), filepath.Clean(dir)) {
+		return fmt.Errorf("invalid template path")
+	}
 	if _, err := os.Stat(path); os.IsNotExist(err) {
 		return fmt.Errorf("template '%s' not found", name)
 	}
@@ -559,7 +584,7 @@ func (config *Config) GetEffectiveBaseImage(project *Project, projectConfig *Pro
 	if config.Settings != nil && config.Settings.DefaultBaseImage != "" {
 		return config.Settings.DefaultBaseImage
 	}
-	return "ubuntu:noble"
+	return "buildpack-deps:bookworm"
 }
 
 const ProjectConfigJSONSchema = `{

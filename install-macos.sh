@@ -96,10 +96,10 @@ git clone --depth 1 https://github.com/itzcozi/coderaft.git
 cd coderaft
 
 print_info "Building coderaft..."
-make build
+CGO_ENABLED=0 go build -o coderaft ./cmd/coderaft
 
 print_info "Installing coderaft to /usr/local/bin..."
-sudo cp ./build/coderaft /usr/local/bin/coderaft
+sudo cp ./coderaft /usr/local/bin/coderaft
 sudo chmod +x /usr/local/bin/coderaft
 
 cd /

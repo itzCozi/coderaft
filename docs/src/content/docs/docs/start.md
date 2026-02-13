@@ -1,151 +1,100 @@
 ---
-title: Quick Start Guide
+title: Quick Start
 description: Get up and running with coderaft in minutes
 ---
 
-This guide will get you up and running with coderaft in just a few minutes. You'll create your first isolated development environment and learn the basic workflow.
+Get started in minutes. Make sure you have [coderaft installed](/docs/install/) first.
 
-## Prerequisites
----
-
-Before starting, make sure you have coderaft installed. If you haven't installed it yet, follow the [Installation Guide](/docs/install/) first.
-
-## Create Your First Project
----
-
-Let's create a Python development environment:
+## Create a Project
 
 ```bash
-coderaft init my-python-app --template python
+coderaft init my-app --template python
 ```
 
-This command:
-- Creates a new project called `my-python-app`
-- Uses the Python template (includes Python 3, pip, and common tools)
-- Sets up a Docker island with Ubuntu 22.04
-- Creates a workspace directory at `~/coderaft/my-python-app/`
+This creates a Python environment at `~/coderaft/my-app/`.
 
-## Enter Your Development Environment
----
+## Enter the Environment
 
 ```bash
-coderaft shell my-python-app
+coderaft shell my-app
 ```
 
-You're now inside an isolated Ubuntu Island! Notice how your prompt changes to indicate you're in the coderaft environment.
-By default, the Island will stop automatically when you exit the shell. To keep it running after you exit, pass `--keep-running`.
+You're now inside an isolated island. The prompt changes to show you're in the coderaft environment.
 
-## Explore the Environment
----
+:::tip
+By default, islands stop when you exit. Use `--keep-running` to keep them running.
+:::
 
-Inside the Island, you can:
+## Work Inside the Island
 
 ```bash
-# Check what's available
+# Check available tools
 python3 --version
 pip3 --version
-which python3
 
-# Your workspace is mounted at /island
+# Your files are at /island
 cd /island
-ls -la
 
-# Install additional packages
-apt update
-apt install tree htop
+# Install packages (recorded for reproducibility)
+pip3 install flask requests
 
-# Install Python packages
-pip3 install requests flask
-
-# These installs are automatically recorded to /island/coderaft.history
-# so the environment can be reproduced on rebuild or by teammates.
-
-# Use built-in island commands
-coderaft status                # Show island info
-coderaft history               # View recorded package installs
-coderaft files                 # List /island contents
-coderaft disk                  # Check disk usage
-coderaft env                   # Show coderaft environment variables
-coderaft help                  # See all available island commands
+# View recorded history
+coderaft history
 ```
 
-## Create and Run Code
----
-
-Create a simple Python application:
+## Run Code
 
 ```bash
-# Create a simple web app
+# Create a simple app
 cat > /island/app.py << 'EOF'
 from flask import Flask
-
 app = Flask(__name__)
 
 @app.route('/')
 def hello():
-    return 'Hello from coderaft! 🚀'
+    return 'Hello from coderaft!'
 
 if __name__ == '__main__':
-    app.run(host='0.0.0.0', port=5000, debug=True)
+    app.run(host='0.0.0.0', port=5000)
 EOF
 
-# Run your app
+# Run it
 python3 app.py
 ```
 
-## Manage Your Projects
----
+## Manage Projects
 
 ```bash
-# List all your projects
+# List projects
 coderaft list
 
-# Create more projects
+# Create more
 coderaft init node-app --template nodejs
 coderaft init go-service --template go
 
-# Each project is completely isolated
-coderaft shell node-app    # Node.js environment
-coderaft shell go-service  # Go environment
+# Each is fully isolated
+coderaft shell node-app
 ```
 
 ## Clean Up
----
-
-When you're done with a project:
 
 ```bash
-# Stop and remove the Island (keeps your files)
-coderaft destroy my-python-app
+# Stop and remove island (keeps files)
+coderaft destroy my-app
 
-# Or just stop the Island without removing it
-coderaft stop my-python-app
+# Or just stop it
+coderaft stop my-app
 
-# Your files are still in ~/coderaft/my-python-app/
-ls ~/coderaft/my-python-app/
-
-# To recreate the environment later:
-coderaft init my-python-app --template python
+# Files remain at ~/coderaft/my-app/
 ```
 
 ## Docker Access
----
 
-By default, all coderaft environments have access to the host's Docker daemon, allowing you to:
-
-- Build and manage Docker islandes/containers from within your coderaft environment
-- Run Docker commands without additional configuration
-- Execute Docker Compose for multi-Island (multi-container) applications
-
-This works by mounting the host's Docker socket (`/var/run/docker.sock`) in your coderaft island and installing the Docker CLI tools automatically.
+Islands have Docker access by default via the mounted Docker socket. Build images, run containers, and use Docker Compose inside your island.
 
 ## Next Steps
----
 
-Now that you understand the basics:
-
-1. **Explore the commands**: [Command Reference](/docs/cli/)
-2. **Learn about configuration**: [Configuration Guide](/docs/configuration/)
-3. **Explore templates**: Try different [project templates](/docs/templates/)
-4. **Customize**: Create a custom `coderaft.json` config file
-5. **Maintenance**: [Cleanup and Maintenance](/docs/maintenance/)
+- [CLI Reference](/docs/cli/)
+- [Configuration](/docs/configuration/)
+- [Templates](/docs/templates/)
+- [Maintenance](/docs/maintenance/)

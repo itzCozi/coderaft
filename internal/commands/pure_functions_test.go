@@ -114,6 +114,9 @@ func TestEscapeBash(t *testing.T) {
 		{"`cmd`", "\\`cmd\\`"},
 		{`back\slash`, `back\\slash`},
 		{"all'at$once`now\"", "all'\\''at\\$once\\`now\\\""},
+		{"line1\nline2", "line1\\nline2"},
+		{"with\r\nwindows", "with\\nwindows"},
+		{"multi\n\nlines", "multi\\n\\nlines"},
 	}
 	for _, tt := range tests {
 		got := escapeBash(tt.in)

@@ -105,7 +105,7 @@ install: build
 		sudo chmod +x /usr/local/bin/$(BINARY_NAME); \
 		echo "Installed to /usr/local/bin/$(BINARY_NAME)"; \
 	else \
-		echo "On Windows, use: .\\build.ps1 -Install  or copy $(BUILD_DIR)/$(BINARY_NAME).exe to a directory in your PATH"; \
+		echo "On Windows, run: go build -o coderaft.exe ./cmd/coderaft"; \
 	fi
 
 # Build for development (current OS/arch)

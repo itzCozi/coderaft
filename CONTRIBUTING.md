@@ -24,6 +24,8 @@ This project adheres to a code of conduct that we expect all contributors to fol
 
 ## Getting Started
 
+> **Important:** The `main` branch is the source of truth for stable code. All install scripts pull directly from `main` and build the binary. Keep `main` stable — use feature branches for development and ensure CI passes before merging.
+
 1. **Fork the repository** on GitHub
 2. **Clone your fork** locally:
    ```bash
@@ -61,15 +63,11 @@ Look for issues labeled with:
 
 ### Prerequisites
 
-**⚠️ Operating System Requirement**: coderaft only works on **Debian/Ubuntu** systems. For development and testing:
-- **Recommended**: Debian 11+ or Ubuntu 20.04+
-- **Alternative**: Docker container with Debian/Ubuntu
-- **Windows users**: Use WSL2 with Ubuntu distribution
+**Cross-Platform Support**: coderaft works on **Linux**, **macOS**, and **Windows** wherever Docker is available.
 
 **Required Software**:
 - Go 1.21 or later
-- Docker
-- Make
+- Docker (Docker Desktop on macOS/Windows)
 - Git
 
 ### Local Setup
@@ -175,11 +173,9 @@ test(docker): add integration tests for container management
 
 ### Overview
 
-**⚠️ Testing Environment**: For best results, run tests on **Debian/Ubuntu** systems where coderaft is fully functional. CI runs on Linux only; other platforms are not supported.
-
 coderaft has a comprehensive test suite that includes:
 - **Unit tests** for individual functions and components
-- **Integration tests** for CLI commands and end-to-end functionality (Debian/Ubuntu only)
+- **Integration tests** for CLI commands and end-to-end functionality
 - **Security tests** and vulnerability scanning
 - **Performance tests** with race condition detection
 
@@ -315,7 +311,7 @@ The project uses GitHub Actions for automated testing and quality assurance:
 Runs on every push and pull request:
 - **Multi-version testing** (Go 1.21, 1.22)
 - **Comprehensive test suite** with race detection
-- **Linux builds only** (Ubuntu/Debian)
+- **Cross-platform builds** (Linux, macOS, Windows)
 - **Code linting** with golangci-lint
 - **Security scanning** with gosec and govulncheck
 - **Coverage reporting** with Codecov integration
@@ -432,15 +428,12 @@ open coverage.html
 
 #### Platform-Specific Issues
 
-**⚠️ Important Note**: coderaft is designed to work only on **Debian/Ubuntu** systems. CI runs on Linux only; other platforms are not supported.
+coderaft is designed to work on **Linux**, **macOS**, and **Windows** wherever Docker is available.
 
-**Recommended Testing Environment**:
-- **Debian 11+** or **Ubuntu 20.04+** for best results
-- **Docker containers** running Debian/Ubuntu for isolated testing
-- **WSL2 with Ubuntu** on Windows for development
-
-**Platform-Specific Behavior**:
-- **Linux (Debian/Ubuntu)**: Full functionality and testing supported
+**Platform Notes**:
+- **Linux**: Supports Debian, Ubuntu, Fedora, Arch, Alpine, and more
+- **macOS**: Requires Docker Desktop for Mac
+- **Windows**: Requires Docker Desktop for Windows
 
 ## Submitting Changes
 

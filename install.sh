@@ -71,7 +71,7 @@ detect_distro() {
 install_deps_apt() {
 	print_info "Installing dependencies via apt..."
 	sudo apt update
-	sudo apt install -y git build-essential golang-go docker.io curl wget
+	sudo apt install -y git golang-go docker.io curl
 
 	print_info "Configuring Docker..."
 	sudo systemctl start docker 2>/dev/null || true
@@ -82,9 +82,9 @@ install_deps_apt() {
 install_deps_dnf() {
 	print_info "Installing dependencies via dnf..."
 	if command_exists dnf; then
-		sudo dnf install -y git make golang docker curl wget gcc
+		sudo dnf install -y git golang docker curl
 	else
-		sudo yum install -y git make golang docker curl wget gcc
+		sudo yum install -y git golang docker curl
 	fi
 
 	print_info "Configuring Docker..."
@@ -95,7 +95,7 @@ install_deps_dnf() {
 
 install_deps_pacman() {
 	print_info "Installing dependencies via pacman..."
-	sudo pacman -Syu --noconfirm git base-devel go docker curl wget
+	sudo pacman -Syu --noconfirm git go docker curl
 
 	print_info "Configuring Docker..."
 	sudo systemctl start docker 2>/dev/null || true
@@ -105,7 +105,7 @@ install_deps_pacman() {
 
 install_deps_zypper() {
 	print_info "Installing dependencies via zypper..."
-	sudo zypper install -y git make go docker curl wget gcc
+	sudo zypper install -y git go docker curl
 
 	print_info "Configuring Docker..."
 	sudo systemctl start docker 2>/dev/null || true
@@ -115,7 +115,7 @@ install_deps_zypper() {
 
 install_deps_apk() {
 	print_info "Installing dependencies via apk..."
-	sudo apk add --no-cache git make go docker curl wget build-base
+	sudo apk add --no-cache git go docker curl
 
 	print_info "Configuring Docker..."
 	sudo rc-update add docker default 2>/dev/null || true
@@ -141,7 +141,7 @@ install_deps_generic() {
 		install_deps_apk
 	else
 		print_error "No supported package manager found."
-		print_info "Please install the following manually: git, make, go, docker, curl"
+		print_info "Please install the following manually: git, go, docker, curl"
 		exit 1
 	fi
 }
@@ -194,10 +194,10 @@ install_coderaft() {
 	cd coderaft
 
 	print_info "Building coderaft..."
-	make build
+	CGO_ENABLED=0 go build -o coderaft ./cmd/coderaft
 
 	print_info "Installing coderaft to /usr/local/bin..."
-	sudo cp ./build/coderaft /usr/local/bin/coderaft
+	sudo cp ./coderaft /usr/local/bin/coderaft
 	sudo chmod +x /usr/local/bin/coderaft
 
 	cd /
@@ -257,13 +257,6 @@ main() {
 		exit 1
 	fi
 
-	if command_exists make; then
-		print_success "make: $(make --version | head -n1)"
-	else
-		print_error "make installation failed"
-		exit 1
-	fi
-
 	if command_exists docker; then
 		print_success "docker: $(docker --version)"
 		print_warning "You may need to log out and log back in for Docker group permissions to take effect"
@@ -307,4 +300,3 @@ main() {
 }
 
 main "$@"
-z

@@ -29,4 +29,4 @@ Traditional development environments can lead to "it works on my machine" issues
 
 ## Getting Started
 
-To get started with coderaft, follow this guide on [installation and setup](/docs/install).
+To get started with coderaft, follow this guide on [installation and setup](/docs/install/).

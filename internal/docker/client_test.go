@@ -41,3 +41,26 @@ func TestIsDockerAvailable(t *testing.T) {
 		t.Log("Docker is available")
 	}
 }
+
+func TestEscapeShellVar(t *testing.T) {
+	tests := []struct {
+		in, want string
+	}{
+		{"hello", "hello"},
+		{"my-project", "my-project"},
+		{"project_name", "project_name"},
+		{`say "hi"`, `say \"hi\"`},
+		{"$HOME", `\$HOME`},
+		{"`cmd`", "\\`cmd\\`"},
+		{`back\slash`, `back\\slash`},
+		{"with\nnewline", "withnewline"},
+		{"with\r\ncrlf", "withcrlf"},
+		{"normal_project123", "normal_project123"},
+	}
+	for _, tt := range tests {
+		got := escapeShellVar(tt.in)
+		if got != tt.want {
+			t.Errorf("escapeShellVar(%q) = %q, want %q", tt.in, got, tt.want)
+		}
+	}
+}

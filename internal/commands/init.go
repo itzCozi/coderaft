@@ -99,7 +99,7 @@ Examples:
 
 		baseImage := cfg.GetEffectiveBaseImage(&config.Project{
 			Name:      projectName,
-			BaseImage: "ubuntu:noble",
+			BaseImage: "buildpack-deps:bookworm",
 		}, projectConfig)
 
 		workspaceIsland := "/island"

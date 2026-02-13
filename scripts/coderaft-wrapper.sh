@@ -42,7 +42,7 @@ case "$1" in
         echo "  coderaft help         - Show this help message"
         echo ""
         echo "Your project files are in: /island"
-        echo "You are on an Ubuntu island with full package management"
+        echo "You are on a Debian island with full package management"
         echo ""
         echo "Examples:"
         echo "  coderaft exit                    # Exit to host"

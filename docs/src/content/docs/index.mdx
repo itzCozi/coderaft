@@ -1,6 +1,6 @@
 ---
 title: Welcome to coderaft
-description: Isolated development environments using Docker islands on Debian/Ubuntu Linux
+description: Isolated development environments using Docker islands on Linux, macOS, and Windows
 template: splash
 hero:
   tagline: Create and manage isolated islands using Docker with ease.
@@ -23,7 +23,7 @@ import { Card, CardGrid } from '@astrojs/starlight/components';
 
 <CardGrid>
   <Card title="Isolated Environments" icon="laptop">
-  Each project runs in its own Docker island, preventing dependency conflicts and keeping your host system clean. Islands restart automatically and persist between reboots.
+    Each project runs in its own Docker island, preventing dependency conflicts and keeping your host system clean. Islands persist between sessions and can be configured to auto-restart.
   </Card>
   <Card title="Reproducible Builds" icon="approve-check">
     Deterministic lock files with SHA-256 checksums pin every package version, registry, and apt source. Run `coderaft verify` to detect drift or `coderaft apply` to reconcile — making environments shareable and auditable.
