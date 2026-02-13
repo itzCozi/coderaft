@@ -25,14 +25,14 @@ import { Card, CardGrid } from '@astrojs/starlight/components';
   <Card title="Isolated Environments" icon="laptop">
   Each project runs in its own Docker island, preventing dependency conflicts and keeping your host system clean. Islands restart automatically and persist between reboots.
   </Card>
+  <Card title="Reproducible Builds" icon="approve-check">
+    Deterministic lock files with SHA-256 checksums pin every package version, registry, and apt source. Run `coderaft verify` to detect drift or `coderaft apply` to reconcile — making environments shareable and auditable.
+  </Card>
   <Card title="Host File Access" icon="document">
     Your code stays on the host filesystem for easy editing with your favorite tools while running in isolated environments.
   </Card>
   <Card title="Simple Commands" icon="rocket">
     Easy-to-use CLI with intuitive commands for creating, managing, and working with development environments.
-  </Card>
-  <Card title="Safety Checks" icon="approve-check">
-    Validates Docker installation and prevents accidental overwrites with built-in safety features.
   </Card>
   <Card title="Templates & Configuration" icon="open-book">
     Project-specific coderaft.json configuration and built-in templates for Python, Node.js, Go, and web development.

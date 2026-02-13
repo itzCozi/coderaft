@@ -99,7 +99,7 @@ Examples:
 
 		baseImage := cfg.GetEffectiveBaseImage(&config.Project{
 			Name:      projectName,
-			BaseImage: "ubuntu:22.04",
+			BaseImage: "ubuntu:latest",
 		}, projectConfig)
 
 		workspaceIsland := "/island"
@@ -155,16 +155,13 @@ Examples:
 			return fmt.Errorf("island failed to start: %w", err)
 		}
 
-		// Always update and install essentials on new islands
-		ui.Status("updating system packages and installing essentials...")
-		essentialCommands := []string{
+		// Run apt update so the package index is fresh
+		ui.Status("updating system package index...")
+		updateCommands := []string{
 			"apt update -y",
-			"DEBIAN_FRONTEND=noninteractive apt upgrade -y",
-			"DEBIAN_FRONTEND=noninteractive apt install -y --no-install-recommends git curl wget ca-certificates build-essential openssh-client less nano",
-			"apt-get clean && rm -rf /var/lib/apt/lists/*",
 		}
-		if err := dockerClient.ExecuteSetupCommandsWithOutput(IslandName, essentialCommands, false); err != nil {
-			ui.Warning("system setup failed: %v", err)
+		if err := dockerClient.ExecuteSetupCommandsWithOutput(IslandName, updateCommands, false); err != nil {
+			ui.Warning("package index update failed: %v", err)
 		}
 
 		if projectConfig != nil && len(projectConfig.SetupCommands) > 0 {

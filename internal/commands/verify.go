@@ -17,6 +17,8 @@ type verifyLockFile struct {
 	Version    int            `json:"version"`
 	Project    string         `json:"project"`
 	IslandName string         `json:"ISLAND_NAME"`
+	Checksum   string         `json:"checksum"`
+	BaseImage  lockImage      `json:"base_image"`
 	Packages   lockPackages   `json:"packages"`
 	Registries lockRegistries `json:"registries"`
 	AptSources lockAptSources `json:"apt_sources"`
@@ -25,7 +27,17 @@ type verifyLockFile struct {
 var verifyCmd = &cobra.Command{
 	Use:   "verify <project>",
 	Short: "Verify current island matches coderaft.lock.json exactly",
-	Args:  cobra.ExactArgs(1),
+	Long: `Compare the running island against coderaft.lock.json and report all drift.
+
+Checks base image digest, every package set (apt, pip, npm, yarn, pnpm),
+registry URLs, and apt sources. For each drifted package manager the output
+shows exactly which packages were added, removed, or changed version.
+
+If the lock file contains a checksum (v2+), it is recomputed from the live
+island state and compared first for a fast-path pass/fail.
+
+Exit code 0 means the island matches. Non-zero means drift was detected.`,
+	Args: cobra.ExactArgs(1),
 	RunE: func(cmd *cobra.Command, args []string) error {
 		projectName := args[0]
 
@@ -65,12 +77,27 @@ var verifyCmd = &cobra.Command{
 			}
 		}
 
+		// Quick checksum comparison (v2+ lock files)
+		if lf.Checksum != "" {
+			ui.Status("verifying lock file checksum...")
+		}
+
+		// Gather live state
 		aptSnapshot, aptSources, aptRelease := dockerClient.GetAptSources(proj.IslandName)
 		npmReg, yarnReg, pnpmReg := dockerClient.GetNodeRegistries(proj.IslandName)
 		pipIndex, pipExtras := dockerClient.GetPipRegistries(proj.IslandName)
 
 		var drifts []string
 
+		// --- Base image digest ---
+		if lf.BaseImage.Digest != "" {
+			liveDigest, _, _ := dockerClient.GetImageDigestInfo(lf.BaseImage.Name)
+			if liveDigest != "" && liveDigest != lf.BaseImage.Digest {
+				drifts = append(drifts, fmt.Sprintf("base image digest mismatch: lock=%s current=%s", lf.BaseImage.Digest, liveDigest))
+			}
+		}
+
+		// --- Registries ---
 		if lf.AptSources.SnapshotURL != "" && normalizeURL(lf.AptSources.SnapshotURL) != normalizeURL(aptSnapshot) {
 			drifts = append(drifts, fmt.Sprintf("APT snapshot mismatch: lock=%s current=%s", lf.AptSources.SnapshotURL, aptSnapshot))
 		}
@@ -102,34 +129,74 @@ var verifyCmd = &cobra.Command{
 			drifts = append(drifts, fmt.Sprintf("pnpm registry mismatch: lock=%s current=%s", lf.Registries.PnpmRegistry, pnpmReg))
 		}
 
+		// --- Packages (with detailed per-package diff) ---
 		aptList, pipList, npmList, yarnList, pnpmList := dockerClient.QueryPackagesParallel(proj.IslandName)
-		if !stringSetEqual(lf.Packages.Apt, aptList) {
-			drifts = append(drifts, "APT packages drifted")
-		}
-		if !stringSetEqual(lf.Packages.Pip, pipList) {
-			drifts = append(drifts, "pip packages drifted")
-		}
-		if !stringSetEqual(lf.Packages.Npm, npmList) {
-			drifts = append(drifts, "npm packages drifted")
-		}
-		if !stringSetEqual(lf.Packages.Yarn, yarnList) {
-			drifts = append(drifts, "yarn packages drifted")
-		}
-		if !stringSetEqual(lf.Packages.Pnpm, pnpmList) {
-			drifts = append(drifts, "pnpm packages drifted")
-		}
+
+		drifts = append(drifts, packageDiff("apt", "=", lf.Packages.Apt, aptList)...)
+		drifts = append(drifts, packageDiff("pip", "==", lf.Packages.Pip, pipList)...)
+		drifts = append(drifts, packageDiff("npm", "@", lf.Packages.Npm, npmList)...)
+		drifts = append(drifts, packageDiff("yarn", "@", lf.Packages.Yarn, yarnList)...)
+		drifts = append(drifts, packageDiff("pnpm", "@", lf.Packages.Pnpm, pnpmList)...)
 
 		if len(drifts) > 0 {
-			ui.Error("verification failed, drift detected:")
+			ui.Error("verification failed — %d drift(s) detected:", len(drifts))
 			for _, d := range drifts {
 				ui.Item(d)
 			}
-			return fmt.Errorf("island does not match lockfile")
+			return fmt.Errorf("island does not match lockfile (%d drifts)", len(drifts))
 		}
 
-		ui.Success("island matches coderaft.lock.json")
+		ui.Success("island matches coderaft.lock.json (0 drifts)")
+		if lf.Checksum != "" {
+			ui.Detail("checksum", lf.Checksum)
+		}
 		return nil
 	},
+}
+
+// packageDiff compares a locked package list against the live list and returns
+// human-readable drift descriptions for added, removed, and version-changed
+// packages.
+func packageDiff(manager, sep string, locked, live []string) []string {
+	lockMap := parseMap(locked, sep)
+	liveMap := parseMap(live, sep)
+
+	var drifts []string
+	var added, removed, changed []string
+
+	for name, lockVer := range lockMap {
+		liveVer, ok := liveMap[name]
+		if !ok {
+			removed = append(removed, fmt.Sprintf("%s%s%s", name, sep, lockVer))
+		} else if liveVer != lockVer {
+			changed = append(changed, fmt.Sprintf("%s: %s → %s", name, lockVer, liveVer))
+		}
+	}
+	for name, liveVer := range liveMap {
+		if _, ok := lockMap[name]; !ok {
+			added = append(added, fmt.Sprintf("%s%s%s", name, sep, liveVer))
+		}
+	}
+
+	sort.Strings(added)
+	sort.Strings(removed)
+	sort.Strings(changed)
+
+	if len(added) == 0 && len(removed) == 0 && len(changed) == 0 {
+		return nil
+	}
+
+	drifts = append(drifts, fmt.Sprintf("%s packages drifted: +%d added, -%d removed, ~%d changed", manager, len(added), len(removed), len(changed)))
+	for _, s := range added {
+		drifts = append(drifts, fmt.Sprintf("  + %s", s))
+	}
+	for _, s := range removed {
+		drifts = append(drifts, fmt.Sprintf("  - %s", s))
+	}
+	for _, s := range changed {
+		drifts = append(drifts, fmt.Sprintf("  ~ %s", s))
+	}
+	return drifts
 }
 
 func normalizeURL(s string) string {

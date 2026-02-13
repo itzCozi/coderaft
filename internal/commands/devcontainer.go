@@ -47,7 +47,7 @@ var devcontainerGenerateCmd = &cobra.Command{
 
 		dc := devContainer{
 			Name:            pcfg.Name,
-			Image:           firstNonEmpty(pcfg.BaseImage, "ubuntu:22.04"),
+			Image:           firstNonEmpty(pcfg.BaseImage, "ubuntu:latest"),
 			WorkspaceFolder: firstNonEmpty(pcfg.WorkingDir, "/island"),
 			ContainerEnv:    map[string]string{},
 		}

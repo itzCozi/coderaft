@@ -92,7 +92,6 @@ func updateSingleProject(projectName string) error {
 	updateCommands := []string{
 		"apt update -y",
 		"DEBIAN_FRONTEND=noninteractive apt full-upgrade -y",
-		"DEBIAN_FRONTEND=noninteractive apt install -y --no-install-recommends git curl wget ca-certificates build-essential openssh-client less nano",
 	}
 	if err := dockerClient.ExecuteSetupCommandsWithOutput(project.IslandName, updateCommands, false); err != nil {
 		ui.Warning("failed to update system packages: %v", err)

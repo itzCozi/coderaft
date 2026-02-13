@@ -11,6 +11,7 @@ import (
 
 	"coderaft/internal/config"
 	"coderaft/internal/docker"
+	"coderaft/internal/ui"
 )
 
 var (
@@ -81,6 +82,8 @@ func Execute() error {
 }
 
 func init() {
+	rootCmd.PersistentFlags().BoolVar(&ui.Verbose, "verbose", false, "Show detailed progress messages")
+
 	// Core commands
 	rootCmd.AddCommand(initCmd)
 	rootCmd.AddCommand(upCmd)

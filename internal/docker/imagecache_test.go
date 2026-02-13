@@ -7,7 +7,7 @@ import (
 
 func TestBuildImageConfigFingerprint(t *testing.T) {
 	cfg1 := &BuildImageConfig{
-		BaseImage:     "ubuntu:22.04",
+		BaseImage:     "ubuntu:latest",
 		SetupCommands: []string{"apt update -y", "apt install -y git"},
 		Environment:   map[string]string{"FOO": "bar"},
 		WorkingDir:    "/island",
@@ -15,7 +15,7 @@ func TestBuildImageConfigFingerprint(t *testing.T) {
 	}
 
 	cfg2 := &BuildImageConfig{
-		BaseImage:     "ubuntu:22.04",
+		BaseImage:     "ubuntu:latest",
 		SetupCommands: []string{"apt update -y", "apt install -y git"},
 		Environment:   map[string]string{"FOO": "bar"},
 		WorkingDir:    "/island",
@@ -35,7 +35,7 @@ func TestBuildImageConfigFingerprint(t *testing.T) {
 
 func TestBuildImageConfigFingerprintDiffers(t *testing.T) {
 	cfg1 := &BuildImageConfig{
-		BaseImage:     "ubuntu:22.04",
+		BaseImage:     "ubuntu:latest",
 		SetupCommands: []string{"apt update -y"},
 		ProjectName:   "test",
 	}
@@ -51,7 +51,7 @@ func TestBuildImageConfigFingerprintDiffers(t *testing.T) {
 	}
 
 	cfg3 := &BuildImageConfig{
-		BaseImage:     "ubuntu:22.04",
+		BaseImage:     "ubuntu:latest",
 		SetupCommands: []string{"apt update -y", "apt install -y git"},
 		ProjectName:   "test",
 	}
@@ -64,13 +64,13 @@ func TestBuildImageConfigFingerprintDiffers(t *testing.T) {
 func TestBuildImageConfigFingerprintEnvOrder(t *testing.T) {
 
 	cfg1 := &BuildImageConfig{
-		BaseImage:   "ubuntu:22.04",
+		BaseImage:   "ubuntu:latest",
 		Environment: map[string]string{"A": "1", "B": "2", "C": "3"},
 		ProjectName: "test",
 	}
 
 	cfg2 := &BuildImageConfig{
-		BaseImage:   "ubuntu:22.04",
+		BaseImage:   "ubuntu:latest",
 		Environment: map[string]string{"C": "3", "A": "1", "B": "2"},
 		ProjectName: "test",
 	}
@@ -84,7 +84,7 @@ func TestGenerateDockerfile(t *testing.T) {
 	ic := NewImageCache()
 
 	cfg := &BuildImageConfig{
-		BaseImage: "ubuntu:22.04",
+		BaseImage: "ubuntu:latest",
 		SetupCommands: []string{
 			"apt update -y",
 			"DEBIAN_FRONTEND=noninteractive apt install -y python3 python3-pip git",
@@ -99,7 +99,7 @@ func TestGenerateDockerfile(t *testing.T) {
 
 	dockerfile := ic.GenerateDockerfile(cfg)
 
-	if !strings.HasPrefix(dockerfile, "FROM ubuntu:22.04") {
+	if !strings.HasPrefix(dockerfile, "FROM ubuntu:latest") {
 		t.Errorf("Dockerfile should start with FROM, got: %s", dockerfile[:50])
 	}
 
@@ -132,13 +132,13 @@ func TestGenerateDockerfileNoCommands(t *testing.T) {
 	ic := NewImageCache()
 
 	cfg := &BuildImageConfig{
-		BaseImage:   "ubuntu:22.04",
+		BaseImage:   "ubuntu:latest",
 		ProjectName: "empty",
 	}
 
 	dockerfile := ic.GenerateDockerfile(cfg)
 
-	if !strings.HasPrefix(dockerfile, "FROM ubuntu:22.04") {
+	if !strings.HasPrefix(dockerfile, "FROM ubuntu:latest") {
 		t.Error("Dockerfile should start with FROM")
 	}
 

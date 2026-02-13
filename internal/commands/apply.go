@@ -21,10 +21,19 @@ type applyLockFile struct {
 	AptSources lockAptSources `json:"apt_sources"`
 }
 
+var applyDryRun bool
+
 var applyCmd = &cobra.Command{
 	Use:   "apply <project>",
 	Short: "Apply coderaft.lock.json: set registries and apt sources, then reconcile packages",
-	Args:  cobra.ExactArgs(1),
+	Long: `Apply a coderaft.lock.json to the running island.
+
+Configures registries (pip, npm, yarn, pnpm) and apt sources to match the
+lock file, then reconciles every package set so the island ends up with
+exactly the versions recorded in the lock.
+
+Use --dry-run to preview the changes without modifying the island.`,
+	Args: cobra.ExactArgs(1),
 	RunE: func(cmd *cobra.Command, args []string) error {
 		projectName := args[0]
 
@@ -113,13 +122,34 @@ var applyCmd = &cobra.Command{
 			applyCmds = append(applyCmds, fmt.Sprintf("pnpm config set registry %s -g", lf.Registries.PnpmRegistry))
 		}
 
+		curApt, curPip, curNpm, curYarn, curPnpm := dockerClient.QueryPackagesParallel(proj.IslandName)
+		actions := buildReconcileActions(lf.Packages, curApt, curPip, curNpm, curYarn, curPnpm)
+
+		if applyDryRun {
+			ui.Status("dry run — the following changes would be applied:")
+			if len(applyCmds) > 0 {
+				ui.Detail("registry/source commands", fmt.Sprintf("%d", len(applyCmds)))
+				for _, c := range applyCmds {
+					lines := strings.SplitN(c, "\n", 2)
+					ui.Item(lines[0])
+				}
+			}
+			if len(actions) > 0 {
+				ui.Detail("package reconciliation commands", fmt.Sprintf("%d", len(actions)))
+				for _, a := range actions {
+					ui.Item(a)
+				}
+			}
+			if len(applyCmds) == 0 && len(actions) == 0 {
+				ui.Success("island already matches lockfile — nothing to do")
+			}
+			return nil
+		}
+
 		if err := dockerClient.ExecuteSetupCommandsWithOutput(proj.IslandName, applyCmds, false); err != nil {
 			return fmt.Errorf("failed applying registries/sources: %w", err)
 		}
 
-		curApt, curPip, curNpm, curYarn, curPnpm := dockerClient.QueryPackagesParallel(proj.IslandName)
-
-		actions := buildReconcileActions(lf.Packages, curApt, curPip, curNpm, curYarn, curPnpm)
 		if len(actions) > 0 {
 			if err := dockerClient.ExecuteSetupCommandsWithOutput(proj.IslandName, actions, true); err != nil {
 				return fmt.Errorf("failed to reconcile packages: %w", err)
@@ -252,4 +282,5 @@ func buildReconcileActions(lockPkgs lockPackages, curApt, curPip, curNpm, curYar
 }
 
 func init() {
+	applyCmd.Flags().BoolVar(&applyDryRun, "dry-run", false, "Preview changes without modifying the island")
 }

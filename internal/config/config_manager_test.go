@@ -31,8 +31,8 @@ func TestConfigManager_LoadAndSave(t *testing.T) {
 		t.Error("Settings should not be nil")
 	}
 
-	if config.Settings.DefaultBaseImage != "ubuntu:22.04" {
-		t.Errorf("Expected default base image 'ubuntu:22.04', got %q", config.Settings.DefaultBaseImage)
+	if config.Settings.DefaultBaseImage != "ubuntu:latest" {
+		t.Errorf("Expected default base image 'ubuntu:latest', got %q", config.Settings.DefaultBaseImage)
 	}
 
 	if !config.Settings.AutoUpdate {
@@ -46,7 +46,7 @@ func TestConfigManager_LoadAndSave(t *testing.T) {
 	testProject := &Project{
 		Name:          "test-project",
 		IslandName:    "test-project-island",
-		BaseImage:     "ubuntu:22.04",
+		BaseImage:     "ubuntu:latest",
 		WorkspacePath: "/home/user/coderaft/test-project",
 		Status:        "stopped",
 	}
@@ -102,7 +102,7 @@ func TestConfigManager_LoadProjectConfig(t *testing.T) {
 
 	testProjectConfig := &ProjectConfig{
 		Name:      "test-project",
-		BaseImage: "ubuntu:22.04",
+		BaseImage: "ubuntu:latest",
 		SetupCommands: []string{
 			"apt update",
 			"apt install -y python3",

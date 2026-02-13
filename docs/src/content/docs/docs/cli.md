@@ -268,7 +268,7 @@ Total projects: 2
 
 ### `coderaft lock`
 
-Generate a comprehensive environment snapshot as `coderaft.lock.json` for a project. This is ideal for sharing/auditing the exact Island image, container configuration, and globally installed packages.
+Generate a deterministic, checksummed environment snapshot as `coderaft.lock.json` for a project. This is ideal for sharing/auditing the exact Island image, container configuration, and globally installed packages.
 
 **Syntax:**
 ```bash
@@ -281,19 +281,20 @@ coderaft lock <project> [-o, --output <path>]
 **Behavior:**
 - Ensures the project's Island is running (starts it if needed).
 - Inspects the container and its image to capture:
-  - Base image: name, digest (if available), image ID
+  - Base image: name, digest, image ID
   - Container config: working_dir, user, restart policy, network, ports, volumes, labels, environment, capabilities, resources (cpus/memory)
-  - Installed package snapshots:
+  - Installed package snapshots (all sorted alphabetically for determinism):
     - apt: manually installed packages pinned as `name=version`
     - pip: `pip freeze` output
-    - npm/yarn/pnpm: globally installed packages as `name@version` (Yarn global versions are detected from Yarn's global dir)
-  - Registries and sources for reproducibility:
+    - npm/yarn/pnpm: globally installed packages as `name@version`
+  - Registries and sources:
     - pip: `index-url` and `extra-index-url`
     - npm/yarn/pnpm: global registry URLs
-    - apt: `sources.list` lines, snapshot base URL if present, and OS release codename
+    - apt: `sources.list` lines, snapshot base URL, OS release codename
+- Computes a SHA-256 checksum over all reproducibility-critical fields (base image, packages, registries, apt sources).
 - If `coderaft.json` exists in the workspace, includes its `setup_commands` for context.
 
-This snapshot is meant for sharing and audit. It does not currently drive `coderaft up` automatically; continue to use `coderaft.json` plus the simple `coderaft.lock` command list for replay. A future `coderaft restore` may apply `coderaft.lock.json` directly.
+Use `coderaft apply` to reconcile an island to a lock file and `coderaft verify` to check for drift.
 
 **Examples:**
 ```bash
@@ -307,12 +308,13 @@ coderaft lock myproject -o ./env/coderaft.lock.json
 **Sample Output (excerpt):**
 ```json
 {
-  "version": 1,
+  "version": 2,
   "project": "myproject",
-  "island_name": "coderaft_myproject",
-  "created_at": "2025-09-18T20:41:51Z",
+  "ISLAND_NAME": "coderaft_myproject",
+  "created_at": "2026-02-12T20:41:51Z",
+  "checksum": "sha256:a1b2c3d4e5f6...",
   "base_image": {
-    "name": "ubuntu:22.04",
+    "name": "ubuntu:latest",
     "digest": "ubuntu@sha256:...",
     "id": "sha256:..."
   },
@@ -329,8 +331,8 @@ coderaft lock myproject -o ./env/coderaft.lock.json
     "resources": {"cpus": "2", "memory": "2048MB"}
   },
   "packages": {
-    "apt": ["git=1:2.34.1-..."],
-    "pip": ["requests==2.32.3"],
+    "apt": ["build-essential=12.9ubuntu3", "git=1:2.34.1-..."],
+    "pip": ["flask==3.1.0", "requests==2.32.3"],
     "npm": ["typescript@5.6.2"],
     "yarn": ["eslint@9.1.0"],
     "pnpm": []
@@ -359,7 +361,7 @@ coderaft lock myproject -o ./env/coderaft.lock.json
 
 ### `coderaft verify`
 
-Validate that the running Island matches the `coderaft.lock.json` exactly. Fails fast on any drift.
+Validate that the running Island matches the `coderaft.lock.json` exactly. Reports detailed per-package drift.
 
 **Syntax:**
 ```bash
@@ -367,15 +369,30 @@ coderaft verify <project>
 ```
 
 **Checks:**
-- Package sets: apt, pip, npm, yarn, pnpm (exact set match)
+- Base image digest (if recorded in lock)
+- Package sets: apt, pip, npm, yarn, pnpm — with per-package detail:
+  - Packages **added** on the island but not in the lock
+  - Packages **removed** from the island but present in the lock
+  - Packages with **changed versions**
 - Registries: pip index/extra-index, npm/yarn/pnpm registry URLs
 - Apt sources: sources.list lines, snapshot base URL (if present), OS release codename
+- Lock checksum (v2+): recomputed from live state for a fast-path comparison
 
-Returns non-zero on any mismatch and prints a concise drift report.
+Returns non-zero on any mismatch and prints a categorized drift report.
 
 **Example:**
 ```bash
 coderaft verify myproject
+```
+
+**Sample drift output:**
+```
+ERROR  verification failed — 3 drift(s) detected:
+  apt packages drifted: +1 added, -0 removed, ~1 changed
+    + vim=2:8.2.3995-1ubuntu2
+    ~ git: 1:2.34.1-1ubuntu1.10 → 1:2.34.1-1ubuntu1.11
+  pip packages drifted: +0 added, -1 removed, ~0 changed
+    - flask==3.0.0
 ```
 
 ---
@@ -386,8 +403,11 @@ Apply the `coderaft.lock.json` to the running Island: configure registries and a
 
 **Syntax:**
 ```bash
-coderaft apply <project>
+coderaft apply <project> [--dry-run]
 ```
+
+**Options:**
+- `--dry-run`: Preview the registry/source commands and package reconciliation steps without modifying the island.
 
 **Behavior:**
 - Registries:
@@ -403,9 +423,13 @@ coderaft apply <project>
 
 Exits non-zero if application fails at any step.
 
-**Example:**
+**Examples:**
 ```bash
+# Apply the lock file
 coderaft apply myproject
+
+# Preview what would change
+coderaft apply myproject --dry-run
 ```
 
 ## Configuration Commands
@@ -866,7 +890,7 @@ coderaft templates show <TAB>     # Shows: available-template-names
 Coderaft creates Islands (Docker containers) with these characteristics:
 
 - **Name**: `coderaft_<project>`
-- **Base Image**: `ubuntu:22.04` (configurable)
+- **Base Image**: `ubuntu:latest` (configurable)
 - **Working Directory**: `/island`
 - **Mount**: `~/coderaft/<project>` → `/island`
 - **Restart Policy**: `unless-stopped` (or `no` when `auto_stop_on_exit` is enabled and no explicit policy is set)
@@ -879,7 +903,7 @@ docker create --name coderaft_myproject \
   --restart unless-stopped \
   -v ~/coderaft/myproject:/island \
   -w /island \
-  ubuntu:22.04 sleep infinity
+  ubuntu:latest sleep infinity
 
 # coderaft shell myproject
 docker start coderaft_myproject

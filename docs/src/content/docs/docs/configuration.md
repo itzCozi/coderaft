@@ -15,7 +15,7 @@ Each project can have a `coderaft.json` file in its workspace directory that def
 ```json
 {
   "name": "my-project",
-  "base_image": "ubuntu:22.04",
+  "base_image": "ubuntu:latest",
   "setup_commands": [
     "apt install -y python3 python3-pip"
   ],
@@ -32,7 +32,7 @@ Each project can have a `coderaft.json` file in its workspace directory that def
 ```json
 {
   "name": "example-project",
-  "base_image": "ubuntu:22.04",
+  "base_image": "ubuntu:latest",
   "setup_commands": [
     "apt install -y python3 python3-pip nodejs npm"
   ],
@@ -83,57 +83,98 @@ Regardless of configuration, coderaft always runs `apt update -y && apt full-upg
 ## Reproducible Installs
 ---
 
+Coderaft provides two complementary mechanisms for reproducing island environments:
+
+1. **Command history** (`coderaft.history`) - a lightweight replay log of ad-hoc package-manager commands you run inside the island.
+2. **Environment lock file** (`coderaft.lock.json`) - a comprehensive, deterministic snapshot of every installed package, registry URL, apt source, and base image digest, sealed with a SHA-256 checksum.
+
+### Command History
+
 Coderaft automatically records package manager installs you run inside the Island to `/island/coderaft.history` (which is your project folder on the host).
 
-Lock file paths:
+History file paths:
 - Inside Island: `/island/coderaft.history`
-- On host: `~/coderaft/<project>/coderaft.lock`
+- On host: `~/coderaft/<project>/coderaft.history`
 
 The following commands are tracked when they succeed:
 
-- `apt install ...` and `apt-get install ...`
-- `pip install ...` and `pip3 install ...`
-- `npm install ...`, `npm i ...`, `npm add ...`
-- `yarn add ...` and `yarn global add ...`
-- `pnpm add ...`, `pnpm install ...`, and `pnpm i ...`
+| Package Manager | Tracked Commands |
+|----------------|-----------------|
+| apt / apt-get | `install`, `remove`, `purge`, `autoremove` |
+| pip / pip3 | `install`, `uninstall` |
+| npm | `install`, `i`, `add`, `uninstall`, `remove`, `rm` |
+| yarn | `add`, `remove`, `global add`, `global remove` |
+| pnpm | `add`, `install`, `i`, `remove`, `rm`, `uninstall` |
+| corepack | Delegates to yarn/pnpm tracking |
 
-On `coderaft up` and during `coderaft update` rebuilds, coderaft replays the commands from `coderaft.lock` before running `setup_commands`. This makes it easy to reproduce the exact environment or share it with teammates by committing `coderaft.lock` to your repo.
+On `coderaft up` and during `coderaft update` rebuilds, coderaft replays the commands from `coderaft.history` before running `setup_commands`. This makes it easy to reproduce the exact environment or share it with teammates by committing `coderaft.history` to your repo.
 
 Notes:
 - Only successful install commands are recorded, and duplicates are de-duplicated line-by-line.
-- You can edit `coderaft.lock` manually to remove mistakes or add comments (lines starting with `#` are ignored).
-- If you prefer explicit configuration, keep using `setup_commands` in `coderaft.json`; the lock file complements it for ad-hoc installs.
+- You can edit `coderaft.history` manually to remove mistakes or add comments (lines starting with `#` are ignored).
+- If you prefer explicit configuration, keep using `setup_commands` in `coderaft.json`; the history file complements it for ad-hoc installs.
 
-## Environment Snapshot
----
+### Environment Lock File
 
-For a more comprehensive, shareable snapshot similar to Nix-style locks, use:
+For a comprehensive, version-pinned snapshot similar to Nix-style locks, use:
 
 ```bash
 coderaft lock <project>
 ```
 
-This writes a JSON snapshot (by default to `<workspace>/coderaft.lock.json`) that includes:
+This writes a **v2** JSON snapshot (by default to `<workspace>/coderaft.lock.json`) that includes:
 
-- Base image: name, digest (if available), and image ID
-- Container configuration: working_dir, user, restart policy, network, ports, volumes, labels, environment, capabilities, resources (cpus/memory)
-- Installed packages:
-  - apt: manually installed packages pinned as `name=version`
-  - pip: `pip freeze`
-  - npm/yarn/pnpm: globally installed packages `name@version` (Yarn global versions are read from Yarn's global directory)
-- Registries and sources for reproducibility:
-  - pip: `index-url` and `extra-index-url`
-  - npm/yarn/pnpm: global registry URLs
-  - apt: full `sources.list` lines, snapshot base URL if present, and OS release codename
-- Any `setup_commands` from your `coderaft.json` (for context)
+| Section | Contents |
+|---------|----------|
+| **Base image** | Name, digest (`sha256:...`), and image ID - ensures the exact base layer is pinned |
+| **Container** | working_dir, user, restart policy, network, ports, volumes, labels, environment, capabilities, resources (cpus/memory) |
+| **Packages** | **apt**: manually installed packages as `name=version` (sorted) |
+| | **pip**: `pip freeze` output (sorted) |
+| | **npm/yarn/pnpm**: globally installed packages as `name@version` (sorted) |
+| **Registries** | pip `index-url` / `extra-index-url`, npm/yarn/pnpm registry URLs |
+| **APT sources** | Full `sources.list` lines, snapshot base URL, OS release codename |
+| **Checksum** | SHA-256 over all reproducibility-critical fields for fast equality checks |
+| **Setup commands** | Any `setup_commands` from `coderaft.json` (for context) |
 
-Usage notes:
+All package lists are **sorted alphabetically** so the lock file output is deterministic - regenerating the lock on an unchanged island produces byte-identical JSON (aside from the timestamp).
+
+### Lock File Workflow
+
+```bash
+# 1. Generate the lock file
+coderaft lock myproject
+
+# 2. Commit it to your repository
+git add coderaft.lock.json
+git commit -m "pin island environment"
+
+# 3. A teammate clones and applies
+coderaft up                       # boots the island
+coderaft apply myproject          # reconciles packages to match the lock
+
+# 4. Verify the island matches later
+coderaft verify myproject
+
+# 5. Preview changes before applying
+coderaft apply myproject --dry-run
+```
+
+### Lock, Verify, Apply
+
+| Command | Purpose |
+|---------|---------|
+| `coderaft lock <project>` | Snapshot the running island into `coderaft.lock.json` |
+| `coderaft verify <project>` | Compare the live island against the lock; exits non-zero on drift. Shows per-package diffs (added/removed/version-changed) |
+| `coderaft apply <project>` | Configure registries/sources and reconcile package sets to match the lock |
+| `coderaft apply <project> --dry-run` | Preview what `apply` would change without modifying the island |
+
+:::tip
+**Checksum fast-path**: v2 lock files include a `checksum` field (SHA-256 over packages, registries, and image digest). Two lock files with the same checksum describe identical environments - no need to diff every package line.
+:::
+
+Notes:
 - Commit `coderaft.lock.json` to your repository to share environment details with teammates.
-- This file is an authoritative snapshot for auditing/sharing. The current execution path for rebuilds remains `coderaft.json` + the simple `coderaft.lock` replay file. You can now also use:
-  - `coderaft verify <project>` to validate a Island matches the lock (fails fast on drift)
-  - `coderaft apply <project>` to configure registries/sources and reconcile package sets to the lock
-- Local app dependencies (e.g. non-global Node packages in your repo) are intentionally not included; rely on your project’s own lockfiles (package-lock.json, yarn.lock, pnpm-lock.yaml, requirements.txt/poetry.lock, etc.).
-
+- Local app dependencies (e.g. non-global Node packages in your repo) are intentionally not included; rely on your project's own lockfiles (`package-lock.json`, `yarn.lock`, `pnpm-lock.yaml`, `requirements.txt`/`poetry.lock`, etc.).
 ## Initialize with Configuration
 ---
 
@@ -225,7 +266,7 @@ coderaft init custom-project --generate-config
 ```json
 {
   "name": "custom-project",
-  "base_image": "ubuntu:22.04",
+  "base_image": "ubuntu:latest",
   "setup_commands": [
     "apt install -y postgresql-client redis-tools"
   ],
@@ -254,13 +295,13 @@ Global settings are stored in `~/.coderaft/config.json`:
     "my-project": {
       "name": "my-project",
       "island_name": "coderaft_my-project",
-      "base_image": "ubuntu:22.04",
+      "base_image": "ubuntu:latest",
       "workspace_path": "/home/user/coderaft/my-project",
       "config_file": "/home/user/coderaft/my-project/coderaft.json"
     }
   },
   "settings": {
-    "default_base_image": "ubuntu:22.04",
+    "default_base_image": "ubuntu:latest",
     "auto_update": true,
     "auto_stop_on_exit": true,
     "default_environment": {
@@ -274,7 +315,7 @@ Global settings are stored in `~/.coderaft/config.json`:
 
 | Setting | Type | Default | Description |
 |--------|------|---------|-------------|
-| `default_base_image` | string | `ubuntu:22.04` | Default base image for new projects |
+| `default_base_image` | string | `ubuntu:latest` | Default base image for new projects |
 | `auto_update` | boolean | `true` | Whether to run updates during initialization |
 | `auto_stop_on_exit` | boolean | `true` | If enabled, coderaft stops a project's Island automatically after exiting an interactive shell or finishing a one-off `run` command. Override per-invocation with `--keep-running`. |
 

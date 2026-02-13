@@ -115,7 +115,7 @@ func (cm *ConfigManager) Load() (*Config, error) {
 	config := &Config{
 		Projects: make(map[string]*Project),
 		Settings: &GlobalSettings{
-			DefaultBaseImage: "ubuntu:22.04",
+			DefaultBaseImage: "ubuntu:latest",
 			AutoUpdate:       true,
 			AutoStopOnExit:   true,
 			AutoApplyLock:    true,
@@ -141,7 +141,7 @@ func (cm *ConfigManager) Load() (*Config, error) {
 
 	if config.Settings == nil {
 		config.Settings = &GlobalSettings{
-			DefaultBaseImage: "ubuntu:22.04",
+			DefaultBaseImage: "ubuntu:latest",
 			AutoUpdate:       true,
 			AutoStopOnExit:   true,
 			AutoApplyLock:    true,
@@ -284,7 +284,7 @@ func durationLike(s string) bool {
 func (cm *ConfigManager) GetDefaultProjectConfig(projectName string) *ProjectConfig {
 	return &ProjectConfig{
 		Name:        projectName,
-		BaseImage:   "ubuntu:22.04",
+		BaseImage:   "ubuntu:latest",
 		WorkingDir:  "/island",
 		Shell:       "/bin/bash",
 		User:        "root",
@@ -301,7 +301,7 @@ func (cm *ConfigManager) CreateProjectConfigFromTemplate(templateName, projectNa
 	templates := map[string]*ProjectConfig{
 		"python": {
 			Name:      projectName,
-			BaseImage: "ubuntu:22.04",
+			BaseImage: "ubuntu:latest",
 			SetupCommands: []string{
 				"apt update -y",
 				"DEBIAN_FRONTEND=noninteractive apt install -y --no-install-recommends python3 python3-pip python3-venv python3-dev build-essential ca-certificates",
@@ -317,7 +317,7 @@ func (cm *ConfigManager) CreateProjectConfigFromTemplate(templateName, projectNa
 		},
 		"nodejs": {
 			Name:      projectName,
-			BaseImage: "ubuntu:22.04",
+			BaseImage: "ubuntu:latest",
 			SetupCommands: []string{
 				"apt update -y",
 				"DEBIAN_FRONTEND=noninteractive apt install -y --no-install-recommends curl ca-certificates gnupg build-essential",
@@ -335,7 +335,7 @@ func (cm *ConfigManager) CreateProjectConfigFromTemplate(templateName, projectNa
 		},
 		"go": {
 			Name:      projectName,
-			BaseImage: "ubuntu:22.04",
+			BaseImage: "ubuntu:latest",
 			SetupCommands: []string{
 				"apt update -y",
 				"DEBIAN_FRONTEND=noninteractive apt install -y --no-install-recommends wget git build-essential ca-certificates",
@@ -353,7 +353,7 @@ func (cm *ConfigManager) CreateProjectConfigFromTemplate(templateName, projectNa
 		},
 		"web": {
 			Name:      projectName,
-			BaseImage: "ubuntu:22.04",
+			BaseImage: "ubuntu:latest",
 			SetupCommands: []string{
 				"apt update -y",
 				"DEBIAN_FRONTEND=noninteractive apt install -y --no-install-recommends python3 python3-pip nodejs npm nginx git curl wget ca-certificates gnupg",
@@ -534,7 +534,7 @@ func (config *Config) GetEffectiveBaseImage(project *Project, projectConfig *Pro
 	if config.Settings != nil && config.Settings.DefaultBaseImage != "" {
 		return config.Settings.DefaultBaseImage
 	}
-	return "ubuntu:22.04"
+	return "ubuntu:latest"
 }
 
 const ProjectConfigJSONSchema = `{

@@ -6,7 +6,7 @@ import (
 
 func BenchmarkFingerprint(b *testing.B) {
 	cfg := &BuildImageConfig{
-		BaseImage: "ubuntu:22.04",
+		BaseImage: "ubuntu:latest",
 		SetupCommands: []string{
 			"apt update -y",
 			"DEBIAN_FRONTEND=noninteractive apt install -y python3 python3-pip git curl wget",
@@ -31,7 +31,7 @@ func BenchmarkFingerprint(b *testing.B) {
 func BenchmarkGenerateDockerfile(b *testing.B) {
 	ic := NewImageCache()
 	cfg := &BuildImageConfig{
-		BaseImage: "ubuntu:22.04",
+		BaseImage: "ubuntu:latest",
 		SetupCommands: []string{
 			"apt update -y",
 			"DEBIAN_FRONTEND=noninteractive apt install -y python3 python3-pip python3-venv python3-dev build-essential git curl wget ca-certificates",
@@ -65,7 +65,7 @@ func BenchmarkGenerateDockerfile(b *testing.B) {
 func BenchmarkFingerprintCacheHit(b *testing.B) {
 
 	cfg := &BuildImageConfig{
-		BaseImage: "ubuntu:22.04",
+		BaseImage: "ubuntu:latest",
 		SetupCommands: []string{
 			"apt update -y",
 			"DEBIAN_FRONTEND=noninteractive apt install -y python3 python3-pip git",

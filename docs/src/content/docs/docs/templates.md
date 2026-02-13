@@ -12,7 +12,7 @@ Coderaft provides a few built-in templates for common development environments. 
 ```json
 {
   "name": "python-project",
-  "base_image": "ubuntu:22.04",
+  "base_image": "ubuntu:latest",
   "setup_commands": [
     "apt install -y python3 python3-pip python3-venv python3-dev",
     "apt install -y build-essential git curl wget",
@@ -41,7 +41,7 @@ coderaft shell myapp
 ```json
 {
   "name": "nodejs-project",
-  "base_image": "ubuntu:22.04",
+  "base_image": "ubuntu:latest",
   "setup_commands": [
     "curl -fsSL https://deb.nodesource.com/setup_18.x | bash -",
     "apt install -y nodejs build-essential git curl wget",
@@ -70,7 +70,7 @@ coderaft shell webapp
 ```json
 {
   "name": "go-project",
-  "base_image": "ubuntu:22.04",
+  "base_image": "ubuntu:latest",
   "setup_commands": [
     "apt install -y wget git build-essential",
     "wget https://go.dev/dl/go1.21.0.linux-amd64.tar.gz",
@@ -99,7 +99,7 @@ coderaft shell service
 ```json
 {
   "name": "web-project",
-  "base_image": "ubuntu:22.04",
+  "base_image": "ubuntu:latest",
   "setup_commands": [
     "curl -fsSL https://deb.nodesource.com/setup_18.x | bash -",
     "apt install -y python3 python3-pip nodejs nginx git curl wget",
@@ -161,7 +161,7 @@ Create your own reusable configurations (example snippet):
 ```json
 {
   "name": "data-science",
-  "base_image": "ubuntu:22.04",
+  "base_image": "ubuntu:latest",
   "setup_commands": [
     "apt install -y python3 python3-pip jupyter",
     "pip3 install pandas numpy matplotlib seaborn scikit-learn",
@@ -196,7 +196,7 @@ coderaft templates create data-science AnalysisProject
 ```json
 {
   "name": "database-dev",
-  "base_image": "ubuntu:22.04",
+  "base_image": "ubuntu:latest",
   "setup_commands": [
     "apt install -y postgresql-client mysql-client redis-tools",
     "apt install -y python3 python3-pip",
@@ -216,7 +216,7 @@ coderaft templates create data-science AnalysisProject
 ```json
 {
   "name": "devops",
-  "base_image": "ubuntu:22.04",
+  "base_image": "ubuntu:latest",
   "setup_commands": [
     "apt install -y curl wget git jq unzip",
     "curl -LO https://storage.googleapis.com/kubernetes-release/release/$(curl -s https://storage.googleapis.com/kubernetes-release/release/stable.txt)/bin/linux/amd64/kubectl",
@@ -237,7 +237,7 @@ coderaft templates create data-science AnalysisProject
 ```json
 {
   "name": "mobile-dev",
-  "base_image": "ubuntu:22.04",
+  "base_image": "ubuntu:latest",
   "setup_commands": [
     "curl -fsSL https://deb.nodesource.com/setup_18.x | bash -",
     "apt install -y nodejs default-jdk android-tools-adb",
@@ -274,7 +274,7 @@ coderaft shell test-project
 {
   "name": "my-template",
   "description": "Custom template for X development",
-  "base_image": "ubuntu:22.04",
+  "base_image": "ubuntu:latest",
   "setup_commands": [
     "# Add descriptive comments",
     "apt install -y tool1 tool2"
@@ -311,7 +311,7 @@ Each template is a JSON file named `<template>.json` with this shape:
   "description": "Custom template for X development",
   "config": {
     "name": "project-name",
-    "base_image": "ubuntu:22.04",
+    "base_image": "ubuntu:latest",
     "setup_commands": ["apt install -y ..."],
     "environment": {},
     "ports": [],

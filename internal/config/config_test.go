@@ -119,7 +119,7 @@ func TestProjectConfig(t *testing.T) {
 			name: "valid project config",
 			config: ProjectConfig{
 				Name:      "test-project",
-				BaseImage: "ubuntu:22.04",
+				BaseImage: "ubuntu:latest",
 				SetupCommands: []string{
 					"apt update",
 					"apt install -y python3",
@@ -178,7 +178,7 @@ func TestProject(t *testing.T) {
 	project := &Project{
 		Name:          "test-project",
 		IslandName:    "test-project-island",
-		BaseImage:     "ubuntu:22.04",
+		BaseImage:     "ubuntu:latest",
 		WorkspacePath: "/home/user/coderaft/test-project",
 		Status:        "running",
 		ConfigFile:    "/home/user/coderaft/test-project/coderaft.json",
@@ -247,7 +247,7 @@ func TestConfigTemplate(t *testing.T) {
 		Description: "Python development environment",
 		Config: ProjectConfig{
 			Name:      "python-project",
-			BaseImage: "ubuntu:22.04",
+			BaseImage: "ubuntu:latest",
 			SetupCommands: []string{
 				"apt update",
 				"apt install -y python3 python3-pip",

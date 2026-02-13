@@ -55,13 +55,6 @@ func (optSetup *OptimizedSetup) OptimizedSystemUpdate(IslandName string) error {
 			Parallel: false,
 		},
 		{
-			Name: "Install Essentials",
-			Commands: []string{
-				"DEBIAN_FRONTEND=noninteractive apt install -y --no-install-recommends git curl wget ca-certificates build-essential openssh-client less nano",
-			},
-			Parallel: false,
-		},
-		{
 			Name: "System Optimization",
 			Commands: []string{
 				"apt autoremove -y",
@@ -79,7 +72,7 @@ func (optSetup *OptimizedSetup) FastInit(projectName string, projectConfig *conf
 	IslandName := fmt.Sprintf("coderaft_%s", projectName)
 	baseImage := cfg.GetEffectiveBaseImage(&config.Project{
 		Name:      projectName,
-		BaseImage: "ubuntu:22.04",
+		BaseImage: "ubuntu:latest",
 	}, projectConfig)
 
 	workspaceIsland := "/island"

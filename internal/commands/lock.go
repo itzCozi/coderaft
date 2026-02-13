@@ -1,10 +1,13 @@
 package commands
 
 import (
+	"crypto/sha256"
+	"encoding/hex"
 	"encoding/json"
 	"fmt"
 	"os"
 	"path/filepath"
+	"sort"
 	"strings"
 	"time"
 
@@ -18,6 +21,7 @@ type lockFile struct {
 	Project     string            `json:"project"`
 	IslandName  string            `json:"ISLAND_NAME"`
 	CreatedAt   string            `json:"created_at"`
+	Checksum    string            `json:"checksum"`
 	BaseImage   lockImage         `json:"base_image"`
 	Container   lockContainer     `json:"container"`
 	Packages    lockPackages      `json:"packages"`
@@ -76,122 +80,21 @@ var (
 var lockCmd = &cobra.Command{
 	Use:   "lock <project>",
 	Short: "Generate a comprehensive coderaft.lock.json for a project",
-	Args:  cobra.ExactArgs(1),
+	Long: `Generate a deterministic, checksummed environment snapshot as coderaft.lock.json.
+
+The lock file captures the full island state: base image digest, container
+configuration, every installed package (apt, pip, npm, yarn, pnpm) with
+pinned versions, registry URLs, and apt sources. Package lists are sorted
+alphabetically for deterministic output and a SHA-256 checksum is computed
+over the reproducibility-critical fields so teammates can quickly verify
+whether two lock files describe the same environment.
+
+Commit coderaft.lock.json to your repository. Teammates can then run
+'coderaft apply <project>' to reconcile their island to match, or
+'coderaft verify <project>' to check for drift.`,
+	Args: cobra.ExactArgs(1),
 	RunE: func(cmd *cobra.Command, args []string) error {
-		projectName := args[0]
-
-		cfg, err := configManager.Load()
-		if err != nil {
-			return fmt.Errorf("failed to load configuration: %w", err)
-		}
-		proj, ok := cfg.GetProject(projectName)
-		if !ok {
-			return fmt.Errorf("project '%s' not found. Run 'coderaft init %s' first", projectName, projectName)
-		}
-
-		exists, err := dockerClient.IslandExists(proj.IslandName)
-		if err != nil {
-			return err
-		}
-		if !exists {
-			return fmt.Errorf("island '%s' does not exist. Start it with 'coderaft up %s'", proj.IslandName, projectName)
-		}
-		status, err := dockerClient.GetIslandStatus(proj.IslandName)
-		if err != nil {
-			return err
-		}
-		if status != "running" {
-			if err := dockerClient.StartIsland(proj.IslandName); err != nil {
-				return fmt.Errorf("failed to start island '%s': %w", proj.IslandName, err)
-			}
-		}
-
-		imgName := proj.BaseImage
-		digest, imgID, imgErr := dockerClient.GetImageDigestInfo(imgName)
-		if imgErr != nil || digest == "" {
-
-			cid, err := dockerClient.GetContainerID(proj.IslandName)
-			if err == nil && cid != "" {
-				d2, id2, _ := dockerClient.GetImageDigestInfo(cid)
-				if d2 != "" || id2 != "" {
-					digest, imgID = d2, id2
-				}
-			}
-		}
-
-		mounts, _ := dockerClient.GetMounts(proj.IslandName)
-		ports, _ := dockerClient.GetPortMappings(proj.IslandName)
-
-		envMap, workdir, user, restart, labels, capabilities, resources, network := dockerClient.GetContainerMeta(proj.IslandName)
-
-		ui.Status("gathering package information...")
-		aptList, pipList, npmList, yarnList, pnpmList := dockerClient.QueryPackagesParallel(proj.IslandName)
-
-		aptSnapshot, aptSources, aptRelease := dockerClient.GetAptSources(proj.IslandName)
-		pipIndex, pipExtras := dockerClient.GetPipRegistries(proj.IslandName)
-		npmReg, yarnReg, pnpmReg := dockerClient.GetNodeRegistries(proj.IslandName)
-
-		lf := lockFile{
-			Version:    1,
-			Project:    proj.Name,
-			IslandName: proj.IslandName,
-			CreatedAt:  time.Now().UTC().Format(time.RFC3339),
-			BaseImage:  lockImage{Name: imgName, Digest: digest, ID: imgID},
-			Container: lockContainer{
-				WorkingDir:   workdir,
-				User:         user,
-				Restart:      restart,
-				Network:      network,
-				Ports:        ports,
-				Volumes:      mounts,
-				Labels:       labels,
-				Environment:  envMap,
-				Capabilities: capabilities,
-				Resources:    resources,
-			},
-			Packages: lockPackages{
-				Apt:  aptList,
-				Pip:  pipList,
-				Npm:  npmList,
-				Yarn: yarnList,
-				Pnpm: pnpmList,
-			},
-			Registries: lockRegistries{
-				PipIndexURL:   pipIndex,
-				PipExtraIndex: pipExtras,
-				NpmRegistry:   npmReg,
-				YarnRegistry:  yarnReg,
-				PnpmRegistry:  pnpmReg,
-				Env:           envMap,
-			},
-			AptSources: lockAptSources{
-				SnapshotURL:   aptSnapshot,
-				SourcesLists:  aptSources,
-				PinnedRelease: aptRelease,
-			},
-		}
-
-		if pcfg, err := configManager.LoadProjectConfig(proj.WorkspacePath); err == nil && pcfg != nil {
-			if len(pcfg.SetupCommands) > 0 {
-				lf.SetupScript = pcfg.SetupCommands
-			}
-		}
-
-		outPath := lockOutput
-		if strings.TrimSpace(outPath) == "" {
-			outPath = filepath.Join(proj.WorkspacePath, "coderaft.lock.json")
-		}
-
-		b, err := json.MarshalIndent(lf, "", "  ")
-		if err != nil {
-			return fmt.Errorf("failed to marshal lock file: %w", err)
-		}
-		if err := os.WriteFile(outPath, b, 0644); err != nil {
-			return fmt.Errorf("failed to write lock file: %w", err)
-		}
-
-		ui.Success("wrote lock file: %s", outPath)
-		return nil
+		return WriteLockFileForProject(args[0], lockOutput)
 	},
 }
 
@@ -248,15 +151,22 @@ func WriteLockFileForIsland(IslandName, projectName, workspacePath, baseImage, o
 
 	envMap, workdir, user, restart, labels, capabilities, resources, network := dockerClient.GetContainerMeta(IslandName)
 
-	fmt.Printf("Gathering package information in parallel...\n")
+	ui.Status("gathering package information...")
 	aptList, pipList, npmList, yarnList, pnpmList := dockerClient.QueryPackagesParallel(IslandName)
+
+	// Sort all package lists for deterministic output
+	sort.Strings(aptList)
+	sort.Strings(pipList)
+	sort.Strings(npmList)
+	sort.Strings(yarnList)
+	sort.Strings(pnpmList)
 
 	aptSnapshot, aptSources, aptRelease := dockerClient.GetAptSources(IslandName)
 	pipIndex, pipExtras := dockerClient.GetPipRegistries(IslandName)
 	npmReg, yarnReg, pnpmReg := dockerClient.GetNodeRegistries(IslandName)
 
 	lf := lockFile{
-		Version:    1,
+		Version:    2,
 		Project:    projectName,
 		IslandName: IslandName,
 		CreatedAt:  time.Now().UTC().Format(time.RFC3339),
@@ -301,6 +211,9 @@ func WriteLockFileForIsland(IslandName, projectName, workspacePath, baseImage, o
 		}
 	}
 
+	// Compute integrity checksum over reproducibility-critical fields
+	lf.Checksum = computeLockChecksum(&lf)
+
 	finalOut := strings.TrimSpace(outPath)
 	if finalOut == "" {
 		finalOut = filepath.Join(workspacePath, "coderaft.lock.json")
@@ -314,6 +227,50 @@ func WriteLockFileForIsland(IslandName, projectName, workspacePath, baseImage, o
 		return fmt.Errorf("failed to write lock file: %w", err)
 	}
 
-	fmt.Printf("Wrote lock file: %s\n", finalOut)
+	ui.Success("wrote lock file: %s", finalOut)
 	return nil
+}
+
+// computeLockChecksum produces a SHA-256 digest over the reproducibility-critical
+// fields of a lock file (base image, sorted packages, registries, apt sources).
+// The checksum allows quick equality checks between two lock files without
+// comparing every field — if the checksums match, the environments are identical.
+func computeLockChecksum(lf *lockFile) string {
+	h := sha256.New()
+
+	// Base image
+	h.Write([]byte(lf.BaseImage.Name))
+	h.Write([]byte(lf.BaseImage.Digest))
+
+	// Sorted package lists (already sorted above)
+	writeList := func(prefix string, items []string) {
+		h.Write([]byte(prefix))
+		for _, item := range items {
+			h.Write([]byte(item))
+			h.Write([]byte{0})
+		}
+	}
+	writeList("apt:", lf.Packages.Apt)
+	writeList("pip:", lf.Packages.Pip)
+	writeList("npm:", lf.Packages.Npm)
+	writeList("yarn:", lf.Packages.Yarn)
+	writeList("pnpm:", lf.Packages.Pnpm)
+
+	// Registries
+	h.Write([]byte(lf.Registries.PipIndexURL))
+	for _, u := range lf.Registries.PipExtraIndex {
+		h.Write([]byte(u))
+	}
+	h.Write([]byte(lf.Registries.NpmRegistry))
+	h.Write([]byte(lf.Registries.YarnRegistry))
+	h.Write([]byte(lf.Registries.PnpmRegistry))
+
+	// Apt sources
+	h.Write([]byte(lf.AptSources.SnapshotURL))
+	for _, s := range lf.AptSources.SourcesLists {
+		h.Write([]byte(s))
+	}
+	h.Write([]byte(lf.AptSources.PinnedRelease))
+
+	return "sha256:" + hex.EncodeToString(h.Sum(nil))
 }
