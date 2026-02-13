@@ -25,7 +25,7 @@ func dockerCmd() string {
 type ExecFunc func(ctx context.Context, containerID string, cmd []string, showOutput bool) (stdout, stderr string, exitCode int, err error)
 
 type SetupCommandExecutor struct {
-	islandName    string
+	islandName string
 	workerPool *WorkerPool
 	showOutput bool
 	execFunc   ExecFunc
@@ -37,7 +37,7 @@ func NewSetupCommandExecutor(islandName string, showOutput bool, maxWorkers int)
 	}
 
 	return &SetupCommandExecutor{
-		islandName:    islandName,
+		islandName: islandName,
 		workerPool: NewWorkerPool(maxWorkers, 10*time.Minute),
 		showOutput: showOutput,
 	}
@@ -249,14 +249,14 @@ func (sce *SetupCommandExecutor) executeCommand(command string, step, total int,
 }
 
 type PackageQueryExecutor struct {
-	islandName    string
+	islandName string
 	workerPool *WorkerPool
 	execFunc   ExecFunc
 }
 
 func NewPackageQueryExecutor(islandName string) *PackageQueryExecutor {
 	return &PackageQueryExecutor{
-		islandName:    islandName,
+		islandName: islandName,
 		workerPool: NewWorkerPool(5, 2*time.Minute),
 	}
 }
