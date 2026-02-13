@@ -61,7 +61,6 @@ var shellCmd = &cobra.Command{
 			}
 		}
 
-		ui.Status("attaching to island '%s'...", project.IslandName)
 		if err := docker.AttachShell(project.IslandName); err != nil {
 			return fmt.Errorf("failed to attach shell: %w", err)
 		}

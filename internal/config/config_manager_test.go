@@ -31,8 +31,8 @@ func TestConfigManager_LoadAndSave(t *testing.T) {
 		t.Error("Settings should not be nil")
 	}
 
-	if config.Settings.DefaultBaseImage != "ubuntu:latest" {
-		t.Errorf("Expected default base image 'ubuntu:latest', got %q", config.Settings.DefaultBaseImage)
+	if config.Settings.DefaultBaseImage != "buildpack-deps:noble" {
+		t.Errorf("Expected default base image 'buildpack-deps:noble', got %q", config.Settings.DefaultBaseImage)
 	}
 
 	if !config.Settings.AutoUpdate {

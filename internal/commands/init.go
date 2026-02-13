@@ -99,7 +99,7 @@ Examples:
 
 		baseImage := cfg.GetEffectiveBaseImage(&config.Project{
 			Name:      projectName,
-			BaseImage: "ubuntu:latest",
+			BaseImage: "buildpack-deps:noble",
 		}, projectConfig)
 
 		workspaceIsland := "/island"
@@ -107,7 +107,7 @@ Examples:
 			workspaceIsland = projectConfig.WorkingDir
 		}
 
-		ui.Status("setting up island '%s' with image '%s'...", IslandName, baseImage)
+		ui.Step(1, 4, "pulling image '%s'", baseImage)
 		if err := dockerClient.PullImage(baseImage); err != nil {
 			return fmt.Errorf("failed to pull base image: %w", err)
 		}
@@ -141,6 +141,7 @@ Examples:
 			}
 		}
 
+		ui.Step(2, 4, "creating island '%s'", IslandName)
 		islandID, err := dockerClient.CreateIslandWithConfig(IslandName, baseImage, workspacePath, workspaceIsland, configMap)
 		if err != nil {
 			return fmt.Errorf("failed to create island: %w", err)
@@ -150,13 +151,12 @@ Examples:
 			return fmt.Errorf("failed to start island: %w", err)
 		}
 
-		ui.Status("starting island...")
+		ui.Step(3, 4, "starting island")
 		if err := dockerClient.WaitForIsland(IslandName, 30*time.Second); err != nil {
 			return fmt.Errorf("island failed to start: %w", err)
 		}
 
 		// Run apt update so the package index is fresh
-		ui.Status("updating system package index...")
 		updateCommands := []string{
 			"apt update -y",
 		}
@@ -165,13 +165,13 @@ Examples:
 		}
 
 		if projectConfig != nil && len(projectConfig.SetupCommands) > 0 {
-			ui.Status("installing template packages (%d commands)...", len(projectConfig.SetupCommands))
+			ui.Step(3, 4, "running setup commands (%d)", len(projectConfig.SetupCommands))
 			if err := dockerClient.ExecuteSetupCommandsWithOutput(IslandName, projectConfig.SetupCommands, false); err != nil {
 				return fmt.Errorf("failed to execute setup commands: %w", err)
 			}
 		}
 
-		ui.Status("setting up coderaft commands in island...")
+		ui.Step(4, 4, "configuring environment")
 		if err := dockerClient.SetupCoderaftOnIslandWithUpdate(IslandName, projectName); err != nil {
 			return fmt.Errorf("failed to setup coderaft in island: %w", err)
 		}

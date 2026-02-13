@@ -92,7 +92,6 @@ func (c *Client) PullImage(ref string) error {
 	if err := c.sdk.pullImage(ctx, ref); err != nil {
 		return fmt.Errorf("failed to pull image %s: %w", ref, err)
 	}
-	ui.Success("image %s pulled", ref)
 	return nil
 }
 
@@ -177,10 +176,7 @@ func (c *Client) ExecuteSetupCommandsSequential(islandName string, commands []st
 			if j > 0 {
 				scriptBuilder.WriteString(" ; ")
 			}
-			if showOutput {
 
-				scriptBuilder.WriteString(fmt.Sprintf("echo '==> %s' ; ", strings.ReplaceAll(command, "'", "'\\''")))
-			}
 			scriptBuilder.WriteString(command)
 		}
 
@@ -582,6 +578,13 @@ func AttachShell(islandName string) error {
 	cmd.Stderr = os.Stderr
 
 	if err := cmd.Run(); err != nil {
+		// Exit codes 130 (SIGINT/Ctrl+C) and 137 (SIGKILL) are normal shell exits
+		if exitErr, ok := err.(*exec.ExitError); ok {
+			code := exitErr.ExitCode()
+			if code == 130 || code == 137 || code == 0 {
+				return nil
+			}
+		}
 		return fmt.Errorf("failed to attach shell: %w", err)
 	}
 	return nil

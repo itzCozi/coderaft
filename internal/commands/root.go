@@ -75,13 +75,15 @@ var rootCmd = &cobra.Command{
 }
 
 func Execute() error {
-	if err := rootCmd.Execute(); err != nil {
-		return fmt.Errorf("failed to execute root command: %w", err)
-	}
-	return nil
+	return rootCmd.Execute()
 }
 
 func init() {
+	// Silence Cobra's default error and usage printing on RunE errors;
+	// we handle error display ourselves in main.go.
+	rootCmd.SilenceErrors = true
+	rootCmd.SilenceUsage = true
+
 	rootCmd.PersistentFlags().BoolVar(&ui.Verbose, "verbose", false, "Show detailed progress messages")
 
 	// Core commands
