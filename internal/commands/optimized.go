@@ -68,7 +68,7 @@ func (optSetup *OptimizedSetup) OptimizedSystemUpdate(IslandName string) error {
 	return executor.ExecuteCommandGroups(groups)
 }
 
-func (optSetup *OptimizedSetup) FastInit(projectName string, projectConfig *config.ProjectConfig, cfg *config.Config, workspacePath string, forceFlag bool) error {
+func (optSetup *OptimizedSetup) FastInit(projectName string, projectConfig *config.ProjectConfig, cfg *config.Config, workspacePath string, forceFlag bool, configMap map[string]interface{}) error {
 	IslandName := fmt.Sprintf("coderaft_%s", projectName)
 	baseImage := cfg.GetEffectiveBaseImage(&config.Project{
 		Name:      projectName,
@@ -117,7 +117,9 @@ func (optSetup *OptimizedSetup) FastInit(projectName string, projectConfig *conf
 	}
 
 	ui.Status("creating island...")
-	configMap := make(map[string]interface{})
+	if configMap == nil {
+		configMap = make(map[string]interface{})
+	}
 
 	islandID, err := optSetup.dockerClient.CreateIslandWithConfig(IslandName, effectiveImage, workspacePath, workspaceIsland, configMap)
 	if err != nil {
@@ -156,7 +158,7 @@ func (optSetup *OptimizedSetup) FastInit(projectName string, projectConfig *conf
 	return nil
 }
 
-func (optSetup *OptimizedSetup) FastUp(projectConfig *config.ProjectConfig, projectName, IslandName, baseImage, cwd, workspaceIsland string) error {
+func (optSetup *OptimizedSetup) FastUp(projectConfig *config.ProjectConfig, projectName, IslandName, baseImage, cwd, workspaceIsland string, configMap map[string]interface{}) error {
 	ui.Status("fast startup of island...")
 
 	effectiveImage := baseImage
@@ -180,7 +182,9 @@ func (optSetup *OptimizedSetup) FastUp(projectConfig *config.ProjectConfig, proj
 		}
 	}
 
-	configMap := make(map[string]interface{})
+	if configMap == nil {
+		configMap = make(map[string]interface{})
+	}
 
 	ui.Status("creating optimized island...")
 	islandID, err := optSetup.dockerClient.CreateIslandWithConfig(IslandName, effectiveImage, cwd, workspaceIsland, configMap)
@@ -225,6 +229,22 @@ func (optSetup *OptimizedSetup) FastUp(projectConfig *config.ProjectConfig, proj
 	return nil
 }
 
+
+
+
+var allowedHistoryPrefixes = []string{
+	"apt ", "apt-get ", "pip ", "pip3 ", "npm ", "yarn ", "pnpm ", "corepack ",
+}
+
+func isAllowedHistoryCommand(cmd string) bool {
+	for _, prefix := range allowedHistoryPrefixes {
+		if strings.HasPrefix(cmd, prefix) {
+			return true
+		}
+	}
+	return false
+}
+
 func (optSetup *OptimizedSetup) processLockFile(IslandName, lockfilePath string) error {
 	data, err := os.ReadFile(lockfilePath)
 	if err != nil {
@@ -233,16 +253,26 @@ func (optSetup *OptimizedSetup) processLockFile(IslandName, lockfilePath string)
 
 	lines := strings.Split(string(data), "\n")
 	var cmds []string
+	var skipped int
 	for _, line := range lines {
 		cmd := strings.TrimSpace(line)
 		if cmd == "" || strings.HasPrefix(cmd, "#") {
 			continue
 		}
+		if !isAllowedHistoryCommand(cmd) {
+			skipped++
+			ui.Warning("skipping disallowed history command: %s", cmd)
+			continue
+		}
 		cmds = append(cmds, cmd)
 	}
 
+	if skipped > 0 {
+		ui.Warning("%d commands in coderaft.history were skipped (only package manager commands are allowed)", skipped)
+	}
+
 	if len(cmds) > 0 {
-		ui.Status("replaying %d commands from lock file...", len(cmds))
+		ui.Status("replaying %d commands from history file...", len(cmds))
 		return optSetup.dockerClient.ExecuteSetupCommandsWithOutput(IslandName, cmds, false)
 	}
 

@@ -48,6 +48,7 @@ type lockContainer struct {
 	Environment  map[string]string `json:"environment,omitempty"`
 	Capabilities []string          `json:"capabilities,omitempty"`
 	Resources    map[string]string `json:"resources,omitempty"`
+	Gpus         string            `json:"gpus,omitempty"`
 }
 
 type lockPackages struct {
@@ -59,12 +60,11 @@ type lockPackages struct {
 }
 
 type lockRegistries struct {
-	PipIndexURL   string            `json:"pip_index_url,omitempty"`
-	PipExtraIndex []string          `json:"pip_extra_index_urls,omitempty"`
-	NpmRegistry   string            `json:"npm_registry,omitempty"`
-	YarnRegistry  string            `json:"yarn_registry,omitempty"`
-	PnpmRegistry  string            `json:"pnpm_registry,omitempty"`
-	Env           map[string]string `json:"env,omitempty"`
+	PipIndexURL   string   `json:"pip_index_url,omitempty"`
+	PipExtraIndex []string `json:"pip_extra_index_urls,omitempty"`
+	NpmRegistry   string   `json:"npm_registry,omitempty"`
+	YarnRegistry  string   `json:"yarn_registry,omitempty"`
+	PnpmRegistry  string   `json:"pnpm_registry,omitempty"`
 }
 
 type lockAptSources struct {
@@ -146,15 +146,21 @@ func WriteLockFileForIsland(IslandName, projectName, workspacePath, baseImage, o
 		}
 	}
 
-	mounts, _ := dockerClient.GetMounts(IslandName)
-	ports, _ := dockerClient.GetPortMappings(IslandName)
+	mounts, err := dockerClient.GetMounts(IslandName)
+	if err != nil {
+		return fmt.Errorf("failed to get mounts for island '%s': %w", IslandName, err)
+	}
+	ports, err := dockerClient.GetPortMappings(IslandName)
+	if err != nil {
+		return fmt.Errorf("failed to get port mappings for island '%s': %w", IslandName, err)
+	}
 
 	envMap, workdir, user, restart, labels, capabilities, resources, network := dockerClient.GetContainerMeta(IslandName)
 
 	ui.Status("gathering package information...")
 	aptList, pipList, npmList, yarnList, pnpmList := dockerClient.QueryPackagesParallel(IslandName)
 
-	// Sort all package lists for deterministic output
+	
 	sort.Strings(aptList)
 	sort.Strings(pipList)
 	sort.Strings(npmList)
@@ -164,6 +170,12 @@ func WriteLockFileForIsland(IslandName, projectName, workspacePath, baseImage, o
 	aptSnapshot, aptSources, aptRelease := dockerClient.GetAptSources(IslandName)
 	pipIndex, pipExtras := dockerClient.GetPipRegistries(IslandName)
 	npmReg, yarnReg, pnpmReg := dockerClient.GetNodeRegistries(IslandName)
+
+	
+	var gpuConfig string
+	if pcfg, pcfgErr := configManager.LoadProjectConfig(workspacePath); pcfgErr == nil && pcfg != nil {
+		gpuConfig = pcfg.Gpus
+	}
 
 	lf := lockFile{
 		Version:    2,
@@ -182,6 +194,7 @@ func WriteLockFileForIsland(IslandName, projectName, workspacePath, baseImage, o
 			Environment:  envMap,
 			Capabilities: capabilities,
 			Resources:    resources,
+			Gpus:         gpuConfig,
 		},
 		Packages: lockPackages{
 			Apt:  aptList,
@@ -196,7 +209,6 @@ func WriteLockFileForIsland(IslandName, projectName, workspacePath, baseImage, o
 			NpmRegistry:   npmReg,
 			YarnRegistry:  yarnReg,
 			PnpmRegistry:  pnpmReg,
-			Env:           envMap,
 		},
 		AptSources: lockAptSources{
 			SnapshotURL:   aptSnapshot,
@@ -205,13 +217,13 @@ func WriteLockFileForIsland(IslandName, projectName, workspacePath, baseImage, o
 		},
 	}
 
-	if pcfg, err := configManager.LoadProjectConfig(workspacePath); err == nil && pcfg != nil {
-		if len(pcfg.SetupCommands) > 0 {
-			lf.SetupScript = pcfg.SetupCommands
+	if pcfg2, pcfg2Err := configManager.LoadProjectConfig(workspacePath); pcfg2Err == nil && pcfg2 != nil {
+		if len(pcfg2.SetupCommands) > 0 {
+			lf.SetupScript = pcfg2.SetupCommands
 		}
 	}
 
-	// Compute integrity checksum over reproducibility-critical fields
+	
 	lf.Checksum = computeLockChecksum(&lf)
 
 	finalOut := strings.TrimSpace(outPath)
@@ -231,18 +243,26 @@ func WriteLockFileForIsland(IslandName, projectName, workspacePath, baseImage, o
 	return nil
 }
 
-// computeLockChecksum produces a SHA-256 digest over the reproducibility-critical
-// fields of a lock file (base image, sorted packages, registries, apt sources).
-// The checksum allows quick equality checks between two lock files without
-// comparing every field — if the checksums match, the environments are identical.
+
+
+
+
+
+
 func computeLockChecksum(lf *lockFile) string {
 	h := sha256.New()
 
-	// Base image
+	
 	h.Write([]byte(lf.BaseImage.Name))
 	h.Write([]byte(lf.BaseImage.Digest))
 
-	// Sorted package lists (already sorted above)
+	
+	h.Write([]byte("container:"))
+	h.Write([]byte(lf.Container.WorkingDir))
+	h.Write([]byte(lf.Container.User))
+	h.Write([]byte(lf.Container.Restart))
+	h.Write([]byte(lf.Container.Network))
+	h.Write([]byte(lf.Container.Gpus))
 	writeList := func(prefix string, items []string) {
 		h.Write([]byte(prefix))
 		for _, item := range items {
@@ -250,13 +270,38 @@ func computeLockChecksum(lf *lockFile) string {
 			h.Write([]byte{0})
 		}
 	}
+	writeList("ports:", lf.Container.Ports)
+	writeList("volumes:", lf.Container.Volumes)
+	writeList("capabilities:", lf.Container.Capabilities)
+	writeSortedMap := func(prefix string, m map[string]string) {
+		h.Write([]byte(prefix))
+		keys := make([]string, 0, len(m))
+		for k := range m {
+			keys = append(keys, k)
+		}
+		sort.Strings(keys)
+		for _, k := range keys {
+			h.Write([]byte(k))
+			h.Write([]byte{0})
+			h.Write([]byte(m[k]))
+			h.Write([]byte{0})
+		}
+	}
+	writeSortedMap("env:", lf.Container.Environment)
+	writeSortedMap("labels:", lf.Container.Labels)
+	writeSortedMap("resources:", lf.Container.Resources)
+
+	
+	writeList("setup:", lf.SetupScript)
+
+	
 	writeList("apt:", lf.Packages.Apt)
 	writeList("pip:", lf.Packages.Pip)
 	writeList("npm:", lf.Packages.Npm)
 	writeList("yarn:", lf.Packages.Yarn)
 	writeList("pnpm:", lf.Packages.Pnpm)
 
-	// Registries
+	
 	h.Write([]byte(lf.Registries.PipIndexURL))
 	for _, u := range lf.Registries.PipExtraIndex {
 		h.Write([]byte(u))
@@ -265,7 +310,7 @@ func computeLockChecksum(lf *lockFile) string {
 	h.Write([]byte(lf.Registries.YarnRegistry))
 	h.Write([]byte(lf.Registries.PnpmRegistry))
 
-	// Apt sources
+	
 	h.Write([]byte(lf.AptSources.SnapshotURL))
 	for _, s := range lf.AptSources.SourcesLists {
 		h.Write([]byte(s))

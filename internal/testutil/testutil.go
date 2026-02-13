@@ -27,7 +27,7 @@ func CreateTestConfig() *config.Config {
 	return &config.Config{
 		Projects: make(map[string]*config.Project),
 		Settings: &config.GlobalSettings{
-			DefaultBaseImage:    "buildpack-deps:noble",
+			DefaultBaseImage:    "ubuntu:noble",
 			DefaultEnvironment:  map[string]string{"PATH": "/usr/local/bin:/usr/bin:/bin"},
 			ConfigTemplatesPath: "",
 			AutoUpdate:          true,
@@ -39,8 +39,8 @@ func CreateTestConfig() *config.Config {
 func CreateTestProject(name string) *config.Project {
 	return &config.Project{
 		Name:          name,
-		IslandName:    name + "-island",
-		BaseImage:     "buildpack-deps:noble",
+		IslandName:    "coderaft_" + name,
+		BaseImage:     "ubuntu:noble",
 		WorkspacePath: filepath.Join(testHomePath(), "coderaft", name),
 		Status:        "stopped",
 		ConfigFile:    filepath.Join(testHomePath(), "coderaft", name, "coderaft.json"),
@@ -50,7 +50,7 @@ func CreateTestProject(name string) *config.Project {
 func CreateTestProjectConfig(name string) *config.ProjectConfig {
 	return &config.ProjectConfig{
 		Name:      name,
-		BaseImage: "buildpack-deps:noble",
+		BaseImage: "ubuntu:noble",
 		SetupCommands: []string{
 			"apt update",
 			"apt install -y curl git",

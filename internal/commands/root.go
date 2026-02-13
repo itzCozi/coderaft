@@ -16,7 +16,7 @@ import (
 
 var (
 	configManager *config.ConfigManager
-	dockerClient  *docker.Client
+	dockerClient  DockerEngine
 )
 
 var rootCmd = &cobra.Command{
@@ -27,12 +27,12 @@ var rootCmd = &cobra.Command{
 
 		switch runtime.GOOS {
 		case "linux", "darwin", "windows":
-			// Supported platform
+			
 		default:
 			return fmt.Errorf("unsupported platform: %s. coderaft supports Linux, macOS, and Windows", runtime.GOOS)
 		}
 
-		// Commands that don't need Docker or config
+		
 		switch cmd.Name() {
 		case "version", "completion", "help":
 			return nil
@@ -79,14 +79,14 @@ func Execute() error {
 }
 
 func init() {
-	// Silence Cobra's default error and usage printing on RunE errors;
-	// we handle error display ourselves in main.go.
+	
+	
 	rootCmd.SilenceErrors = true
 	rootCmd.SilenceUsage = true
 
 	rootCmd.PersistentFlags().BoolVar(&ui.Verbose, "verbose", false, "Show detailed progress messages")
 
-	// Core commands
+	
 	rootCmd.AddCommand(initCmd)
 	rootCmd.AddCommand(upCmd)
 	rootCmd.AddCommand(shellCmd)
@@ -96,19 +96,19 @@ func init() {
 	rootCmd.AddCommand(listCmd)
 	rootCmd.AddCommand(statusCmd)
 
-	// Configuration commands
+	
 	rootCmd.AddCommand(configCmd)
 	rootCmd.AddCommand(templatesCmd)
 	rootCmd.AddCommand(devcontainerCmd)
 
-	// Lock/snapshot commands
+	
 	rootCmd.AddCommand(lockCmd)
 	rootCmd.AddCommand(applyCmd)
 	rootCmd.AddCommand(verifyCmd)
 	rootCmd.AddCommand(backupCmd)
 	rootCmd.AddCommand(restoreCmd)
 
-	// Maintenance commands
+	
 	rootCmd.AddCommand(cleanupCmd)
 	rootCmd.AddCommand(maintenanceCmd)
 	rootCmd.AddCommand(updateCmd)

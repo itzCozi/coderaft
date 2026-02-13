@@ -59,6 +59,14 @@ pip3 install requests flask
 
 # These installs are automatically recorded to /island/coderaft.history
 # so the environment can be reproduced on rebuild or by teammates.
+
+# Use built-in island commands
+coderaft status                # Show island info
+coderaft history               # View recorded package installs
+coderaft files                 # List /island contents
+coderaft disk                  # Check disk usage
+coderaft env                   # Show coderaft environment variables
+coderaft help                  # See all available island commands
 ```
 
 ## Create and Run Code

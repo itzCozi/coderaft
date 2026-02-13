@@ -99,7 +99,7 @@ Examples:
 
 		baseImage := cfg.GetEffectiveBaseImage(&config.Project{
 			Name:      projectName,
-			BaseImage: "buildpack-deps:noble",
+			BaseImage: "ubuntu:noble",
 		}, projectConfig)
 
 		workspaceIsland := "/island"
@@ -128,8 +128,13 @@ Examples:
 
 		var configMap map[string]interface{}
 		if projectConfig != nil {
-			configData, _ := json.Marshal(projectConfig)
-			json.Unmarshal(configData, &configMap)
+			configData, err := json.Marshal(projectConfig)
+			if err != nil {
+				return fmt.Errorf("failed to marshal project config: %w", err)
+			}
+			if err := json.Unmarshal(configData, &configMap); err != nil {
+				return fmt.Errorf("failed to convert project config: %w", err)
+			}
 		}
 
 		if cfg.Settings != nil && cfg.Settings.AutoStopOnExit {
@@ -156,7 +161,7 @@ Examples:
 			return fmt.Errorf("island failed to start: %w", err)
 		}
 
-		// Run apt update so the package index is fresh
+		
 		updateCommands := []string{
 			"apt update -y",
 		}
@@ -164,14 +169,18 @@ Examples:
 			ui.Warning("package index update failed: %v", err)
 		}
 
+		stepCount := 4
+		nextStep := 4
 		if projectConfig != nil && len(projectConfig.SetupCommands) > 0 {
-			ui.Step(3, 4, "running setup commands (%d)", len(projectConfig.SetupCommands))
+			stepCount = 5
+			ui.Step(nextStep, stepCount, "running setup commands (%d)", len(projectConfig.SetupCommands))
 			if err := dockerClient.ExecuteSetupCommandsWithOutput(IslandName, projectConfig.SetupCommands, false); err != nil {
 				return fmt.Errorf("failed to execute setup commands: %w", err)
 			}
+			nextStep++
 		}
 
-		ui.Step(4, 4, "configuring environment")
+		ui.Step(nextStep, stepCount, "configuring environment")
 		if err := dockerClient.SetupCoderaftOnIslandWithUpdate(IslandName, projectName); err != nil {
 			return fmt.Errorf("failed to setup coderaft in island: %w", err)
 		}

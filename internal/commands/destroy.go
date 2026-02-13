@@ -14,22 +14,27 @@ import (
 )
 
 var destroyForce bool
+var cleanupOrphaned bool
 
 var destroyCmd = &cobra.Command{
-	Use:   "destroy <project>",
+	Use:   "destroy [project]",
 	Short: "Stop and remove a project island",
 	Long: `Stop and remove the Docker island for the specified project.
 Removes empty project directories automatically.
 
 Special usage:
   coderaft destroy --cleanup-orphaned  Remove islands not tracked in config`,
-	Args: cobra.ExactArgs(1),
+	Args: cobra.MaximumNArgs(1),
 	RunE: func(cmd *cobra.Command, args []string) error {
-		projectName := args[0]
-
-		if projectName == "--cleanup-orphaned" {
+		if cleanupOrphaned {
 			return cleanupOrphanedislands()
 		}
+
+		if len(args) == 0 {
+			return fmt.Errorf("project name required (or use --cleanup-orphaned)")
+		}
+
+		projectName := args[0]
 
 		if err := validateProjectName(projectName); err != nil {
 			return err
@@ -205,4 +210,9 @@ func cleanupOrphanedislands() error {
 	}
 
 	return nil
+}
+
+func init() {
+	destroyCmd.Flags().BoolVarP(&destroyForce, "force", "f", false, "Skip confirmation prompt")
+	destroyCmd.Flags().BoolVar(&cleanupOrphaned, "cleanup-orphaned", false, "Remove islands not tracked in config")
 }

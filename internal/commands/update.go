@@ -13,11 +13,16 @@ import (
 	"coderaft/internal/ui"
 )
 
+var updateLock bool
+
 var updateCmd = &cobra.Command{
 	Use:   "update [project]",
 	Short: "Pull latest base image(s) and rebuild island(s)",
-	Long:  "Update islands by pulling the latest base images and rebuilding the project islands using current configuration.",
-	Args:  cobra.MaximumNArgs(1),
+	Long: `Update islands by pulling the latest base images and rebuilding project islands using current configuration.
+
+Use --lock to regenerate the lock file after the update. This is equivalent
+to running 'coderaft update <project>' followed by 'coderaft lock <project>'.`,
+	Args: cobra.MaximumNArgs(1),
 	RunE: func(cmd *cobra.Command, args []string) error {
 		if len(args) == 1 {
 			projectName := args[0]
@@ -138,6 +143,16 @@ func updateSingleProject(projectName string) error {
 	}
 
 	ui.Success("'%s' updated", projectName)
+
+	if updateLock {
+		lockOut := filepath.Join(project.WorkspacePath, "coderaft.lock.json")
+		ui.Status("regenerating lock file...")
+		if err := WriteLockFileForProject(projectName, lockOut); err != nil {
+			return fmt.Errorf("update succeeded but lock file generation failed: %w", err)
+		}
+		ui.Success("lock file updated at %s", lockOut)
+	}
+
 	return nil
 }
 
@@ -169,4 +184,7 @@ func updateAllProjects() error {
 		return fmt.Errorf("failed to update %d project(s)", failed)
 	}
 	return nil
+}
+func init() {
+	updateCmd.Flags().BoolVar(&updateLock, "lock", false, "Regenerate coderaft.lock.json after the update")
 }

@@ -97,8 +97,8 @@ func NewConfigManager() (*ConfigManager, error) {
 	return &ConfigManager{configPath: configPath}, nil
 }
 
-// NewConfigManagerWithPath creates a ConfigManager using the given directory
-// instead of the default ~/.coderaft path. Useful for testing.
+
+
 func NewConfigManagerWithPath(configDir string) (*ConfigManager, error) {
 	if err := os.MkdirAll(configDir, 0755); err != nil {
 		return nil, fmt.Errorf("failed to create config directory: %w", err)
@@ -115,7 +115,7 @@ func (cm *ConfigManager) Load() (*Config, error) {
 	config := &Config{
 		Projects: make(map[string]*Project),
 		Settings: &GlobalSettings{
-			DefaultBaseImage: "buildpack-deps:noble",
+			DefaultBaseImage: "ubuntu:noble",
 			AutoUpdate:       true,
 			AutoStopOnExit:   true,
 			AutoApplyLock:    true,
@@ -141,7 +141,7 @@ func (cm *ConfigManager) Load() (*Config, error) {
 
 	if config.Settings == nil {
 		config.Settings = &GlobalSettings{
-			DefaultBaseImage: "buildpack-deps:noble",
+			DefaultBaseImage: "ubuntu:noble",
 			AutoUpdate:       true,
 			AutoStopOnExit:   true,
 			AutoApplyLock:    true,
@@ -157,8 +157,18 @@ func (cm *ConfigManager) Save(config *Config) error {
 		return fmt.Errorf("failed to marshal config: %w", err)
 	}
 
-	if err := os.WriteFile(cm.configPath, data, 0644); err != nil {
+	
+	
+	tmpPath := cm.configPath + ".tmp"
+	if err := os.WriteFile(tmpPath, data, 0644); err != nil {
 		return fmt.Errorf("failed to write config file: %w", err)
+	}
+	if err := os.Rename(tmpPath, cm.configPath); err != nil {
+		
+		os.Remove(tmpPath)
+		if err := os.WriteFile(cm.configPath, data, 0644); err != nil {
+			return fmt.Errorf("failed to write config file: %w", err)
+		}
 	}
 
 	return nil
@@ -264,7 +274,7 @@ func (cm *ConfigManager) ValidateProjectConfig(cfg *ProjectConfig) error {
 
 		if cfg.HealthCheck.Interval != "" {
 			if _, err := time.ParseDuration(strings.ReplaceAll(cfg.HealthCheck.Interval, "m", "m0s")); err != nil && !durationLike(cfg.HealthCheck.Interval) {
-
+				return fmt.Errorf("invalid health_check.interval %q: %w", cfg.HealthCheck.Interval, err)
 			}
 		}
 	}
@@ -272,9 +282,28 @@ func (cm *ConfigManager) ValidateProjectConfig(cfg *ProjectConfig) error {
 }
 
 func durationLike(s string) bool {
-
+	if len(s) == 0 {
+		return false
+	}
+	
 	for _, suf := range []string{"ns", "us", "ms", "s", "m", "h"} {
 		if strings.HasSuffix(s, suf) {
+			prefix := s[:len(s)-len(suf)]
+			if len(prefix) == 0 {
+				return false
+			}
+			
+			hasDot := false
+			for _, c := range prefix {
+				if c == '.' {
+					if hasDot {
+						return false
+					}
+					hasDot = true
+				} else if c < '0' || c > '9' {
+					return false
+				}
+			}
 			return true
 		}
 	}
@@ -284,7 +313,7 @@ func durationLike(s string) bool {
 func (cm *ConfigManager) GetDefaultProjectConfig(projectName string) *ProjectConfig {
 	return &ProjectConfig{
 		Name:        projectName,
-		BaseImage:   "buildpack-deps:noble",
+		BaseImage:   "ubuntu:noble",
 		WorkingDir:  "/island",
 		Shell:       "/bin/bash",
 		User:        "root",
@@ -301,7 +330,7 @@ func (cm *ConfigManager) CreateProjectConfigFromTemplate(templateName, projectNa
 	templates := map[string]*ProjectConfig{
 		"python": {
 			Name:      projectName,
-			BaseImage: "buildpack-deps:noble",
+			BaseImage: "ubuntu:noble",
 			SetupCommands: []string{
 				"apt update -y",
 				"DEBIAN_FRONTEND=noninteractive apt install -y --no-install-recommends python3 python3-pip python3-venv python3-dev build-essential ca-certificates",
@@ -317,11 +346,11 @@ func (cm *ConfigManager) CreateProjectConfigFromTemplate(templateName, projectNa
 		},
 		"nodejs": {
 			Name:      projectName,
-			BaseImage: "buildpack-deps:noble",
+			BaseImage: "ubuntu:noble",
 			SetupCommands: []string{
 				"apt update -y",
 				"DEBIAN_FRONTEND=noninteractive apt install -y --no-install-recommends curl ca-certificates gnupg build-essential",
-				"curl -fsSL https://deb.nodesource.com/setup_18.x | bash -",
+				"curl -fsSL https://deb.nodesource.com/setup_22.x | bash -",
 				"DEBIAN_FRONTEND=noninteractive apt install -y --no-install-recommends nodejs",
 				"npm install -g npm@latest",
 				"apt-get clean && rm -rf /var/lib/apt/lists/*",
@@ -335,11 +364,11 @@ func (cm *ConfigManager) CreateProjectConfigFromTemplate(templateName, projectNa
 		},
 		"go": {
 			Name:      projectName,
-			BaseImage: "buildpack-deps:noble",
+			BaseImage: "ubuntu:noble",
 			SetupCommands: []string{
 				"apt update -y",
 				"DEBIAN_FRONTEND=noninteractive apt install -y --no-install-recommends wget git build-essential ca-certificates",
-				"wget -q -O /tmp/go.tar.gz https://go.dev/dl/go1.21.0.linux-amd64.tar.gz",
+				"wget -q -O /tmp/go.tar.gz https://go.dev/dl/go1.24.0.linux-amd64.tar.gz",
 				"tar -C /usr/local -xzf /tmp/go.tar.gz && rm /tmp/go.tar.gz",
 				"echo 'export PATH=$PATH:/usr/local/go/bin' >> /root/.bashrc",
 				"apt-get clean && rm -rf /var/lib/apt/lists/*",
@@ -353,13 +382,13 @@ func (cm *ConfigManager) CreateProjectConfigFromTemplate(templateName, projectNa
 		},
 		"web": {
 			Name:      projectName,
-			BaseImage: "buildpack-deps:noble",
+			BaseImage: "ubuntu:noble",
 			SetupCommands: []string{
 				"apt update -y",
 				"DEBIAN_FRONTEND=noninteractive apt install -y --no-install-recommends python3 python3-pip nodejs npm nginx git curl wget ca-certificates gnupg",
-				"curl -fsSL https://deb.nodesource.com/setup_18.x | bash -",
+				"curl -fsSL https://deb.nodesource.com/setup_22.x | bash -",
 				"pip3 install flask django fastapi",
-				"npm install -g typescript vue-cli create-react-app",
+				"npm install -g typescript @vue/cli create-next-app",
 				"apt-get clean && rm -rf /var/lib/apt/lists/*",
 			},
 			Environment: map[string]string{
@@ -534,7 +563,7 @@ func (config *Config) GetEffectiveBaseImage(project *Project, projectConfig *Pro
 	if config.Settings != nil && config.Settings.DefaultBaseImage != "" {
 		return config.Settings.DefaultBaseImage
 	}
-	return "buildpack-deps:noble"
+	return "ubuntu:noble"
 }
 
 const ProjectConfigJSONSchema = `{

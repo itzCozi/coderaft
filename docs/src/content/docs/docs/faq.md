@@ -84,7 +84,7 @@ Yes. By default, coderaft mounts the Docker socket and many templates install Do
 Save a JSON file in `~/.coderaft/templates/<name>.json` with a `config` object that mirrors `coderaft.json` fields. List available templates with `coderaft templates list`, and use it via `coderaft init <project> --template <name>`.
 
 ##### Are package installs recorded anywhere?
-Yes. Inside the Island, coderaft wraps common package managers (apt, pip/pip3, npm/yarn/pnpm/corepack) and appends successful install/remove commands to `/island/coderaft.history`. You can replay them during updates. To change or disable it, set the `CODERAFT_LOCKFILE` env var in `coderaft.json` (empty to disable, or set a custom path).
+Yes. Inside the Island, coderaft wraps common package managers (apt, pip/pip3, npm/yarn/pnpm/corepack) and appends successful install/remove commands to `/island/coderaft.history`. You can replay them during updates. To change the history file path, set the `CODERAFT_HISTORY` environment variable in `coderaft.json` (empty to disable, or set a custom path). You can view the recorded history inside the island with `coderaft history`.
 
 ## Management
 ---
@@ -112,6 +112,21 @@ Use `coderaft list --verbose` to include config presence, base image overrides, 
 
 ##### Can I enable shell autocompletion?
 Yes. Generate completion scripts with `coderaft completion bash|zsh|fish` and follow the printed instructions.
+
+##### What commands are available inside the island?
+Once inside the island shell, a lightweight `coderaft` wrapper provides utility commands: `coderaft status` (island info), `coderaft history` (package history), `coderaft files` (list /island), `coderaft disk` (disk usage), `coderaft env` (environment variables), `coderaft help`, and `coderaft exit`. See the [CLI Reference](/docs/cli/#coderaft-shell) for the full table.
+
+##### How do I export and transfer an island to another machine?
+Use `coderaft export <project>` to create a portable `.tar.gz` archive containing the island image, config, and lock file. Transfer the archive and use `coderaft restore` to import it on the target machine.
+
+##### What's the difference between `coderaft diff` and `coderaft verify`?
+`coderaft verify` gives a pass/fail result (suitable for CI/pre-commit hooks). `coderaft diff` shows a detailed, colorized comparison of every section that differs between the lock file and the live island.
+
+##### Can I block commits when the island has drifted from the lock file?
+Yes. Run `coderaft hooks install <project>` to add a git pre-commit hook that runs `coderaft verify` before each commit. If verification fails, the commit is blocked. Remove it with `coderaft hooks remove <project>`.
+
+##### Can I use Podman instead of Docker?
+Yes. Set the `CODERAFT_ENGINE` environment variable to `podman` (or any other docker-compatible CLI binary).
 
 ##### How do I change global defaults like base image or auto‑stop?
 Edit `~/.coderaft/config.json` under `settings` (e.g., `default_base_image`, `auto_stop_on_exit`, `auto_update`).

@@ -1,13 +1,13 @@
 #!/bin/bash
-# =============================================================================
-#  coderaft Installation Script for Linux
-# =============================================================================
-#
-# Usage:
-#   curl -fsSL https://raw.githubusercontent.com/itzcozi/coderaft/main/install.sh | bash
-#
-# Supports: Debian, Ubuntu, Fedora, CentOS, RHEL, Arch, openSUSE, Alpine
-# =============================================================================
+
+
+
+
+
+
+
+
+
 
 set -e
 
@@ -34,9 +34,9 @@ command_exists() {
   command -v "$1" > /dev/null 2>&1
 }
 
-# =============================================================================
-# Detect distro family
-# =============================================================================
+
+
+
 
 detect_distro() {
   if [ -f /etc/os-release ]; then
@@ -52,7 +52,7 @@ detect_distro() {
     DISTRO_NAME="Unknown"
   fi
 
-  # Determine package manager family
+
   case "$DISTRO_ID" in
     ubuntu|debian|linuxmint|pop|elementary|zorin|kali)
       PKG_FAMILY="apt"
@@ -70,7 +70,7 @@ detect_distro() {
       PKG_FAMILY="apk"
       ;;
     *)
-      # Check ID_LIKE for derivatives
+
       case "$DISTRO_ID_LIKE" in
         *debian*|*ubuntu*)  PKG_FAMILY="apt" ;;
         *fedora*|*rhel*)    PKG_FAMILY="dnf" ;;
@@ -82,9 +82,9 @@ detect_distro() {
   esac
 }
 
-# =============================================================================
-# Install dependencies per distro family
-# =============================================================================
+
+
+
 
 install_deps_apt() {
   print_info "Installing dependencies via apt..."
@@ -164,9 +164,9 @@ install_deps_generic() {
   fi
 }
 
-# =============================================================================
-# Install Go from official binary if system package is too old
-# =============================================================================
+
+
+
 
 ensure_go() {
   if command_exists go; then
@@ -174,7 +174,7 @@ ensure_go() {
     GO_MAJOR=$(echo "$GO_VERSION" | cut -d. -f1)
     GO_MINOR=$(echo "$GO_VERSION" | cut -d. -f2)
 
-    # Require Go 1.22+
+
     if [ "$GO_MAJOR" -ge 1 ] && [ "$GO_MINOR" -ge 22 ]; then
       print_success "Go found: $(go version)"
       return
@@ -205,9 +205,9 @@ ensure_go() {
   print_success "Go installed: $(go version)"
 }
 
-# =============================================================================
-# Build and install coderaft
-# =============================================================================
+
+
+
 
 install_coderaft() {
   print_info "Cloning coderaft repository..."
@@ -230,9 +230,9 @@ install_coderaft() {
   print_success "coderaft installed successfully"
 }
 
-# =============================================================================
-# Verify
-# =============================================================================
+
+
+
 
 verify_installation() {
   print_info "Verifying installation..."
@@ -253,9 +253,9 @@ verify_installation() {
   fi
 }
 
-# =============================================================================
-# Main
-# =============================================================================
+
+
+
 
 main() {
   print_header
@@ -269,7 +269,7 @@ main() {
   detect_distro
   print_info "Detected distribution: $DISTRO_NAME (family: $PKG_FAMILY)"
 
-  # Install system dependencies
+
   case "$PKG_FAMILY" in
     apt)     install_deps_apt ;;
     dnf)     install_deps_dnf ;;
@@ -279,7 +279,7 @@ main() {
     *)       install_deps_generic ;;
   esac
 
-  # Verify core tools
+
   print_info "Verifying installations..."
 
   if command_exists git; then
@@ -304,10 +304,10 @@ main() {
     exit 1
   fi
 
-  # Ensure Go is recent enough
+
   ensure_go
 
-  # Build and install
+
   install_coderaft
 
   if verify_installation; then

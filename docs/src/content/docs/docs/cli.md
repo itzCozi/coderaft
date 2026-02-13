@@ -15,6 +15,7 @@ Complete reference for all coderaft commands, options, and usage patterns.
 All commands support these global options:
 
 - `--help, -h`: Show help information
+- `--verbose`: Show detailed progress messages
 
 ## Core Commands
 
@@ -144,6 +145,21 @@ coderaft shell python-app
 - Exit with `exit`, `logout`, or `Ctrl+D`
 - By default, the Island stops automatically after you exit the shell when global setting `auto_stop_on_exit` is enabled (default)
 - Use `--keep-running` to keep the Island running after you exit the shell
+
+**Island commands:**
+
+Once inside the shell, the `coderaft` command is available as a lightweight wrapper with these subcommands:
+
+| Command | Alias | Description |
+|---------|-------|-------------|
+| `coderaft exit` | `quit` | Exit the island shell |
+| `coderaft status` | `info` | Show island name, project, hostname, user, working directory |
+| `coderaft history` | `log` | Print recorded package install history from `coderaft.history` |
+| `coderaft files` | `ls` | List project files in `/island` |
+| `coderaft disk` | `usage` | Show island root filesystem and `/island` disk usage |
+| `coderaft env` | — | Print all `CODERAFT_*` environment variables |
+| `coderaft help` | `-h` | Show available island commands |
+| `coderaft version` | — | Show island wrapper version |
 
 ---
 
@@ -432,6 +448,48 @@ coderaft apply myproject
 coderaft apply myproject --dry-run
 ```
 
+### `coderaft diff`
+
+Compare the `coderaft.lock.json` with the live state of the running Island and display a colorized, human-readable diff.
+
+**Syntax:**
+```bash
+coderaft diff <project>
+```
+
+**Behavior:**
+- Reads `coderaft.lock.json` from the project workspace (errors if missing; suggests `coderaft lock` first)
+- Starts the island if not already running
+- Gathers live container state in parallel: packages (apt, pip, npm, yarn, pnpm), registries, apt sources, base image digest, and container config
+- Compares each section against the lock file and prints grouped differences with `+` (added), `-` (removed), `~` (changed) markers
+- If the island matches the lock file, prints "no differences"
+- This is a **read-only** operation — nothing is modified
+
+**Example:**
+```bash
+coderaft diff myproject
+```
+
+**Sample output:**
+```
+Base Image:
+  ~ digest: sha256:abc123... → sha256:def456...
+
+Packages (apt):
+  + vim=2:8.2.3995-1ubuntu2
+  ~ git: 1:2.34.1-1ubuntu1.10 → 1:2.34.1-1ubuntu1.11
+
+Packages (pip):
+  - flask==3.0.0
+```
+
+**Notes:**
+- Use `coderaft verify` for a pass/fail check (suitable for CI)
+- Use `coderaft apply` to reconcile the island to match the lock
+- Use `coderaft diff` for a detailed visual comparison
+
+---
+
 ## Configuration Commands
 
 ---
@@ -490,6 +548,43 @@ coderaft restore myproject ~/backups/myproject/20250101-120000
 # Force overwrite an existing island
 coderaft restore myproject ~/backups/myproject/20250101-120000 --force
 ```
+
+---
+
+### `coderaft export`
+
+Create a portable `.tar.gz` archive containing the Island image snapshot, configuration, and lock file. The archive can be transferred to another machine and restored with `coderaft restore`.
+
+**Syntax:**
+```bash
+coderaft export <project> [--output <path>]
+```
+
+**Options:**
+- `--output, -o <path>`: Output file path (default: `<workspace>/<project>-export-<timestamp>.tar.gz`)
+
+**Behavior:**
+- Commits the running container to a temporary Docker image
+- Saves the image as `image.tar`
+- Bundles into a `.tar.gz` archive containing:
+  - `image.tar` — Docker image snapshot
+  - `coderaft.json` — project configuration (if present)
+  - `coderaft.lock.json` — environment lock file (if present)
+  - `manifest.json` — metadata (version, project name, image tag, island name, export timestamp)
+- Removes the temporary export image after archiving
+
+**Examples:**
+```bash
+# Export with default filename
+coderaft export myproject
+
+# Export to a specific path
+coderaft export myproject -o ./myproject-portable.tar.gz
+```
+
+**Notes:**
+- The island must exist before exporting (run `coderaft up` or `coderaft init` first)
+- Use `coderaft restore` to import the archive on another machine
 
 ---
 
@@ -767,6 +862,55 @@ coderaft update
 - System packages inside the Island are updated as part of the rebuild
  - If the Island exists, it will be stopped and replaced; if missing, it will be created
 
+### `coderaft hooks`
+
+Manage git pre-commit hook integration that runs `coderaft verify` before each commit to detect environment drift.
+
+**Subcommands:**
+
+#### `coderaft hooks install`
+
+Install a git pre-commit hook that runs `coderaft verify` before each commit.
+
+**Syntax:**
+```bash
+coderaft hooks install <project>
+```
+
+**Behavior:**
+- Locates the `.git` directory in the project workspace (errors if not a git repo)
+- If a pre-commit hook already exists, appends the coderaft hook block (compatible with husky, lefthook, etc.)
+- If no pre-commit hook exists, creates a new one
+- The hook checks for `coderaft.lock.json` and runs `coderaft verify`
+- If verification fails, the commit is **blocked** with instructions to run `coderaft lock` or `coderaft apply`
+- Users can bypass with `git commit --no-verify`
+
+**Example:**
+```bash
+coderaft hooks install myproject
+```
+
+#### `coderaft hooks remove`
+
+Remove the coderaft pre-commit hook.
+
+**Syntax:**
+```bash
+coderaft hooks remove <project>
+```
+
+**Behavior:**
+- Strips the coderaft hook block from the pre-commit file
+- If nothing meaningful remains after removal, deletes the hook file entirely
+- Otherwise, preserves other hook content
+
+**Example:**
+```bash
+coderaft hooks remove myproject
+```
+
+---
+
 ## Exit Codes
 
 ---
@@ -786,9 +930,28 @@ Coderaft uses standard exit codes:
 
 Coderaft respects these environment variables:
 
-- `DOCKER_HOST`: Docker daemon socket
-- `CODERAFT_HOME`: Override default `~/.coderaft` directory
-- `CODERAFT_WORKSPACE`: Override default `~/coderaft` workspace directory
+##### Host-side (affects the coderaft CLI)
+
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `DOCKER_HOST` | system default | Docker daemon socket |
+| `CODERAFT_HOME` | `~/.coderaft` | Override default coderaft configuration directory |
+| `CODERAFT_WORKSPACE` | `~/coderaft` | Override default project workspace directory |
+| `CODERAFT_ENGINE` | `docker` | Container engine binary. Set to `podman` or another docker-compatible CLI to use an alternative engine |
+| `CODERAFT_STOP_TIMEOUT` | `2` (seconds) | Timeout for `docker stop` when stopping an island. Set to `0` for immediate kill |
+| `CODERAFT_DISABLE_PARALLEL` | `false` | Set to `true` to disable parallel operations (falls back to sequential execution) |
+| `CODERAFT_MAX_WORKERS` | `4` | Maximum number of general parallel workers |
+| `CODERAFT_SETUP_WORKERS` | `3` | Number of parallel workers for setup commands |
+| `CODERAFT_QUERY_WORKERS` | `5` | Number of parallel workers for package query operations (used by `lock`, `diff`, `verify`) |
+
+##### Island-side (inside the container)
+
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `CODERAFT_ISLAND_NAME` | *(set automatically)* | Name of the current island |
+| `CODERAFT_PROJECT_NAME` | *(set automatically)* | Name of the current project |
+| `CODERAFT_HISTORY` | `/island/coderaft.history` | Path where package install/remove commands are recorded. Set to empty to disable recording |
+| `CODERAFT_LOCKFILE` | *(deprecated)* | Legacy name for `CODERAFT_HISTORY`. Honored if set and `CODERAFT_HISTORY` has not been explicitly overridden |
 
 ## Project Structure
 

@@ -66,7 +66,23 @@ func (s *sdkClient) pullImage(ctx context.Context, ref string) error {
 	}
 	defer reader.Close()
 
-	_, _ = io.Copy(io.Discard, reader)
+	
+	decoder := json.NewDecoder(reader)
+	for {
+		var msg struct {
+			Error string `json:"error"`
+		}
+		if err := decoder.Decode(&msg); err != nil {
+			if err == io.EOF {
+				break
+			}
+			
+			break
+		}
+		if msg.Error != "" {
+			return fmt.Errorf("pull failed for %s: %s", ref, msg.Error)
+		}
+	}
 	return nil
 }
 
@@ -121,11 +137,6 @@ func (s *sdkClient) containerCreate(
 		Type:   mount.TypeBind,
 		Source: workspaceHost,
 		Target: workspaceBox,
-	}
-	if consistency := MountConsistencyFlag(); consistency != "" {
-		workspaceMount.BindOptions = &mount.BindOptions{
-			Propagation: mount.PropagationRPrivate,
-		}
 	}
 
 	containerConfig := &container.Config{
@@ -391,20 +402,30 @@ func applyProjectConfigSDK(
 						volumeStr = home + volumeStr[1:]
 					}
 				}
-				parts := strings.SplitN(volumeStr, ":", 2)
-				if len(parts) == 2 {
-					hc.Mounts = append(hc.Mounts, mount.Mount{
-						Type:   mount.TypeBind,
-						Source: parts[0],
-						Target: parts[1],
-					})
+				
+				parts := strings.SplitN(volumeStr, ":", 3)
+				var source, target string
+				if len(parts) == 3 && len(parts[0]) == 1 && parts[0][0] >= 'A' && parts[0][0] <= 'Z' || (len(parts) == 3 && len(parts[0]) == 1 && parts[0][0] >= 'a' && parts[0][0] <= 'z') {
+					
+					source = parts[0] + ":" + parts[1]
+					target = parts[2]
+				} else if len(parts) >= 2 {
+					source = parts[0]
+					target = parts[1]
+				} else {
+					continue
 				}
+				hc.Mounts = append(hc.Mounts, mount.Mount{
+					Type:   mount.TypeBind,
+					Source: source,
+					Target: target,
+				})
 			}
 		}
 	}
 
 	if dotfiles, ok := config["dotfiles"].([]interface{}); ok {
-		for _, item := range dotfiles {
+		for i, item := range dotfiles {
 			pathStr, ok := item.(string)
 			if !ok || pathStr == "" {
 				continue
@@ -415,12 +436,15 @@ func applyProjectConfigSDK(
 					host = home + host[1:]
 				}
 			}
+			target := "/dotfiles"
+			if i > 0 {
+				target = fmt.Sprintf("/dotfiles/%d", i)
+			}
 			hc.Mounts = append(hc.Mounts, mount.Mount{
 				Type:   mount.TypeBind,
 				Source: host,
-				Target: "/dotfiles",
+				Target: target,
 			})
-			break
 		}
 	}
 

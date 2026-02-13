@@ -12,7 +12,7 @@ func TestCreateTestConfig(t *testing.T) {
 	AssertNotNil(t, cfg.Projects)
 	AssertNotNil(t, cfg.Settings)
 
-	AssertEqual(t, "buildpack-deps:noble", cfg.Settings.DefaultBaseImage)
+	AssertEqual(t, "ubuntu:noble", cfg.Settings.DefaultBaseImage)
 	AssertEqual(t, true, cfg.Settings.AutoUpdate)
 	AssertEqual(t, true, cfg.Settings.AutoStopOnExit)
 }
@@ -23,8 +23,8 @@ func TestCreateTestProject(t *testing.T) {
 
 	AssertNotNil(t, project)
 	AssertEqual(t, projectName, project.Name)
-	AssertEqual(t, projectName+"-island", project.IslandName)
-	AssertEqual(t, "buildpack-deps:noble", project.BaseImage)
+	AssertEqual(t, "coderaft_"+projectName, project.IslandName)
+	AssertEqual(t, "ubuntu:noble", project.BaseImage)
 	AssertEqual(t, "stopped", project.Status)
 }
 
@@ -34,7 +34,7 @@ func TestCreateTestProjectConfig(t *testing.T) {
 
 	AssertNotNil(t, projectConfig)
 	AssertEqual(t, projectName, projectConfig.Name)
-	AssertEqual(t, "buildpack-deps:noble", projectConfig.BaseImage)
+	AssertEqual(t, "ubuntu:noble", projectConfig.BaseImage)
 	AssertEqual(t, "/island", projectConfig.WorkingDir)
 	AssertEqual(t, "/bin/bash", projectConfig.Shell)
 

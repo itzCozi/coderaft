@@ -2,12 +2,14 @@ package parallel
 
 import (
 	"fmt"
+	"sync"
 	"time"
 
 	"coderaft/internal/ui"
 )
 
 type PerformanceMonitor struct {
+	mu         sync.Mutex
 	startTimes map[string]time.Time
 	durations  map[string]time.Duration
 }
@@ -20,11 +22,15 @@ func NewPerformanceMonitor() *PerformanceMonitor {
 }
 
 func (pm *PerformanceMonitor) Start(operation string) {
+	pm.mu.Lock()
 	pm.startTimes[operation] = time.Now()
+	pm.mu.Unlock()
 	ui.Status("starting: %s", operation)
 }
 
 func (pm *PerformanceMonitor) End(operation string) time.Duration {
+	pm.mu.Lock()
+	defer pm.mu.Unlock()
 	if startTime, exists := pm.startTimes[operation]; exists {
 		duration := time.Since(startTime)
 		pm.durations[operation] = duration
@@ -36,10 +42,14 @@ func (pm *PerformanceMonitor) End(operation string) time.Duration {
 }
 
 func (pm *PerformanceMonitor) GetDuration(operation string) time.Duration {
+	pm.mu.Lock()
+	defer pm.mu.Unlock()
 	return pm.durations[operation]
 }
 
 func (pm *PerformanceMonitor) PrintSummary() {
+	pm.mu.Lock()
+	defer pm.mu.Unlock()
 	if len(pm.durations) == 0 {
 		return
 	}

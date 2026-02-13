@@ -66,15 +66,27 @@ func (ic *ImageCache) GenerateDockerfile(cfg *BuildImageConfig) string {
 
 	b.WriteString(fmt.Sprintf("FROM %s\n\n", cfg.BaseImage))
 
-	for k, v := range cfg.Environment {
-		b.WriteString(fmt.Sprintf("ENV %s=%q\n", k, v))
+	
+	envKeys := make([]string, 0, len(cfg.Environment))
+	for k := range cfg.Environment {
+		envKeys = append(envKeys, k)
+	}
+	sort.Strings(envKeys)
+	for _, k := range envKeys {
+		b.WriteString(fmt.Sprintf("ENV %s=%q\n", k, cfg.Environment[k]))
 	}
 	if len(cfg.Environment) > 0 {
 		b.WriteString("\n")
 	}
 
-	for k, v := range cfg.Labels {
-		b.WriteString(fmt.Sprintf("LABEL %s=%q\n", k, v))
+	
+	labelKeys := make([]string, 0, len(cfg.Labels))
+	for k := range cfg.Labels {
+		labelKeys = append(labelKeys, k)
+	}
+	sort.Strings(labelKeys)
+	for _, k := range labelKeys {
+		b.WriteString(fmt.Sprintf("LABEL %s=%q\n", k, cfg.Labels[k]))
 	}
 
 	var aptInstallPkgs []string
@@ -228,14 +240,14 @@ func (ic *ImageCache) CleanupImageCache(projectName string) error {
 }
 
 func extractAptPackages(cmd string) []string {
-
+	
 	cmd = strings.TrimPrefix(cmd, "DEBIAN_FRONTEND=noninteractive ")
 	cmd = strings.TrimPrefix(cmd, "apt install ")
 	cmd = strings.TrimPrefix(cmd, "apt-get install ")
 
 	var pkgs []string
 	for _, token := range strings.Fields(cmd) {
-
+		
 		if strings.HasPrefix(token, "-") {
 			continue
 		}

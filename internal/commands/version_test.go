@@ -14,8 +14,8 @@ func TestVersionCommand(t *testing.T) {
 
 	output := buf.String()
 	if output == "" {
-		// versionCmd uses fmt.Printf which writes to stdout, not cmd.OutOrStdout().
-		// Verify the command exists and has correct metadata instead.
+		
+		
 		if versionCmd.Use != "version" {
 			t.Errorf("Expected Use to be 'version', got %q", versionCmd.Use)
 		}

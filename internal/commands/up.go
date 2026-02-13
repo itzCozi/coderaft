@@ -13,13 +13,6 @@ import (
 	"coderaft/internal/ui"
 )
 
-func engineCmd() string {
-	if v := strings.TrimSpace(os.Getenv("CODERAFT_ENGINE")); v != "" {
-		return v
-	}
-	return "docker"
-}
-
 var (
 	upDotfilesPath string
 )
@@ -113,8 +106,13 @@ var upCmd = &cobra.Command{
 
 		var configMap map[string]interface{}
 		if projectConfig != nil {
-			data, _ := json.Marshal(projectConfig)
-			_ = json.Unmarshal(data, &configMap)
+			data, err := json.Marshal(projectConfig)
+			if err != nil {
+				return fmt.Errorf("failed to marshal project config: %w", err)
+			}
+			if err := json.Unmarshal(data, &configMap); err != nil {
+				return fmt.Errorf("failed to convert project config: %w", err)
+			}
 		}
 
 		if cfg.Settings != nil && cfg.Settings.AutoStopOnExit {
@@ -145,7 +143,7 @@ var upCmd = &cobra.Command{
 		}
 
 		optimizedSetup := NewOptimizedSetup(dockerClient, configManager)
-		if err := optimizedSetup.FastUp(projectConfig, projectName, IslandName, baseImage, cwd, workspaceIsland); err != nil {
+		if err := optimizedSetup.FastUp(projectConfig, projectName, IslandName, baseImage, cwd, workspaceIsland, configMap); err != nil {
 			return fmt.Errorf("failed to start island: %w", err)
 		}
 
@@ -155,16 +153,22 @@ var upCmd = &cobra.Command{
 		ui.Detail("image", baseImage)
 		ui.Info("hint: run 'coderaft shell %s' to enter the island.", projectName)
 
-		_ = WriteLockFileForIsland(IslandName, projectName, cwd, baseImage, "")
-
+		
+		
 		if cfg.Settings != nil && cfg.Settings.AutoApplyLock {
 			lockPath := filepath.Join(cwd, "coderaft.lock.json")
 			if _, err := os.Stat(lockPath); err == nil {
 				if err := applyLockInline(projectName, lockPath); err != nil {
-					fmt.Printf("Warning: failed to auto-apply lockfile: %v\n", err)
+					ui.Warning("failed to auto-apply lockfile: %v", err)
 				}
 			}
 		}
+
+		
+		_ = WriteLockFileForIsland(IslandName, projectName, cwd, baseImage, "")
+
+		
+		verifyDigestAgainstLock(cwd, baseImage)
 
 		if cfg.Settings != nil && cfg.Settings.AutoStopOnExit && !keepRunningUpFlag {
 			if idle, err := dockerClient.IsContainerIdle(IslandName); err == nil && idle {
@@ -181,6 +185,37 @@ var upCmd = &cobra.Command{
 func init() {
 	upCmd.Flags().StringVar(&upDotfilesPath, "dotfiles", "", "Path to local dotfiles directory to mount into the island")
 	upCmd.Flags().BoolVar(&keepRunningUpFlag, "keep-running", false, "Keep the island running after 'up' finishes")
+}
+
+
+
+
+func verifyDigestAgainstLock(workspacePath, baseImage string) {
+	lockPath := filepath.Join(workspacePath, "coderaft.lock.json")
+	data, err := os.ReadFile(lockPath)
+	if err != nil {
+		return 
+	}
+	var lf struct {
+		BaseImage struct {
+			Digest string `json:"digest"`
+		} `json:"base_image"`
+	}
+	if err := json.Unmarshal(data, &lf); err != nil || lf.BaseImage.Digest == "" {
+		return
+	}
+
+	liveDigest, _, _ := dockerClient.GetImageDigestInfo(baseImage)
+	if liveDigest == "" {
+		return
+	}
+	if liveDigest != lf.BaseImage.Digest {
+		ui.Warning("base image digest mismatch!")
+		ui.Detail("lock", lf.BaseImage.Digest)
+		ui.Detail("pulled", liveDigest)
+		ui.Info("hint: the base image '%s' has been updated since the lock file was created.", baseImage)
+		ui.Info("hint: run 'coderaft lock <project>' to update, or pin the digest in coderaft.json.")
+	}
 }
 
 func applyLockInline(projectName, lockPath string) error {
@@ -242,7 +277,7 @@ func applyLockInline(projectName, lockPath string) error {
 		)
 	}
 	if lf.AptSources.PinnedRelease != "" {
-		cmds = append(cmds, fmt.Sprintf("echo 'APT::Default-Release \"%s\";' > /etc/apt/apt.conf.d/99defaultrelease", lf.AptSources.PinnedRelease))
+		cmds = append(cmds, fmt.Sprintf("echo 'APT::Default-Release \"%s\";' > /etc/apt/apt.conf.d/99defaultrelease", escapeBash(lf.AptSources.PinnedRelease)))
 	}
 	if lf.Registries.PipIndexURL != "" || len(lf.Registries.PipExtraIndex) > 0 {
 		var b strings.Builder
@@ -259,13 +294,13 @@ func applyLockInline(projectName, lockPath string) error {
 		cmds = append(cmds, b.String())
 	}
 	if lf.Registries.NpmRegistry != "" {
-		cmds = append(cmds, fmt.Sprintf("npm config set registry %s -g", lf.Registries.NpmRegistry))
+		cmds = append(cmds, fmt.Sprintf("npm config set registry %s -g", escapeBash(lf.Registries.NpmRegistry)))
 	}
 	if lf.Registries.YarnRegistry != "" {
-		cmds = append(cmds, fmt.Sprintf("yarn config set npmRegistryServer %s -g", lf.Registries.YarnRegistry))
+		cmds = append(cmds, fmt.Sprintf("yarn config set npmRegistryServer %s -g", escapeBash(lf.Registries.YarnRegistry)))
 	}
 	if lf.Registries.PnpmRegistry != "" {
-		cmds = append(cmds, fmt.Sprintf("pnpm config set registry %s -g", lf.Registries.PnpmRegistry))
+		cmds = append(cmds, fmt.Sprintf("pnpm config set registry %s -g", escapeBash(lf.Registries.PnpmRegistry)))
 	}
 
 	if err := dockerClient.ExecuteSetupCommandsWithOutput(proj.IslandName, cmds, false); err != nil {
@@ -279,6 +314,6 @@ func applyLockInline(projectName, lockPath string) error {
 			return err
 		}
 	}
-	fmt.Println("Applied coderaft.lock.json")
+	ui.Success("applied coderaft.lock.json")
 	return nil
 }

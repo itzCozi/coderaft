@@ -1,9 +1,12 @@
 package ui
 
-import "fmt"
+import (
+	"fmt"
+	"os"
+)
 
-// Verbose controls whether intermediate progress messages are shown.
-// Set via the --verbose global flag.
+
+
 var Verbose bool
 
 func Status(msg string, args ...interface{}) {
@@ -30,11 +33,11 @@ func Success(msg string, args ...interface{}) {
 }
 
 func Warning(msg string, args ...interface{}) {
-	fmt.Printf("warning: "+msg+"\n", args...)
+	fmt.Fprintf(os.Stderr, "warning: "+msg+"\n", args...)
 }
 
 func Error(msg string, args ...interface{}) {
-	fmt.Printf("error: "+msg+"\n", args...)
+	fmt.Fprintf(os.Stderr, "error: "+msg+"\n", args...)
 }
 
 func Info(msg string, args ...interface{}) {

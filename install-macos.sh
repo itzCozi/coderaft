@@ -1,18 +1,18 @@
 #!/bin/bash
-# =============================================================================
-#  coderaft Installation Script for macOS
-# =============================================================================
-#
-# Usage:
-#   curl -fsSL https://raw.githubusercontent.com/itzcozi/coderaft/main/install-macos.sh | bash
-#   coderaft.ar0.eu/install-macos.sh
-#
-# This script will:
-#   - Check for Homebrew (and install it if missing)
-#   - Install Go, Git, and Docker Desktop prerequisites
-#   - Clone the coderaft repository, build, and install the binary
-#   - Verify the installation
-# =============================================================================
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 set -e
 
@@ -39,9 +39,9 @@ command_exists() {
   command -v "$1" > /dev/null 2>&1
 }
 
-# =============================================================================
-# Pre-flight
-# =============================================================================
+
+
+
 
 print_header
 
@@ -53,15 +53,15 @@ fi
 ARCH="$(uname -m)"
 print_info "Detected architecture: $ARCH"
 
-# =============================================================================
-# Homebrew
-# =============================================================================
+
+
+
 
 if ! command_exists brew; then
   print_info "Homebrew not found. Installing Homebrew..."
   /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
 
-  # Add brew to path for Apple Silicon
+
   if [[ "$ARCH" == "arm64" ]]; then
     eval "$(/opt/homebrew/bin/brew shellenv)"
   fi
@@ -70,11 +70,11 @@ else
   print_success "Homebrew found: $(brew --version | head -1)"
 fi
 
-# =============================================================================
-# Dependencies
-# =============================================================================
 
-# Git (usually pre-installed via Xcode CLT, but just in case)
+
+
+
+
 if ! command_exists git; then
   print_info "Installing Git..."
   brew install git
@@ -83,7 +83,7 @@ else
   print_success "Git found: $(git --version)"
 fi
 
-# Go
+
 if ! command_exists go; then
   print_info "Installing Go..."
   brew install go
@@ -92,7 +92,7 @@ else
   print_success "Go found: $(go version)"
 fi
 
-# Docker
+
 if ! command_exists docker; then
   print_warning "Docker CLI not found."
   print_info "Installing Docker Desktop via Homebrew Cask..."
@@ -110,9 +110,9 @@ else
   fi
 fi
 
-# =============================================================================
-# Build and install coderaft
-# =============================================================================
+
+
+
 
 print_info "Cloning coderaft repository..."
 TEMP_DIR=$(mktemp -d)
@@ -128,15 +128,15 @@ print_info "Installing coderaft to /usr/local/bin..."
 sudo cp ./build/coderaft /usr/local/bin/coderaft
 sudo chmod +x /usr/local/bin/coderaft
 
-# Cleanup
+
 cd /
 rm -rf "$TEMP_DIR"
 
 print_success "coderaft installed to /usr/local/bin/coderaft"
 
-# =============================================================================
-# Verify
-# =============================================================================
+
+
+
 
 print_info "Verifying installation..."
 
@@ -149,9 +149,9 @@ else
   exit 1
 fi
 
-# =============================================================================
-# Next steps
-# =============================================================================
+
+
+
 
 echo
 print_success "coderaft installation completed successfully!"

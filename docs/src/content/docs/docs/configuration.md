@@ -159,12 +159,13 @@ coderaft verify myproject
 coderaft apply myproject --dry-run
 ```
 
-### Lock, Verify, Apply
+### Lock, Verify, Apply, Diff
 
 | Command | Purpose |
-|---------|---------|
+|---------|---------||
 | `coderaft lock <project>` | Snapshot the running island into `coderaft.lock.json` |
 | `coderaft verify <project>` | Compare the live island against the lock; exits non-zero on drift. Shows per-package diffs (added/removed/version-changed) |
+| `coderaft diff <project>` | Detailed, colorized comparison between the lock file and live island state |
 | `coderaft apply <project>` | Configure registries/sources and reconcile package sets to match the lock |
 | `coderaft apply <project> --dry-run` | Preview what `apply` would change without modifying the island |
 
@@ -175,6 +176,21 @@ coderaft apply myproject --dry-run
 Notes:
 - Commit `coderaft.lock.json` to your repository to share environment details with teammates.
 - Local app dependencies (e.g. non-global Node packages in your repo) are intentionally not included; rely on your project's own lockfiles (`package-lock.json`, `yarn.lock`, `pnpm-lock.yaml`, `requirements.txt`/`poetry.lock`, etc.).
+
+### Git Hooks Integration
+
+You can enforce lock file verification before every commit using coderaft's built-in git hook support:
+
+```bash
+# Install a pre-commit hook that runs coderaft verify
+coderaft hooks install myproject
+
+# Remove the hook later
+coderaft hooks remove myproject
+```
+
+The hook integrates cleanly with existing pre-commit hooks (husky, lefthook, etc.) by appending rather than replacing. If verification fails, the commit is blocked with guidance to run `coderaft lock` or `coderaft apply`. Use `git commit --no-verify` to bypass.
+
 ## Initialize with Configuration
 ---
 

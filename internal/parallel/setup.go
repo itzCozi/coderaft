@@ -11,15 +11,14 @@ import (
 	"strings"
 	"time"
 
+	"coderaft/internal/engine"
 	"coderaft/internal/ui"
 )
 
-// dockerCmd returns the container engine binary name, respecting CODERAFT_ENGINE.
+
+
 func dockerCmd() string {
-	if eng := strings.TrimSpace(os.Getenv("CODERAFT_ENGINE")); eng != "" {
-		return eng
-	}
-	return "docker"
+	return engine.Cmd()
 }
 
 type ExecFunc func(ctx context.Context, containerID string, cmd []string, showOutput bool) (stdout, stderr string, exitCode int, err error)

@@ -12,6 +12,7 @@ import (
 
 	dockerclient "github.com/docker/docker/client"
 
+	"coderaft/internal/engine"
 	"coderaft/internal/parallel"
 	"coderaft/internal/ui"
 )
@@ -48,10 +49,7 @@ func (c *Client) SDKExecFunc() func(ctx context.Context, containerID string, cmd
 }
 
 func dockerCmd() string {
-	if eng := strings.TrimSpace(os.Getenv("CODERAFT_ENGINE")); eng != "" {
-		return eng
-	}
-	return "docker"
+	return engine.Cmd()
 }
 
 func IsDockerAvailable() error {
@@ -308,6 +306,10 @@ case "$1" in
 	echo "hint: available coderaft commands on island:"
         echo "  coderaft exit     - Exit the shell"
         echo "  coderaft status   - Show island information"
+        echo "  coderaft history  - Show package history"
+        echo "  coderaft files    - List project files"
+        echo "  coderaft disk     - Show disk usage"
+        echo "  coderaft env      - Show environment"
         echo "  coderaft help     - Show this help"
         ;;
 	"help"|"--help"|"-h")
@@ -316,6 +318,10 @@ case "$1" in
         echo "Available commands on the island:"
         echo "  coderaft exit         - Exit the coderaft shell"
         echo "  coderaft status       - Show island and project information"
+        echo "  coderaft history      - Show recorded package install history"
+        echo "  coderaft files        - List project files in /island"
+        echo "  coderaft disk         - Show island disk usage"
+        echo "  coderaft env          - Show coderaft environment variables"
         echo "  coderaft help         - Show this help message"
         echo ""
 	echo "Your project files are in: /island"
@@ -324,8 +330,35 @@ case "$1" in
         echo "Examples:"
         echo "  coderaft exit                    # Exit to host"
         echo "  coderaft status                  # Check island info"
+        echo "  coderaft history                 # See tracked packages"
+        echo "  coderaft files                   # List /island contents"
         echo ""
 	echo "hint: Files in /island are shared with your host system"
+        ;;
+    "history"|"log")
+        HISTORY_FILE="${CODERAFT_HISTORY:-/island/coderaft.history}"
+        if [ -f "$HISTORY_FILE" ]; then
+            echo "Recorded package history:"
+            cat "$HISTORY_FILE"
+        else
+            echo "No package history recorded yet."
+            echo "hint: Install packages with apt, pip, npm, etc. and they'll be tracked automatically"
+        fi
+        ;;
+    "files"|"ls")
+        echo "Project files (/island):"
+        ls -la /island 2>/dev/null || echo "No files found in /island"
+        ;;
+    "disk"|"usage")
+        echo "Island disk usage:"
+        df -h / 2>/dev/null | head -2
+        echo ""
+        echo "/island usage:"
+        du -sh /island 2>/dev/null || echo "Unable to calculate"
+        ;;
+    "env")
+        echo "Coderaft environment:"
+        env | grep -i CODERAFT | sort || echo "No CODERAFT variables set"
         ;;
     "host")
 		echo "error: the 'coderaft host' command is not yet available"
@@ -346,7 +379,7 @@ case "$1" in
 		echo "hint: Use \"coderaft help\" to see available commands on the island"
         echo ""
         echo "Available commands:"
-        echo "  exit, status, help, version"
+        echo "  exit, status, history, files, disk, env, help, version"
         echo ""
         echo "Note: 'coderaft exit' is handled by the shell function for proper exit behavior"
         exit 1
@@ -419,13 +452,17 @@ coderaft() {
     /usr/local/bin/coderaft "$@"
 }
 
-export CODERAFT_LOCKFILE="${CODERAFT_LOCKFILE:-/island/coderaft.history}"
+export CODERAFT_HISTORY="${CODERAFT_HISTORY:-/island/coderaft.history}"
+# Backward-compatible: also honor the legacy variable name
+if [ -n "$CODERAFT_LOCKFILE" ] && [ -z "${CODERAFT_HISTORY_SET:-}" ]; then
+  CODERAFT_HISTORY="$CODERAFT_LOCKFILE"
+fi
 
 coderaft_record_cmd() {
 	local cmd="$1"
-	if [ -n "$CODERAFT_LOCKFILE" ] && [ -w "$(dirname "$CODERAFT_LOCKFILE")" ]; then
-		if [ ! -f "$CODERAFT_LOCKFILE" ] || ! grep -Fxq "$cmd" "$CODERAFT_LOCKFILE" 2>/dev/null; then
-			echo "$cmd" >> "$CODERAFT_LOCKFILE"
+	if [ -n "$CODERAFT_HISTORY" ] && [ -w "$(dirname "$CODERAFT_HISTORY")" ]; then
+		if [ ! -f "$CODERAFT_HISTORY" ] || ! grep -Fxq "$cmd" "$CODERAFT_HISTORY" 2>/dev/null; then
+			echo "$cmd" >> "$CODERAFT_HISTORY"
 		fi
 	fi
 }
@@ -567,10 +604,11 @@ func (c *Client) GetIslandStatus(islandName string) (string, error) {
 	return inspect.State.Status, nil
 }
 
-func AttachShell(islandName string) error {
+func AttachShell(islandName string, projectName string) error {
 
 	cmd := exec.Command(dockerCmd(), "exec", "-it",
 		"-e", fmt.Sprintf("CODERAFT_ISLAND_NAME=%s", islandName),
+		"-e", fmt.Sprintf("PROJECT_NAME=%s", projectName),
 		islandName, "/bin/bash", "-c",
 		"export PS1='coderaft(\\$PROJECT_NAME):\\w\\$ '; exec /bin/bash")
 	cmd.Stdin = os.Stdin
@@ -578,7 +616,7 @@ func AttachShell(islandName string) error {
 	cmd.Stderr = os.Stderr
 
 	if err := cmd.Run(); err != nil {
-		// Exit codes 130 (SIGINT/Ctrl+C) and 137 (SIGKILL) are normal shell exits
+		
 		if exitErr, ok := err.(*exec.ExitError); ok {
 			code := exitErr.ExitCode()
 			if code == 130 || code == 137 || code == 0 {

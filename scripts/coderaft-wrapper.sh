@@ -23,6 +23,10 @@ case "$1" in
         echo "Available coderaft commands on island:"
         echo "  coderaft exit     - Exit the shell"
         echo "  coderaft status   - Show island information"
+        echo "  coderaft history  - Show package history"
+        echo "  coderaft files    - List project files"
+        echo "  coderaft disk     - Show disk usage"
+        echo "  coderaft env      - Show environment"
         echo "  coderaft help     - Show this help"
         ;;
     "help"|"--help"|"-h")
@@ -31,6 +35,10 @@ case "$1" in
         echo "Available commands on the island:"
         echo "  coderaft exit         - Exit the coderaft shell"
         echo "  coderaft status       - Show island and project information"
+        echo "  coderaft history      - Show recorded package install history"
+        echo "  coderaft files        - List project files in /island"
+        echo "  coderaft disk         - Show island disk usage"
+        echo "  coderaft env          - Show coderaft environment variables"
         echo "  coderaft help         - Show this help message"
         echo ""
         echo "Your project files are in: /island"
@@ -39,8 +47,35 @@ case "$1" in
         echo "Examples:"
         echo "  coderaft exit                    # Exit to host"
         echo "  coderaft status                  # Check island info"
+        echo "  coderaft history                 # See tracked packages"
+        echo "  coderaft files                   # List /island contents"
         echo ""
         echo "hint: Files in /island are shared with your host system"
+        ;;
+    "history"|"log")
+        HISTORY_FILE="${CODERAFT_HISTORY:-/island/coderaft.history}"
+        if [ -f "$HISTORY_FILE" ]; then
+            echo "Recorded package history:"
+            cat "$HISTORY_FILE"
+        else
+            echo "No package history recorded yet."
+            echo "hint: Install packages with apt, pip, npm, etc. and they'll be tracked automatically"
+        fi
+        ;;
+    "files"|"ls")
+        echo "Project files (/island):"
+        ls -la /island 2>/dev/null || echo "No files found in /island"
+        ;;
+    "disk"|"usage")
+        echo "Island disk usage:"
+        df -h / 2>/dev/null | head -2
+        echo ""
+        echo "/island usage:"
+        du -sh /island 2>/dev/null || echo "Unable to calculate"
+        ;;
+    "env")
+        echo "Coderaft environment:"
+        env | grep -i CODERAFT | sort || echo "No CODERAFT variables set"
         ;;
     "host")
         echo "The 'coderaft host' command is not yet available."
@@ -61,7 +96,7 @@ case "$1" in
         echo "hint: Use 'coderaft help' to see available commands on the island"
         echo ""
         echo "Available commands:"
-        echo "  exit, status, help, version"
+        echo "  exit, status, history, files, disk, env, help, version"
         exit 1
         ;;
 esac

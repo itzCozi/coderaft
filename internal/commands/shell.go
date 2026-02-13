@@ -61,7 +61,7 @@ var shellCmd = &cobra.Command{
 			}
 		}
 
-		if err := docker.AttachShell(project.IslandName); err != nil {
+		if err := docker.AttachShell(project.IslandName, projectName); err != nil {
 			return fmt.Errorf("failed to attach shell: %w", err)
 		}
 
