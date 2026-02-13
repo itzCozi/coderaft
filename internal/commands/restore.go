@@ -12,9 +12,11 @@ import (
 	"coderaft/internal/ui"
 )
 
+var restoreForce bool
+
 var restoreCmd = &cobra.Command{
 	Use:   "restore <project> <backup-dir>",
-	Short: "Restore a project's coderaft environment from a backup directory",
+	Short: "Restore a project's coderaft island from a backup directory",
 	Args:  cobra.ExactArgs(2),
 	RunE: func(cmd *cobra.Command, args []string) error {
 		projectName := args[0]
@@ -39,7 +41,9 @@ var restoreCmd = &cobra.Command{
 			return fmt.Errorf("failed to read metadata: %w", err)
 		}
 		var manifest map[string]any
-		_ = json.Unmarshal(metaBytes, &manifest)
+		if err := json.Unmarshal(metaBytes, &manifest); err != nil {
+			return fmt.Errorf("failed to parse metadata: %w", err)
+		}
 
 		ui.Status("loading image from %s...", imageTar)
 		imgID, err := dockerClient.LoadImage(imageTar)
@@ -48,7 +52,7 @@ var restoreCmd = &cobra.Command{
 		}
 
 		imageRef := ""
-		if v, ok := manifest["ImageTag"].(string); ok && v != "" {
+		if v, ok := manifest["image_tag"].(string); ok && v != "" {
 			imageRef = v
 		}
 		if imageRef == "" {
@@ -57,7 +61,7 @@ var restoreCmd = &cobra.Command{
 
 		exists, err := dockerClient.IslandExists(proj.IslandName)
 		if err == nil && exists {
-			if !forceFlag {
+			if !restoreForce {
 				return fmt.Errorf("island '%s' already exists. Use --force to overwrite", proj.IslandName)
 			}
 			_ = dockerClient.StopIsland(proj.IslandName)
@@ -66,7 +70,7 @@ var restoreCmd = &cobra.Command{
 			}
 		}
 
-		workspaceIsland := "/workspace"
+		workspaceIsland := "/island"
 		if pcfg, err := configManager.LoadProjectConfig(proj.WorkspacePath); err == nil && pcfg != nil && strings.TrimSpace(pcfg.WorkingDir) != "" {
 			workspaceIsland = pcfg.WorkingDir
 		}
@@ -85,6 +89,5 @@ var restoreCmd = &cobra.Command{
 }
 
 func init() {
-	rootCmd.AddCommand(restoreCmd)
-	restoreCmd.Flags().BoolVarP(&forceFlag, "force", "f", false, "Overwrite existing island if present")
+	restoreCmd.Flags().BoolVarP(&restoreForce, "force", "f", false, "Overwrite existing island if present")
 }

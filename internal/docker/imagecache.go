@@ -147,7 +147,7 @@ func (ic *ImageCache) GenerateDockerfile(cfg *BuildImageConfig) string {
 		b.WriteString("\n")
 	}
 
-	workDir := "/workspace"
+	workDir := "/island"
 	if cfg.WorkingDir != "" {
 		workDir = cfg.WorkingDir
 	}

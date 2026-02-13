@@ -35,7 +35,7 @@ func TestCreateTestProjectConfig(t *testing.T) {
 	AssertNotNil(t, projectConfig)
 	AssertEqual(t, projectName, projectConfig.Name)
 	AssertEqual(t, "ubuntu:22.04", projectConfig.BaseImage)
-	AssertEqual(t, "/workspace", projectConfig.WorkingDir)
+	AssertEqual(t, "/island", projectConfig.WorkingDir)
 	AssertEqual(t, "/bin/bash", projectConfig.Shell)
 
 	if len(projectConfig.SetupCommands) == 0 {

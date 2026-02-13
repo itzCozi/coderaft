@@ -5,6 +5,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"testing"
 )
@@ -21,8 +22,15 @@ func TestMain(m *testing.M) {
 	os.Exit(code)
 }
 
+func testBinaryName() string {
+	if runtime.GOOS == "windows" {
+		return "coderaft-test.exe"
+	}
+	return "coderaft-test"
+}
+
 func buildCoderaftBinary() error {
-	binaryName := "coderaft-test"
+	binaryName := testBinaryName()
 	cmd := exec.Command("go", "build", "-o", binaryName, "./cmd/coderaft")
 	cmd.Dir = getProjectRoot()
 	if err := cmd.Run(); err != nil {
@@ -32,7 +40,7 @@ func buildCoderaftBinary() error {
 }
 
 func cleanupTestBinary() {
-	testBinary := filepath.Join(getProjectRoot(), "coderaft-test")
+	testBinary := filepath.Join(getProjectRoot(), testBinaryName())
 	os.Remove(testBinary)
 }
 
@@ -43,7 +51,7 @@ func getProjectRoot() string {
 
 func getTestBinaryPath() string {
 	basePath := getProjectRoot()
-	return filepath.Join(basePath, "coderaft-test")
+	return filepath.Join(basePath, testBinaryName())
 }
 
 func TestVersionCommand(t *testing.T) {

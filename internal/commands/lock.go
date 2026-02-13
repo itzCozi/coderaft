@@ -16,7 +16,7 @@ import (
 type lockFile struct {
 	Version     int               `json:"version"`
 	Project     string            `json:"project"`
-	IslandName     string            `json:"ISLAND_NAME"`
+	IslandName  string            `json:"ISLAND_NAME"`
 	CreatedAt   string            `json:"created_at"`
 	BaseImage   lockImage         `json:"base_image"`
 	Container   lockContainer     `json:"container"`
@@ -132,11 +132,11 @@ var lockCmd = &cobra.Command{
 		npmReg, yarnReg, pnpmReg := dockerClient.GetNodeRegistries(proj.IslandName)
 
 		lf := lockFile{
-			Version:   1,
-			Project:   proj.Name,
-			IslandName:   proj.IslandName,
-			CreatedAt: time.Now().UTC().Format(time.RFC3339),
-			BaseImage: lockImage{Name: imgName, Digest: digest, ID: imgID},
+			Version:    1,
+			Project:    proj.Name,
+			IslandName: proj.IslandName,
+			CreatedAt:  time.Now().UTC().Format(time.RFC3339),
+			BaseImage:  lockImage{Name: imgName, Digest: digest, ID: imgID},
 			Container: lockContainer{
 				WorkingDir:   workdir,
 				User:         user,
@@ -196,7 +196,6 @@ var lockCmd = &cobra.Command{
 }
 
 func init() {
-	rootCmd.AddCommand(lockCmd)
 	lockCmd.Flags().StringVarP(&lockOutput, "output", "o", "", "Output path for lock file (default: <workspace>/coderaft.lock.json)")
 }
 
@@ -257,11 +256,11 @@ func WriteLockFileForIsland(IslandName, projectName, workspacePath, baseImage, o
 	npmReg, yarnReg, pnpmReg := dockerClient.GetNodeRegistries(IslandName)
 
 	lf := lockFile{
-		Version:   1,
-		Project:   projectName,
-		IslandName:   IslandName,
-		CreatedAt: time.Now().UTC().Format(time.RFC3339),
-		BaseImage: lockImage{Name: imgName, Digest: digest, ID: imgID},
+		Version:    1,
+		Project:    projectName,
+		IslandName: IslandName,
+		CreatedAt:  time.Now().UTC().Format(time.RFC3339),
+		BaseImage:  lockImage{Name: imgName, Digest: digest, ID: imgID},
 		Container: lockContainer{
 			WorkingDir:   workdir,
 			User:         user,

@@ -142,14 +142,14 @@ docker stats --no-stream
 
 ##### "Files not showing up in Island"
 
-**Problem**: Files created on host don't appear in `/workspace/` inside Island.
+**Problem**: Files created on host don't appear in `/island/` inside Island.
 
 **Diagnosis**:
 ```bash
 # Check mount point
 docker inspect coderaft_myproject | grep -A 10 '"Mounts"'
 
-# Should show: ~/coderaft/myproject -> /workspace
+# Should show: ~/coderaft/myproject -> /island
 ```
 
 **Solutions**:
@@ -159,7 +159,7 @@ ls -la ~/coderaft/myproject/
 
 # Create file on host and check in Island
 echo "test" > ~/coderaft/myproject/test.txt
-coderaft run myproject cat /workspace/test.txt
+coderaft run myproject cat /island/test.txt
 
 # If mount is wrong, recreate Island
 coderaft destroy myproject
@@ -183,7 +183,7 @@ coderaft run myproject whoami
 coderaft run myproject id
 
 # If running as different user, use sudo inside Island
-coderaft run myproject "sudo chown -R root:root /workspace/"
+coderaft run myproject "sudo chown -R root:root /island/"
 ```
 
 ## Network and Port Issues

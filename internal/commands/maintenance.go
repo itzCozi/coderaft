@@ -13,18 +13,19 @@ import (
 )
 
 var (
-	updateFlag      bool
-	healthCheckFlag bool
-	rebuildFlag     bool
-	restartFlag     bool
-	statusCheckFlag bool
-	autoRepairFlag  bool
+	updateFlag       bool
+	healthCheckFlag  bool
+	rebuildFlag      bool
+	restartFlag      bool
+	statusCheckFlag  bool
+	autoRepairFlag   bool
+	maintenanceForce bool
 )
 
 var maintenanceCmd = &cobra.Command{
 	Use:   "maintenance [flags]",
 	Short: "Perform maintenance tasks on coderaft projects and islands",
-	Long: `Perform various maintenance tasks to keep your coderaft environment healthy:
+	Long: `Perform various maintenance tasks to keep your coderaft islands healthy:
 
 - Update system packages in islands
 - Check health status of all projects
@@ -333,7 +334,8 @@ func updateAllislands() error {
 
 		updateCommands := []string{
 			"apt update -y",
-			"apt full-upgrade -y",
+			"DEBIAN_FRONTEND=noninteractive apt full-upgrade -y",
+			"DEBIAN_FRONTEND=noninteractive apt install -y --no-install-recommends git curl wget ca-certificates build-essential openssh-client less nano",
 			"apt autoremove -y",
 			"apt autoclean",
 		}
@@ -411,7 +413,7 @@ func restartStoppedislands() error {
 func rebuildAllislands() error {
 	ui.Status("rebuilding all islands from latest images...")
 
-	if !forceFlag {
+	if !maintenanceForce {
 		ui.Prompt("This will destroy and recreate all islands. Continue? (y/N): ")
 		reader := bufio.NewReader(os.Stdin)
 		response, err := reader.ReadString('\n')
@@ -471,7 +473,7 @@ func rebuildAllislands() error {
 			continue
 		}
 
-		workspaceIsland := "/workspace"
+		workspaceIsland := "/island"
 		if projectConfig != nil && projectConfig.WorkingDir != "" {
 			workspaceIsland = projectConfig.WorkingDir
 		}
@@ -497,7 +499,8 @@ func rebuildAllislands() error {
 
 		updateCommands := []string{
 			"apt update -y",
-			"apt full-upgrade -y",
+			"DEBIAN_FRONTEND=noninteractive apt full-upgrade -y",
+			"DEBIAN_FRONTEND=noninteractive apt install -y --no-install-recommends git curl wget ca-certificates build-essential openssh-client less nano",
 		}
 		if err := dockerClient.ExecuteSetupCommandsWithOutput(project.IslandName, updateCommands, false); err != nil {
 			ui.Warning("failed to update system packages: %v", err)
@@ -510,7 +513,7 @@ func rebuildAllislands() error {
 		}
 
 		if err := dockerClient.SetupCoderaftOnIslandWithUpdate(project.IslandName, projectName); err != nil {
-			ui.Warning("failed to setup coderaft environment: %v", err)
+			ui.Warning("failed to setup coderaft on island: %v", err)
 		}
 
 		ui.Success("%s rebuilt", projectName)
@@ -571,7 +574,7 @@ func autoRepairIssues() error {
 			projectConfig, _ := configManager.LoadProjectConfig(project.WorkspacePath)
 			baseImage := cfg.GetEffectiveBaseImage(project, projectConfig)
 
-			workspaceIsland := "/workspace"
+			workspaceIsland := "/island"
 			if projectConfig != nil && projectConfig.WorkingDir != "" {
 				workspaceIsland = projectConfig.WorkingDir
 			}
@@ -590,7 +593,7 @@ func autoRepairIssues() error {
 			}
 
 			if err := dockerClient.SetupCoderaftOnIslandWithUpdate(project.IslandName, projectName); err != nil {
-				ui.Warning("failed to setup coderaft environment: %v", err)
+				ui.Warning("failed to setup coderaft on island: %v", err)
 			}
 
 			issuesFound = true
@@ -641,5 +644,5 @@ func init() {
 	maintenanceCmd.Flags().BoolVar(&restartFlag, "restart", false, "Restart stopped islands")
 	maintenanceCmd.Flags().BoolVar(&statusCheckFlag, "status", false, "Show detailed system status")
 	maintenanceCmd.Flags().BoolVar(&autoRepairFlag, "auto-repair", false, "Automatically repair common issues")
-	maintenanceCmd.Flags().BoolVarP(&forceFlag, "force", "f", false, "Force operations without confirmation prompts")
+	maintenanceCmd.Flags().BoolVarP(&maintenanceForce, "force", "f", false, "Force operations without confirmation prompts")
 }

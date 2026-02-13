@@ -4,6 +4,8 @@ import (
 	"encoding/json"
 	"os"
 	"path/filepath"
+	"runtime"
+	"strings"
 	"testing"
 
 	"coderaft/internal/config"
@@ -12,6 +14,13 @@ import (
 func CreateTempDir(t *testing.T) string {
 	t.Helper()
 	return t.TempDir()
+}
+
+func testHomePath() string {
+	if runtime.GOOS == "windows" {
+		return filepath.Join("C:\\Users", "user")
+	}
+	return filepath.Join("/home", "user")
 }
 
 func CreateTestConfig() *config.Config {
@@ -30,11 +39,11 @@ func CreateTestConfig() *config.Config {
 func CreateTestProject(name string) *config.Project {
 	return &config.Project{
 		Name:          name,
-		IslandName:       name + "-island",
+		IslandName:    name + "-island",
 		BaseImage:     "ubuntu:22.04",
-		WorkspacePath: filepath.Join("/home/user/coderaft", name),
+		WorkspacePath: filepath.Join(testHomePath(), "coderaft", name),
 		Status:        "stopped",
-		ConfigFile:    filepath.Join("/home/user/coderaft", name, "coderaft.json"),
+		ConfigFile:    filepath.Join(testHomePath(), "coderaft", name, "coderaft.json"),
 	}
 }
 
@@ -55,9 +64,9 @@ func CreateTestProjectConfig(name string) *config.ProjectConfig {
 			"3000:3000",
 		},
 		Volumes: []string{
-			"/workspace/data:/data",
+			"/island/data:/data",
 		},
-		WorkingDir: "/workspace",
+		WorkingDir: "/island",
 		Shell:      "/bin/bash",
 		User:       "root",
 	}
@@ -131,24 +140,16 @@ func AssertNil(t *testing.T, value interface{}) {
 }
 
 func Contains(s, substr string) bool {
-	return len(s) >= len(substr) && containsAtIndex(s, substr)
-}
-
-func containsAtIndex(s, substr string) bool {
-	for i := 0; i <= len(s)-len(substr); i++ {
-		if s[i:i+len(substr)] == substr {
-			return true
-		}
-	}
-	return false
+	return strings.Contains(s, substr)
 }
 
 func CreateConfigManager(t *testing.T) (*config.ConfigManager, string) {
 	t.Helper()
 
 	tempDir := CreateTempDir(t)
+	configDir := filepath.Join(tempDir, ".coderaft")
 
-	cm, err := config.NewConfigManager()
+	cm, err := config.NewConfigManagerWithPath(configDir)
 	if err != nil {
 		t.Fatalf("Failed to create config manager: %v", err)
 	}

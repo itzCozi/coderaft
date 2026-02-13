@@ -15,7 +15,7 @@ import (
 type applyLockFile struct {
 	Version    int            `json:"version"`
 	Project    string         `json:"project"`
-	IslandName    string         `json:"ISLAND_NAME"`
+	IslandName string         `json:"ISLAND_NAME"`
 	Packages   lockPackages   `json:"packages"`
 	Registries lockRegistries `json:"registries"`
 	AptSources lockAptSources `json:"apt_sources"`
@@ -77,7 +77,7 @@ var applyCmd = &cobra.Command{
 			)
 		}
 		if lf.AptSources.PinnedRelease != "" {
-			applyCmds = append(applyCmds, fmt.Sprintf("bash -lc 'echo APT::Default-Release \"%s\"; > /etc/apt/apt.conf.d/99defaultrelease'", escapeBash(lf.AptSources.PinnedRelease)))
+			applyCmds = append(applyCmds, fmt.Sprintf("echo 'APT::Default-Release \"%s\";' > /etc/apt/apt.conf.d/99defaultrelease", escapeBash(lf.AptSources.PinnedRelease)))
 		}
 		if len(lf.AptSources.SourcesLists) > 0 {
 			applyCmds = append(applyCmds, "apt update -y")
@@ -252,5 +252,4 @@ func buildReconcileActions(lockPkgs lockPackages, curApt, curPip, curNpm, curYar
 }
 
 func init() {
-	rootCmd.AddCommand(applyCmd)
 }

@@ -12,6 +12,8 @@ import (
 	"coderaft/internal/ui"
 )
 
+var configForce bool
+
 var configCmd = &cobra.Command{
 	Use:   "config <command>",
 	Short: "Manage coderaft configurations",
@@ -73,7 +75,7 @@ func generateProjectConfig(projectName string) error {
 	}
 
 	configPath := filepath.Join(project.WorkspacePath, "coderaft.json")
-	if _, err := os.Stat(configPath); err == nil && !forceFlag {
+	if _, err := os.Stat(configPath); err == nil && !configForce {
 		return fmt.Errorf("coderaft.json already exists. Use --force to overwrite")
 	}
 
@@ -87,7 +89,7 @@ func generateProjectConfig(projectName string) error {
 	ui.Success("generated coderaft.json for project '%s'", projectName)
 	ui.Detail("configuration file", configPath)
 	ui.Blank()
-	ui.Info("edit the file to customize your development environment.")
+	ui.Info("edit the file to customize your development island.")
 	ui.Info("available templates: %s", strings.Join(configManager.GetAvailableTemplates(), ", "))
 
 	return nil
@@ -352,5 +354,5 @@ func showGlobalConfig() error {
 }
 
 func init() {
-	configCmd.Flags().BoolVarP(&forceFlag, "force", "f", false, "Force operation, overwriting existing files")
+	configCmd.Flags().BoolVarP(&configForce, "force", "f", false, "Force operation, overwriting existing files")
 }

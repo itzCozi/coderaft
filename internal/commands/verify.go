@@ -16,7 +16,7 @@ import (
 type verifyLockFile struct {
 	Version    int            `json:"version"`
 	Project    string         `json:"project"`
-	IslandName    string         `json:"ISLAND_NAME"`
+	IslandName string         `json:"ISLAND_NAME"`
 	Packages   lockPackages   `json:"packages"`
 	Registries lockRegistries `json:"registries"`
 	AptSources lockAptSources `json:"apt_sources"`
@@ -124,10 +124,10 @@ var verifyCmd = &cobra.Command{
 			for _, d := range drifts {
 				ui.Item(d)
 			}
-			return fmt.Errorf("environment does not match lockfile")
+			return fmt.Errorf("island does not match lockfile")
 		}
 
-		ui.Success("environment matches coderaft.lock.json")
+		ui.Success("island matches coderaft.lock.json")
 		return nil
 	},
 }
@@ -163,5 +163,4 @@ func stringSetEqual(a, b []string) bool {
 }
 
 func init() {
-	rootCmd.AddCommand(verifyCmd)
 }

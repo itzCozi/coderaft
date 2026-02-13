@@ -20,12 +20,12 @@ Coderaft provides a few built-in templates for common development environments. 
     "pip3 install flask django fastapi requests pytest black flake8"
   ],
   "environment": {
-    "PYTHONPATH": "/workspace",
+    "PYTHONPATH": "/island",
     "PYTHONUNBUFFERED": "1",
     "PYTHONDONTWRITEBYTECODE": "1"
   },
   "ports": ["5000:5000", "8000:8000"],
-  "working_dir": "/workspace"
+  "working_dir": "/island"
 }
 ```
 
@@ -51,10 +51,10 @@ coderaft shell myapp
   ],
   "environment": {
     "NODE_ENV": "development",
-    "NPM_CONFIG_PREFIX": "/workspace/.npm-global"
+    "NPM_CONFIG_PREFIX": "/island/.npm-global"
   },
   "ports": ["3000:3000", "8080:8080"],
-  "working_dir": "/workspace"
+  "working_dir": "/island"
 }
 ```
 
@@ -79,11 +79,11 @@ coderaft shell webapp
   ],
   "environment": {
     "GOROOT": "/usr/local/go",
-    "GOPATH": "/workspace/go",
-    "PATH": "/usr/local/go/bin:/workspace/go/bin:$PATH"
+    "GOPATH": "/island/go",
+    "PATH": "/usr/local/go/bin:/island/go/bin:$PATH"
   },
   "ports": ["8080:8080"],
-  "working_dir": "/workspace"
+  "working_dir": "/island"
 }
 ```
 
@@ -108,7 +108,7 @@ coderaft shell service
     "npm install -g typescript vue-cli create-react-app pm2"
   ],
   "environment": {
-    "PYTHONPATH": "/workspace",
+    "PYTHONPATH": "/island",
     "NODE_ENV": "development",
     "FLASK_ENV": "development"
   },
@@ -119,7 +119,7 @@ coderaft shell service
     "8000:8000",
     "8080:8080"
   ],
-  "working_dir": "/workspace"
+  "working_dir": "/island"
 }
 ```
 
@@ -169,11 +169,11 @@ Create your own reusable configurations (example snippet):
     "pip3 install plotly dash streamlit"
   ],
   "environment": {
-    "PYTHONPATH": "/workspace",
+    "PYTHONPATH": "/island",
     "JUPYTER_ENABLE_LAB": "yes"
   },
   "ports": ["8888:8888", "8501:8501"],
-  "working_dir": "/workspace"
+  "working_dir": "/island"
 }
 ```
 
@@ -207,7 +207,7 @@ coderaft templates create data-science AnalysisProject
     "REDIS_URL": "redis://localhost:6379"
   },
   "ports": ["5432:5432", "6379:6379", "27017:27017"],
-  "working_dir": "/workspace"
+  "working_dir": "/island"
 }
 ```
 
@@ -225,10 +225,10 @@ coderaft templates create data-science AnalysisProject
     "pip3 install awscli ansible terraform"
   ],
   "environment": {
-    "KUBECONFIG": "/workspace/.kube/config"
+    "KUBECONFIG": "/island/.kube/config"
   },
   "volumes": ["/var/run/docker.sock:/var/run/docker.sock"],
-  "working_dir": "/workspace"
+  "working_dir": "/island"
 }
 ```
 
@@ -245,11 +245,11 @@ coderaft templates create data-science AnalysisProject
     "npm install -g expo-cli @react-native-community/cli"
   ],
   "environment": {
-    "ANDROID_HOME": "/workspace/android-sdk",
+    "ANDROID_HOME": "/island/android-sdk",
     "JAVA_HOME": "/usr/lib/jvm/default-java"
   },
   "ports": ["19000:19000", "19001:19001", "19002:19002"],
-  "working_dir": "/workspace"
+  "working_dir": "/island"
 }
 ```
 
@@ -316,7 +316,7 @@ Each template is a JSON file named `<template>.json` with this shape:
     "environment": {},
     "ports": [],
     "volumes": [],
-    "working_dir": "/workspace"
+    "working_dir": "/island"
   }
 }
 ```
@@ -343,7 +343,7 @@ coderaft templates delete my-template
 1. **Use meaningful names** that describe purpose
 2. **Set PATH modifications** in environment section
 3. **Include language-specific variables** (PYTHONPATH, GOPATH, etc.)
-4. **Use /workspace** as base for project-specific paths
+4. **Use /island** as base for project-specific paths
 
 ##### Port Configuration
 
@@ -354,7 +354,7 @@ coderaft templates delete my-template
 
 ##### Volume Management
 
-1. **Mount data directories** outside /workspace for persistence
+1. **Mount data directories** outside /island for persistence
 2. **Use absolute paths** for volume mappings
 3. **Consider cache directories** for package managers
 4. **Mount configuration files** if shared across projects

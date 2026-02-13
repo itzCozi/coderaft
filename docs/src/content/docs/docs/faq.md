@@ -12,10 +12,10 @@ Below are answers to the most common questions. If you're stuck, also check out 
 Coderaft creates isolated development environments using Docker (called "Islands"). Your code stays on the host while tools and dependencies live inside a Island.
 
 ##### What platforms are supported?
-Official support targets Debian/Ubuntu Linux. On Windows, use WSL2 with Ubuntu. macOS is not officially supported.
+Supported on Linux (Debian, Ubuntu, Fedora, Arch, Alpine, and more), macOS, and Windows. See the [Installation Guide](/docs/install/) for platform-specific instructions.
 
 ##### Where are my project files stored?
-On the host in a simple folder (e.g., `~/coderaft/<project>`). Inside the Island, they're mounted at `/workspace` by default.
+On the host in a simple folder (e.g., `~/coderaft/<project>`). Inside the Island, they're mounted at `/island` by default.
 
 ##### Does coderaft require root?
 Docker usually requires membership in the `docker` group. Coderaft runs its Docker commands on the host; inside the Island it often runs as root for setup convenience.
@@ -81,10 +81,10 @@ Yes. By default, coderaft mounts the Docker socket and many templates install Do
 ```
 
 ##### How do I create my own template?
-Save a JSON file in `~/.coderaft/templates/<name>.json` with a `config` object that mirrors `coderaft.json` fields. List available templates with `coderaft config templates`, and use it via `coderaft init <project> --template <name>`.
+Save a JSON file in `~/.coderaft/templates/<name>.json` with a `config` object that mirrors `coderaft.json` fields. List available templates with `coderaft templates list`, and use it via `coderaft init <project> --template <name>`.
 
 ##### Are package installs recorded anywhere?
-Yes. Inside the Island, coderaft wraps common package managers (apt, pip/pip3, npm/yarn/pnpm/corepack) and appends successful install/remove commands to `/workspace/coderaft.lock`. You can replay them during updates. To change or disable it, set the `CODERAFT_LOCKFILE` env var in `coderaft.json` (empty to disable, or set a custom path).
+Yes. Inside the Island, coderaft wraps common package managers (apt, pip/pip3, npm/yarn/pnpm/corepack) and appends successful install/remove commands to `/island/coderaft.history`. You can replay them during updates. To change or disable it, set the `CODERAFT_LOCKFILE` env var in `coderaft.json` (empty to disable, or set a custom path).
 
 ## Management
 ---
@@ -126,7 +126,7 @@ Add a `dotfiles` entry in `coderaft.json` or pass `--dotfiles <path>` to `codera
 Use these fields in `coderaft.json`:
 - `"user"`: e.g., `"1000:1000"`
 - `"shell"`: e.g., `"/bin/bash"`
-- `"working_dir"`: default `/workspace`
+- `"working_dir"`: default `/island`
 
 ##### Can I set CPU/memory limits?
 Yes, via `resources`:

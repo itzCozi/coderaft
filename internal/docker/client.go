@@ -304,7 +304,7 @@ case "$1" in
 		echo "Coderaft island status"
         echo "Project: $PROJECT_NAME"
         echo "Island: $ISLAND_NAME"
-        echo "Workspace: /workspace"
+        echo "Files: /island"
         echo "Host: $(cat /etc/hostname)"
         echo "User: $(whoami)"
         echo "Working Directory: $(pwd)"
@@ -322,18 +322,18 @@ case "$1" in
         echo "  coderaft status       - Show island and project information"
         echo "  coderaft help         - Show this help message"
         echo ""
-	echo "Your project files are in: /workspace"
+	echo "Your project files are in: /island"
 	echo "You are on an Ubuntu island with full package management"
         echo ""
         echo "Examples:"
         echo "  coderaft exit                    # Exit to host"
         echo "  coderaft status                  # Check island info"
         echo ""
-	echo "hint: Files in /workspace are shared with your host system"
+	echo "hint: Files in /island are shared with your host system"
         ;;
     "host")
 		echo "error: the 'coderaft host' command is not yet available"
-		echo "hint: Exit the island with 'Exit the island with 'coderaft exit' and run commands on the host directly"
+		echo "hint: Exit the island with 'coderaft exit' and run commands on the host directly"
 		exit 1
         ;;
     "version")
@@ -377,9 +377,14 @@ sed -i '/# Coderaft package tracking start/,/# Coderaft package tracking end/d' 
 
 cat >> /root/.bashrc << 'BASHRC_EOF'
 
+# Handle sudo gracefully - just run the command if sudo is not installed
+if ! command -v sudo &>/dev/null; then
+    sudo() { "$@"; }
+fi
+
 if [ -t 1 ]; then
 	echo "Welcome to coderaft project: ` + projectName + `"
-	echo "Your files are in: /workspace"
+	echo "Your files are in: /island"
 	echo "hint: Type 'coderaft help' for available commands"
 	echo "hint: Type 'coderaft exit' to leave the island"
     echo ""
@@ -418,7 +423,7 @@ coderaft() {
     /usr/local/bin/coderaft "$@"
 }
 
-export CODERAFT_LOCKFILE="${CODERAFT_LOCKFILE:-/workspace/coderaft.lock}"
+export CODERAFT_LOCKFILE="${CODERAFT_LOCKFILE:-/island/coderaft.history}"
 
 coderaft_record_cmd() {
 	local cmd="$1"

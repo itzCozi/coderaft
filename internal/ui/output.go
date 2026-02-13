@@ -48,7 +48,7 @@ func Blank() {
 }
 
 func Prompt(msg string, args ...interface{}) {
-	fmt.Printf(msg, args...)
+	fmt.Printf("? "+msg, args...)
 }
 
 func Summary(label string, counts ...interface{}) {

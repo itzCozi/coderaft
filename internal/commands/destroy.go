@@ -5,12 +5,15 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"runtime"
 	"strings"
 
 	"github.com/spf13/cobra"
 
 	"coderaft/internal/ui"
 )
+
+var destroyForce bool
 
 var destroyCmd = &cobra.Command{
 	Use:   "destroy <project>",
@@ -42,10 +45,10 @@ Special usage:
 			return fmt.Errorf("project '%s' not found", projectName)
 		}
 
-		if !forceFlag {
+		if !destroyForce {
 			ui.Info("this will destroy the island '%s' for project '%s'.", project.IslandName, projectName)
 			ui.Info("empty project directories will be automatically removed.")
-			ui.Prompt("are you sure? (y/N): ")
+			ui.Prompt("Are you sure? (y/N): ")
 
 			reader := bufio.NewReader(os.Stdin)
 			response, err := reader.ReadString('\n')
@@ -100,7 +103,11 @@ Special usage:
 				ui.Detail("files preserved", project.WorkspacePath)
 				ui.Blank()
 				ui.Info("to completely remove the project files:")
-				ui.Info("  rm -rf %s", project.WorkspacePath)
+				if runtime.GOOS == "windows" {
+					ui.Info("  rmdir /s /q \"%s\"", project.WorkspacePath)
+				} else {
+					ui.Info("  rm -rf %s", project.WorkspacePath)
+				}
 			}
 		}
 
@@ -119,7 +126,10 @@ func isDirEmpty(dirPath string) (bool, error) {
 	if err == io.EOF {
 		return true, nil
 	}
-	return false, fmt.Errorf("failed to read directory names: %w", err)
+	if err != nil {
+		return false, fmt.Errorf("failed to read directory names: %w", err)
+	}
+	return false, nil
 }
 
 func cleanupOrphanedislands() error {
@@ -160,9 +170,9 @@ func cleanupOrphanedislands() error {
 		ui.Item(IslandName)
 	}
 
-	if !forceFlag {
+	if !destroyForce {
 		ui.Blank()
-		ui.Prompt("remove these orphaned islands? (y/N): ")
+		ui.Prompt("Remove these orphaned islands? (y/N): ")
 		reader := bufio.NewReader(os.Stdin)
 		response, err := reader.ReadString('\n')
 		if err != nil {

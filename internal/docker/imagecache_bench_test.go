@@ -14,11 +14,11 @@ func BenchmarkFingerprint(b *testing.B) {
 			"npm install -g typescript",
 		},
 		Environment: map[string]string{
-			"PYTHONPATH":       "/workspace",
+			"PYTHONPATH":       "/island",
 			"PYTHONUNBUFFERED": "1",
 			"NODE_ENV":         "development",
 		},
-		WorkingDir:  "/workspace",
+		WorkingDir:  "/island",
 		ProjectName: "bench-project",
 	}
 
@@ -43,7 +43,7 @@ func BenchmarkGenerateDockerfile(b *testing.B) {
 			"apt-get clean && rm -rf /var/lib/apt/lists/*",
 		},
 		Environment: map[string]string{
-			"PYTHONPATH":       "/workspace",
+			"PYTHONPATH":       "/island",
 			"PYTHONUNBUFFERED": "1",
 			"NODE_ENV":         "development",
 			"PATH":             "/usr/local/go/bin:$PATH",
@@ -52,7 +52,7 @@ func BenchmarkGenerateDockerfile(b *testing.B) {
 			"coderaft.project": "bench",
 			"coderaft.version": "1.0",
 		},
-		WorkingDir:  "/workspace",
+		WorkingDir:  "/island",
 		ProjectName: "bench-project",
 	}
 
@@ -71,8 +71,8 @@ func BenchmarkFingerprintCacheHit(b *testing.B) {
 			"DEBIAN_FRONTEND=noninteractive apt install -y python3 python3-pip git",
 			"pip3 install flask",
 		},
-		Environment: map[string]string{"PYTHONPATH": "/workspace"},
-		WorkingDir:  "/workspace",
+		Environment: map[string]string{"PYTHONPATH": "/island"},
+		WorkingDir:  "/island",
 		ProjectName: "test",
 	}
 

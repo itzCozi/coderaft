@@ -125,11 +125,11 @@ func TestProjectConfig(t *testing.T) {
 					"apt install -y python3",
 				},
 				Environment: map[string]string{
-					"PYTHONPATH": "/workspace",
+					"PYTHONPATH": "/island",
 					"ENV":        "development",
 				},
 				Ports:      []string{"8080:8080", "3000:3000"},
-				WorkingDir: "/workspace",
+				WorkingDir: "/island",
 			},
 			wantErr: false,
 		},
@@ -177,7 +177,7 @@ func TestProjectConfig(t *testing.T) {
 func TestProject(t *testing.T) {
 	project := &Project{
 		Name:          "test-project",
-		IslandName:       "test-project-island",
+		IslandName:    "test-project-island",
 		BaseImage:     "ubuntu:22.04",
 		WorkspacePath: "/home/user/coderaft/test-project",
 		Status:        "running",
@@ -253,10 +253,10 @@ func TestConfigTemplate(t *testing.T) {
 				"apt install -y python3 python3-pip",
 			},
 			Environment: map[string]string{
-				"PYTHONPATH": "/workspace",
+				"PYTHONPATH": "/island",
 			},
 			Ports:      []string{"5000:5000"},
-			WorkingDir: "/workspace",
+			WorkingDir: "/island",
 		},
 	}
 

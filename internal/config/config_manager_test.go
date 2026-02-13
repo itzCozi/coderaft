@@ -45,7 +45,7 @@ func TestConfigManager_LoadAndSave(t *testing.T) {
 
 	testProject := &Project{
 		Name:          "test-project",
-		IslandName:       "test-project-island",
+		IslandName:    "test-project-island",
 		BaseImage:     "ubuntu:22.04",
 		WorkspacePath: "/home/user/coderaft/test-project",
 		Status:        "stopped",
@@ -108,10 +108,10 @@ func TestConfigManager_LoadProjectConfig(t *testing.T) {
 			"apt install -y python3",
 		},
 		Environment: map[string]string{
-			"PYTHONPATH": "/workspace",
+			"PYTHONPATH": "/island",
 		},
 		Ports:      []string{"5000:5000"},
-		WorkingDir: "/workspace",
+		WorkingDir: "/island",
 	}
 
 	configPath := filepath.Join(tempDir, "coderaft.json")
@@ -208,11 +208,11 @@ func TestConfig_GetProject(t *testing.T) {
 	config := &Config{
 		Projects: map[string]*Project{
 			"project1": {
-				Name:    "project1",
+				Name:       "project1",
 				IslandName: "project1-island",
 			},
 			"project2": {
-				Name:    "project2",
+				Name:       "project2",
 				IslandName: "project2-island",
 			},
 		},

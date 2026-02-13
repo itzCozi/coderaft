@@ -14,6 +14,14 @@ import (
 	"coderaft/internal/ui"
 )
 
+// dockerCmd returns the container engine binary name, respecting CODERAFT_ENGINE.
+func dockerCmd() string {
+	if eng := strings.TrimSpace(os.Getenv("CODERAFT_ENGINE")); eng != "" {
+		return eng
+	}
+	return "docker"
+}
+
 type ExecFunc func(ctx context.Context, containerID string, cmd []string, showOutput bool) (stdout, stderr string, exitCode int, err error)
 
 type SetupCommandExecutor struct {
@@ -211,7 +219,7 @@ func (sce *SetupCommandExecutor) executeCommand(command string, step, total int,
 		return nil
 	}
 
-	cmd := exec.Command("docker", "exec", sce.islandName, "bash", "-c", wrapped)
+	cmd := exec.Command(dockerCmd(), "exec", sce.islandName, "bash", "-c", wrapped)
 
 	if sce.showOutput {
 		cmd.Stdout = os.Stdout
@@ -313,7 +321,7 @@ func (pqe *PackageQueryExecutor) createQueryTask(command string) StringTask {
 			return stdout, nil
 		}
 
-		cmd := exec.Command("docker", "exec", pqe.islandName, "bash", "-c", command)
+		cmd := exec.Command(dockerCmd(), "exec", pqe.islandName, "bash", "-c", command)
 
 		var stdout, stderr bytes.Buffer
 		cmd.Stdout = &stdout

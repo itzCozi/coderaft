@@ -50,7 +50,14 @@ func (optSetup *OptimizedSetup) OptimizedSystemUpdate(IslandName string) error {
 			Name: "System Update",
 			Commands: []string{
 				"apt update -y",
-				"apt full-upgrade -y",
+				"DEBIAN_FRONTEND=noninteractive apt full-upgrade -y",
+			},
+			Parallel: false,
+		},
+		{
+			Name: "Install Essentials",
+			Commands: []string{
+				"DEBIAN_FRONTEND=noninteractive apt install -y --no-install-recommends git curl wget ca-certificates build-essential openssh-client less nano",
 			},
 			Parallel: false,
 		},
@@ -59,6 +66,7 @@ func (optSetup *OptimizedSetup) OptimizedSystemUpdate(IslandName string) error {
 			Commands: []string{
 				"apt autoremove -y",
 				"apt autoclean",
+				"rm -rf /var/lib/apt/lists/*",
 			},
 			Parallel: true,
 		},
@@ -74,7 +82,7 @@ func (optSetup *OptimizedSetup) FastInit(projectName string, projectConfig *conf
 		BaseImage: "ubuntu:22.04",
 	}, projectConfig)
 
-	workspaceIsland := "/workspace"
+	workspaceIsland := "/island"
 	if projectConfig != nil && projectConfig.WorkingDir != "" {
 		workspaceIsland = projectConfig.WorkingDir
 	}
@@ -156,7 +164,7 @@ func (optSetup *OptimizedSetup) FastInit(projectName string, projectConfig *conf
 }
 
 func (optSetup *OptimizedSetup) FastUp(projectConfig *config.ProjectConfig, projectName, IslandName, baseImage, cwd, workspaceIsland string) error {
-	ui.Status("fast startup of environment...")
+	ui.Status("fast startup of island...")
 
 	effectiveImage := baseImage
 	if projectConfig != nil && len(projectConfig.SetupCommands) > 0 {
@@ -200,9 +208,9 @@ func (optSetup *OptimizedSetup) FastUp(projectConfig *config.ProjectConfig, proj
 		return fmt.Errorf("failed to setup coderaft in island: %w", err)
 	}
 
-	lockfilePath := filepath.Join(cwd, "coderaft.lock")
+	lockfilePath := filepath.Join(cwd, "coderaft.history")
 	if _, err := os.Stat(lockfilePath); err == nil {
-		ui.Status("processing lock file...")
+		ui.Status("processing history file...")
 		if err := optSetup.processLockFile(IslandName, lockfilePath); err != nil {
 			return fmt.Errorf("failed to process lock file: %w", err)
 		}
@@ -254,7 +262,7 @@ func (optSetup *OptimizedSetup) PrewarmImage(image string) error {
 }
 
 func (optSetup *OptimizedSetup) OptimizeEnvironment(IslandName string) error {
-	ui.Status("optimizing environment...")
+	ui.Status("optimizing island...")
 
 	executor := parallel.NewSetupCommandExecutorWithSDK(IslandName, false, 3, optSetup.dockerClient.SDKExecFunc())
 

@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strconv"
 	"strings"
 
 	"github.com/spf13/cobra"
@@ -16,7 +17,7 @@ type devContainer struct {
 	WorkspaceFolder   string            `json:"workspaceFolder,omitempty"`
 	ContainerEnv      map[string]string `json:"containerEnv,omitempty"`
 	PostCreateCommand string            `json:"postCreateCommand,omitempty"`
-	ForwardPorts      []string          `json:"forwardPorts,omitempty"`
+	ForwardPorts      []int             `json:"forwardPorts,omitempty"`
 	Mounts            []string          `json:"mounts,omitempty"`
 }
 
@@ -47,7 +48,7 @@ var devcontainerGenerateCmd = &cobra.Command{
 		dc := devContainer{
 			Name:            pcfg.Name,
 			Image:           firstNonEmpty(pcfg.BaseImage, "ubuntu:22.04"),
-			WorkspaceFolder: firstNonEmpty(pcfg.WorkingDir, "/workspace"),
+			WorkspaceFolder: firstNonEmpty(pcfg.WorkingDir, "/island"),
 			ContainerEnv:    map[string]string{},
 		}
 
@@ -68,7 +69,9 @@ var devcontainerGenerateCmd = &cobra.Command{
 				part = part[:i]
 			}
 			if part != "" {
-				dc.ForwardPorts = append(dc.ForwardPorts, part)
+				if portNum, err := strconv.Atoi(part); err == nil {
+					dc.ForwardPorts = append(dc.ForwardPorts, portNum)
+				}
 			}
 		}
 
@@ -124,5 +127,4 @@ func firstNonEmpty(vals ...string) string {
 
 func init() {
 	devcontainerCmd.AddCommand(devcontainerGenerateCmd)
-	rootCmd.AddCommand(devcontainerCmd)
 }

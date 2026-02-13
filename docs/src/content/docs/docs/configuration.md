@@ -20,10 +20,10 @@ Each project can have a `coderaft.json` file in its workspace directory that def
     "apt install -y python3 python3-pip"
   ],
   "environment": {
-    "PYTHONPATH": "/workspace"
+    "PYTHONPATH": "/island"
   },
   "ports": ["5000:5000"],
-  "volumes": ["/workspace/data:/data"]
+  "volumes": ["/island/data:/data"]
 }
 ```
 
@@ -37,7 +37,7 @@ Each project can have a `coderaft.json` file in its workspace directory that def
     "apt install -y python3 python3-pip nodejs npm"
   ],
   "environment": {
-    "PYTHONPATH": "/workspace",
+    "PYTHONPATH": "/island",
     "NODE_ENV": "development",
     "PYTHONUNBUFFERED": "1"
   },
@@ -47,11 +47,11 @@ Each project can have a `coderaft.json` file in its workspace directory that def
     "8080:8080"
   ],
   "volumes": [
-    "/workspace/data:/data",
-    "/workspace/logs:/var/log/app"
+    "/island/data:/data",
+    "/island/logs:/var/log/app"
   ],
   "dotfiles": ["~/.dotfiles"],
-  "working_dir": "/workspace",
+  "working_dir": "/island",
   "shell": "/bin/bash",
   "user": "root",
   "capabilities": ["SYS_PTRACE"],
@@ -83,10 +83,10 @@ Regardless of configuration, coderaft always runs `apt update -y && apt full-upg
 ## Reproducible Installs
 ---
 
-Coderaft automatically records package manager installs you run inside the Island to `/workspace/coderaft.lock` (which is your project folder on the host).
+Coderaft automatically records package manager installs you run inside the Island to `/island/coderaft.history` (which is your project folder on the host).
 
 Lock file paths:
-- Inside Island: `/workspace/coderaft.lock`
+- Inside Island: `/island/coderaft.history`
 - On host: `~/coderaft/<project>/coderaft.lock`
 
 The following commands are tracked when they succeed:
@@ -111,7 +111,7 @@ For a more comprehensive, shareable snapshot similar to Nix-style locks, use:
 
 ```bash
 coderaft lock <project>
-``
+```
 
 This writes a JSON snapshot (by default to `<workspace>/coderaft.lock.json`) that includes:
 
@@ -253,7 +253,7 @@ Global settings are stored in `~/.coderaft/config.json`:
   "projects": {
     "my-project": {
       "name": "my-project",
-      "container_name": "coderaft_my-project",
+      "island_name": "coderaft_my-project",
       "base_image": "ubuntu:22.04",
       "workspace_path": "/home/user/coderaft/my-project",
       "config_file": "/home/user/coderaft/my-project/coderaft.json"

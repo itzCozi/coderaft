@@ -16,17 +16,25 @@ import (
 var (
 	configManager *config.ConfigManager
 	dockerClient  *docker.Client
-	forceFlag     bool
 )
 
 var rootCmd = &cobra.Command{
 	Use:   "coderaft",
-	Short: "Isolated development environments for anything",
-	Long:  `coderaft creates isolated development environments, contained in a project's Docker island. Each project operates in its own disposable environment, while your code remains neatly organized in a simple, flat folder on the host machine.`,
+	Short: "Isolated development islands for anything",
+	Long:  `coderaft creates isolated development islands, contained in a project's Docker island. Each project operates in its own disposable island, while your code remains neatly organized in a simple, flat folder on the host machine.`,
 	PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
 
-		if runtime.GOOS != "linux" && runtime.GOOS != "darwin" && runtime.GOOS != "windows" {
-			return fmt.Errorf("coderaft requires Docker and supports Linux, macOS, and Windows")
+		switch runtime.GOOS {
+		case "linux", "darwin", "windows":
+			// Supported platform
+		default:
+			return fmt.Errorf("unsupported platform: %s. coderaft supports Linux, macOS, and Windows", runtime.GOOS)
+		}
+
+		// Commands that don't need Docker or config
+		switch cmd.Name() {
+		case "version", "completion", "help":
+			return nil
 		}
 
 		var err error
@@ -37,7 +45,16 @@ var rootCmd = &cobra.Command{
 
 		dockerClient, err = docker.NewClient()
 		if err != nil {
-			return fmt.Errorf("docker is not available. Please ensure Docker is installed and its daemon is running: %w", err)
+			hint := ""
+			switch runtime.GOOS {
+			case "windows":
+				hint = " Please ensure Docker Desktop is installed and running."
+			case "darwin":
+				hint = " Please ensure Docker Desktop for Mac is installed and running."
+			default:
+				hint = " Please ensure Docker is installed and its daemon is running."
+			}
+			return fmt.Errorf("docker is not available.%s\n  %w", hint, err)
 		}
 
 		if err := dockerClient.IsDockerAvailableWith(); err != nil {
@@ -64,6 +81,7 @@ func Execute() error {
 }
 
 func init() {
+	// Core commands
 	rootCmd.AddCommand(initCmd)
 	rootCmd.AddCommand(upCmd)
 	rootCmd.AddCommand(shellCmd)
@@ -71,14 +89,26 @@ func init() {
 	rootCmd.AddCommand(stopCmd)
 	rootCmd.AddCommand(destroyCmd)
 	rootCmd.AddCommand(listCmd)
+	rootCmd.AddCommand(statusCmd)
+
+	// Configuration commands
 	rootCmd.AddCommand(configCmd)
+	rootCmd.AddCommand(templatesCmd)
+	rootCmd.AddCommand(devcontainerCmd)
+
+	// Lock/snapshot commands
+	rootCmd.AddCommand(lockCmd)
+	rootCmd.AddCommand(applyCmd)
+	rootCmd.AddCommand(verifyCmd)
+	rootCmd.AddCommand(backupCmd)
+	rootCmd.AddCommand(restoreCmd)
+
+	// Maintenance commands
 	rootCmd.AddCommand(cleanupCmd)
 	rootCmd.AddCommand(maintenanceCmd)
 	rootCmd.AddCommand(updateCmd)
 	rootCmd.AddCommand(versionCmd)
 	rootCmd.AddCommand(completionCmd)
-
-	destroyCmd.Flags().BoolVarP(&forceFlag, "force", "f", false, "Force operation without confirmation")
 }
 
 func validateProjectName(name string) error {

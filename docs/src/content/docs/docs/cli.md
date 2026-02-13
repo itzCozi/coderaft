@@ -63,7 +63,7 @@ coderaft up [--dotfiles <path>] [--keep-running]
 - Applies ports, env, and volumes from configuration
 - Runs a system update, then `setup_commands`
 - Installs the coderaft wrapper for nice shell UX
- - Records package installations you perform inside the Island to `coderaft.lock` (apt/pip/npm/yarn/pnpm). On rebuilds, these commands are replayed to reproduce the environment.
+ - Records package installations you perform inside the Island to `coderaft.history` (apt/pip/npm/yarn/pnpm). On rebuilds, these commands are replayed to reproduce the environment.
  - If global setting `auto_stop_on_exit` is enabled (default), `coderaft up` stops the container right away if it is idle (no exposed ports and only the init process running). Use `--keep-running` to leave it running.
  - When `auto_stop_on_exit` is enabled and your `coderaft.json` does not specify a `restart` policy, coderaft uses `--restart no` to prevent the container from auto-restarting after being stopped.
 
@@ -139,8 +139,8 @@ coderaft shell python-app
 
 **Notes:**
 - Automatically starts the Island if stopped
-- Sets working directory to `/workspace`
-- Your project files are available at `/workspace`
+- Sets working directory to `/island`
+- Your project files are available at `/island`
 - Exit with `exit`, `logout`, or `Ctrl+D`
 - By default, the Island stops automatically after you exit the shell when global setting `auto_stop_on_exit` is enabled (default)
 - Use `--keep-running` to keep the Island running after you exit the shell
@@ -165,14 +165,14 @@ coderaft run myproject python3 --version
 coderaft run myproject apt install -y htop
 
 # Complex command with pipes
-coderaft run myproject "cd /workspace && python3 -m http.server 8000"
+coderaft run myproject "cd /island && python3 -m http.server 8000"
 
 # Execute script
-coderaft run myproject bash /workspace/setup.sh
+coderaft run myproject bash /island/setup.sh
 ```
 
 **Notes:**
-- Commands run in `/workspace` by default
+- Commands run in `/island` by default
 - Use quotes for complex commands with pipes, redirects, etc.
 - Island starts automatically if stopped
 - By default, the Island stops automatically after the command finishes when global setting `auto_stop_on_exit` is enabled (default)
@@ -317,12 +317,12 @@ coderaft lock myproject -o ./env/coderaft.lock.json
     "id": "sha256:..."
   },
   "container": {
-    "working_dir": "/workspace",
+    "working_dir": "/island",
     "user": "root",
     "restart": "no",
     "network": "bridge",
     "ports": ["3000/tcp -> 0.0.0.0:3000"],
-    "volumes": ["bind /host/path -> /workspace (rw=true)"],
+    "volumes": ["bind /host/path -> /island (rw=true)"],
     "environment": {"TZ": "UTC"},
     "labels": {"coderaft.project": "myproject"},
     "capabilities": ["SYS_PTRACE"],
@@ -409,6 +409,87 @@ coderaft apply myproject
 ```
 
 ## Configuration Commands
+
+---
+
+### `coderaft backup`
+
+Backup a project's Island state and configuration into a portable directory.
+
+**Syntax:**
+```bash
+coderaft backup <project> [--output <dir>]
+```
+
+**Options:**
+- `--output, -o <dir>`: Output directory for backup (default: `<workspace>/.coderaft_backups/<timestamp>`)
+
+**Behavior:**
+- Commits the running Island to a Docker image
+- Saves the image as `image.tar`
+- Writes a `metadata.json` manifest with project name, island name, image tag, coderaft config, and lock file contents
+
+**Example:**
+```bash
+# Backup with automatic timestamps
+coderaft backup myproject
+
+# Specify a custom backup directory
+coderaft backup myproject --output /tmp/myproject-backup
+```
+
+---
+
+### `coderaft restore`
+
+Restore a project's Island from a backup directory created by `coderaft backup`.
+
+**Syntax:**
+```bash
+coderaft restore <project> <backup-dir> [--force]
+```
+
+**Options:**
+- `--force, -f`: Overwrite the existing Island if it already exists
+
+**Behavior:**
+- Loads `image.tar` from the backup directory
+- Reads `metadata.json` for the image tag
+- Creates a new Island from the restored image
+- Starts the Island and sets up the coderaft wrapper
+
+**Example:**
+```bash
+# Restore from a backup
+coderaft restore myproject ~/backups/myproject/20250101-120000
+
+# Force overwrite an existing island
+coderaft restore myproject ~/backups/myproject/20250101-120000 --force
+```
+
+---
+
+### `coderaft devcontainer generate`
+
+Generate a VS Code `.devcontainer/devcontainer.json` from the current project's `coderaft.json`.
+
+**Syntax:**
+```bash
+coderaft devcontainer generate
+```
+
+**Behavior:**
+- Reads `coderaft.json` from the current directory
+- Maps base image, ports, environment variables, volumes, and setup commands into a `devcontainer.json`
+- Writes `.devcontainer/devcontainer.json`
+
+**Example:**
+```bash
+cd ~/coderaft/myproject
+coderaft devcontainer generate
+
+# Then open in VS Code → "Reopen in Container"
+```
 
 ---
 
@@ -642,7 +723,7 @@ coderaft update [project]
 - When a project is specified, only that environment is updated
 - With no project, all registered projects are updated
 - Pulls the latest base image, recreates the Island with current coderaft.json config, and re-runs setup commands
- - Replays package install commands from `coderaft.lock` to restore your previously installed packages
+ - Replays package install commands from `coderaft.history` to restore your previously installed packages
 
 **Options:**
 - None currently. Uses your existing configuration in `coderaft.json` if present.
@@ -704,7 +785,7 @@ When you create a project, coderaft sets up:
 
 **Inside Island:**
 ```
-/workspace/                 # Mounted from ~/coderaft/<project>/
+/island/                 # Mounted from ~/coderaft/<project>/
 ├── coderaft.json            # Same files as host
 ├── your-files...
 └── ...
@@ -786,8 +867,8 @@ Coderaft creates Islands (Docker containers) with these characteristics:
 
 - **Name**: `coderaft_<project>`
 - **Base Image**: `ubuntu:22.04` (configurable)
-- **Working Directory**: `/workspace`
-- **Mount**: `~/coderaft/<project>` → `/workspace`
+- **Working Directory**: `/island`
+- **Mount**: `~/coderaft/<project>` → `/island`
 - **Restart Policy**: `unless-stopped` (or `no` when `auto_stop_on_exit` is enabled and no explicit policy is set)
 - **Command**: `sleep infinity` (keeps Island alive)
 
@@ -796,8 +877,8 @@ Coderaft creates Islands (Docker containers) with these characteristics:
 # coderaft init myproject
 docker create --name coderaft_myproject \
   --restart unless-stopped \
-  -v ~/coderaft/myproject:/workspace \
-  -w /workspace \
+  -v ~/coderaft/myproject:/island \
+  -w /island \
   ubuntu:22.04 sleep infinity
 
 # coderaft shell myproject

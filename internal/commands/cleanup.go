@@ -19,6 +19,7 @@ var (
 	volumesFlag     bool
 	networksFlag    bool
 	systemPruneFlag bool
+	cleanupForce    bool
 )
 
 var cleanupCmd = &cobra.Command{
@@ -203,7 +204,7 @@ func cleanupOrphanedFromCleanup() error {
 		return nil
 	}
 
-	if !forceFlag {
+	if !cleanupForce {
 		ui.Prompt("\nRemove these orphaned islands? (y/N): ")
 		reader := bufio.NewReader(os.Stdin)
 		response, err := reader.ReadString('\n')
@@ -248,7 +249,7 @@ func cleanupUnusedImages() error {
 			return fmt.Errorf("failed to list dangling images: %w", err)
 		}
 	} else {
-		if !forceFlag {
+		if !cleanupForce {
 			ui.Prompt("Remove unused Docker images? (y/N): ")
 			reader := bufio.NewReader(os.Stdin)
 			response, err := reader.ReadString('\n')
@@ -282,7 +283,7 @@ func cleanupUnusedVolumes() error {
 			return fmt.Errorf("failed to list dangling volumes: %w", err)
 		}
 	} else {
-		if !forceFlag {
+		if !cleanupForce {
 			ui.Prompt("Remove unused Docker volumes? (y/N): ")
 			reader := bufio.NewReader(os.Stdin)
 			response, err := reader.ReadString('\n')
@@ -316,7 +317,7 @@ func cleanupUnusedNetworks() error {
 			return fmt.Errorf("failed to list custom networks: %w", err)
 		}
 	} else {
-		if !forceFlag {
+		if !cleanupForce {
 			ui.Prompt("Remove unused Docker networks? (y/N): ")
 			reader := bufio.NewReader(os.Stdin)
 			response, err := reader.ReadString('\n')
@@ -350,7 +351,7 @@ func runSystemPrune() error {
 			return fmt.Errorf("failed to show Docker disk usage: %w", err)
 		}
 	} else {
-		if !forceFlag {
+		if !cleanupForce {
 			ui.Prompt("Run Docker system prune (removes all unused resources)? (y/N): ")
 			reader := bufio.NewReader(os.Stdin)
 			response, err := reader.ReadString('\n')
@@ -428,5 +429,5 @@ func init() {
 	cleanupCmd.Flags().BoolVar(&volumesFlag, "volumes", false, "Clean up unused Docker volumes only")
 	cleanupCmd.Flags().BoolVar(&networksFlag, "networks", false, "Clean up unused Docker networks only")
 	cleanupCmd.Flags().BoolVar(&systemPruneFlag, "system-prune", false, "Run Docker system prune for comprehensive cleanup")
-	cleanupCmd.Flags().BoolVarP(&forceFlag, "force", "f", false, "Force cleanup without confirmation prompts")
+	cleanupCmd.Flags().BoolVarP(&cleanupForce, "force", "f", false, "Force cleanup without confirmation prompts")
 }

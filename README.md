@@ -17,7 +17,7 @@ coderaft creates isolated development environments, contained in a project's Doc
 - **Disposable** - Easily destroy and recreate environments as needed
 - **Isolated** - Each project runs in its own island, preventing conflicts
 - **Docker-in-Docker** - Use Docker within your coderaft environments by default
-- **Cross-platform** - Supports Linux, macOS, and Windows (primary target: Debian/Ubuntu)
+- **Cross-platform** - Supports Linux (Debian, Ubuntu, Fedora, Arch, Alpine, and more), macOS, and Windows
 - **Well Tested** - Comprehensive test suite
 
 ## Why coderaft?
@@ -32,17 +32,42 @@ coderaft focuses on fast, disposable, Docker-native development environments wit
 
 ## Installation
 
+### Linux (Debian/Ubuntu/Fedora/Arch/Alpine and more)
+
 ```bash
-# Using the install script
 curl -fsSL https://raw.githubusercontent.com/itzcozi/coderaft/main/install.sh | bash
-
-# Mirror (CDN)
-curl -fsSL https://coderaft.ar0.eu/install.sh | bash
-
-# Or manually: https://coderaft.ar0.eu/docs/install/#manual-build-from-source
 ```
 
-Note: coderaft requires Docker. It supports Linux, macOS, and Windows. On Windows without WSL2, ensure Docker Desktop is running.
+### macOS
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/itzcozi/coderaft/main/install-macos.sh | bash
+```
+
+Or manually with Homebrew:
+
+```bash
+brew install go git docker --cask
+git clone https://github.com/itzcozi/coderaft.git && cd coderaft
+make build && sudo make install
+```
+
+### Windows
+
+```powershell
+# PowerShell (run as Administrator)
+irm https://raw.githubusercontent.com/itzcozi/coderaft/main/install.ps1 | iex
+```
+
+Or manually:
+
+```powershell
+# Prerequisites: Docker Desktop, Go, Git
+git clone https://github.com/itzcozi/coderaft.git; cd coderaft
+.\build.ps1 -Install
+```
+
+> **Note:** coderaft requires Docker on all platforms. On Windows, use Docker Desktop. On macOS, use Docker Desktop for Mac.
 
 ## Quick Start
 

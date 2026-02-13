@@ -28,8 +28,8 @@ var keepRunningUpFlag bool
 
 var upCmd = &cobra.Command{
 	Use:   "up",
-	Short: "Start a coderaft environment from the current folder's coderaft.json",
-	Long:  "Reads coderaft.json in the current directory and boots the environment so new teammates can simply run 'coderaft up'.",
+	Short: "Start a coderaft island from the current folder's coderaft.json",
+	Long:  "Reads coderaft.json in the current directory and boots the island so new teammates can simply run 'coderaft up'.",
 	Args:  cobra.NoArgs,
 	RunE: func(cmd *cobra.Command, args []string) error {
 		cwd, err := os.Getwd()
@@ -63,7 +63,7 @@ var upCmd = &cobra.Command{
 		IslandName := fmt.Sprintf("coderaft_%s", projectName)
 		baseImage := cfg.GetEffectiveBaseImage(&config.Project{Name: projectName, BaseImage: projectConfig.BaseImage}, projectConfig)
 
-		workspaceIsland := "/workspace"
+		workspaceIsland := "/island"
 		if projectConfig.WorkingDir != "" {
 			workspaceIsland = projectConfig.WorkingDir
 		}
@@ -89,11 +89,11 @@ var upCmd = &cobra.Command{
 					return fmt.Errorf("failed to setup coderaft in existing island: %w", err)
 				}
 			}
-			ui.Success("environment is up")
+			ui.Success("island is up")
 			ui.Detail("workspace", cwd)
 			ui.Detail("island", IslandName)
 			ui.Detail("image", baseImage)
-			ui.Info("hint: run 'coderaft shell %s' to enter the environment.", projectName)
+			ui.Info("hint: run 'coderaft shell %s' to enter the island.", projectName)
 
 			if cfg.Settings != nil && cfg.Settings.AutoStopOnExit && !keepRunningUpFlag {
 				if idle, err := dockerClient.IsContainerIdle(IslandName); err == nil && idle {
@@ -146,14 +146,14 @@ var upCmd = &cobra.Command{
 
 		optimizedSetup := NewOptimizedSetup(dockerClient, configManager)
 		if err := optimizedSetup.FastUp(projectConfig, projectName, IslandName, baseImage, cwd, workspaceIsland); err != nil {
-			return fmt.Errorf("failed to start environment: %w", err)
+			return fmt.Errorf("failed to start island: %w", err)
 		}
 
-		ui.Success("environment is up")
+		ui.Success("island is up")
 		ui.Detail("workspace", cwd)
 		ui.Detail("island", IslandName)
 		ui.Detail("image", baseImage)
-		ui.Info("hint: run 'coderaft shell %s' to enter the environment.", projectName)
+		ui.Info("hint: run 'coderaft shell %s' to enter the island.", projectName)
 
 		_ = WriteLockFileForIsland(IslandName, projectName, cwd, baseImage, "")
 
@@ -242,7 +242,7 @@ func applyLockInline(projectName, lockPath string) error {
 		)
 	}
 	if lf.AptSources.PinnedRelease != "" {
-		cmds = append(cmds, fmt.Sprintf("bash -lc 'echo APT::Default-Release \"%s\"; > /etc/apt/apt.conf.d/99defaultrelease'", lf.AptSources.PinnedRelease))
+		cmds = append(cmds, fmt.Sprintf("echo 'APT::Default-Release \"%s\";' > /etc/apt/apt.conf.d/99defaultrelease", lf.AptSources.PinnedRelease))
 	}
 	if lf.Registries.PipIndexURL != "" || len(lf.Registries.PipExtraIndex) > 0 {
 		var b strings.Builder

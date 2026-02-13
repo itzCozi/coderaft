@@ -8,7 +8,7 @@ This guide will get you up and running with coderaft in just a few minutes. You'
 ## Prerequisites
 ---
 
-Before starting, make sure you have coderaft installed. If you haven't installed it yet, follow the [Installation Guide](/docs//install/) first.
+Before starting, make sure you have coderaft installed. If you haven't installed it yet, follow the [Installation Guide](/docs/install/) first.
 
 ## Create Your First Project
 ---
@@ -46,8 +46,8 @@ python3 --version
 pip3 --version
 which python3
 
-# Your workspace is mounted at /workspace
-cd /workspace
+# Your workspace is mounted at /island
+cd /island
 ls -la
 
 # Install additional packages
@@ -57,7 +57,7 @@ apt install tree htop
 # Install Python packages
 pip3 install requests flask
 
-# These installs are automatically recorded to /workspace/coderaft.lock
+# These installs are automatically recorded to /island/coderaft.history
 # so the environment can be reproduced on rebuild or by teammates.
 ```
 
@@ -68,7 +68,7 @@ Create a simple Python application:
 
 ```bash
 # Create a simple web app
-cat > /workspace/app.py << 'EOF'
+cat > /island/app.py << 'EOF'
 from flask import Flask
 
 app = Flask(__name__)

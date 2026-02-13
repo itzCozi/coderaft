@@ -131,5 +131,4 @@ func humanizeDuration(d time.Duration) string {
 }
 
 func init() {
-	rootCmd.AddCommand(statusCmd)
 }

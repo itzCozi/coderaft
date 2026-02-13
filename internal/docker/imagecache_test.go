@@ -10,7 +10,7 @@ func TestBuildImageConfigFingerprint(t *testing.T) {
 		BaseImage:     "ubuntu:22.04",
 		SetupCommands: []string{"apt update -y", "apt install -y git"},
 		Environment:   map[string]string{"FOO": "bar"},
-		WorkingDir:    "/workspace",
+		WorkingDir:    "/island",
 		ProjectName:   "test",
 	}
 
@@ -18,7 +18,7 @@ func TestBuildImageConfigFingerprint(t *testing.T) {
 		BaseImage:     "ubuntu:22.04",
 		SetupCommands: []string{"apt update -y", "apt install -y git"},
 		Environment:   map[string]string{"FOO": "bar"},
-		WorkingDir:    "/workspace",
+		WorkingDir:    "/island",
 		ProjectName:   "test",
 	}
 
@@ -91,9 +91,9 @@ func TestGenerateDockerfile(t *testing.T) {
 			"pip3 install flask",
 		},
 		Environment: map[string]string{
-			"PYTHONPATH": "/workspace",
+			"PYTHONPATH": "/island",
 		},
-		WorkingDir:  "/workspace",
+		WorkingDir:  "/island",
 		ProjectName: "test-project",
 	}
 
@@ -119,7 +119,7 @@ func TestGenerateDockerfile(t *testing.T) {
 		t.Error("Dockerfile should contain pip install command")
 	}
 
-	if !strings.Contains(dockerfile, "WORKDIR /workspace") {
+	if !strings.Contains(dockerfile, "WORKDIR /island") {
 		t.Error("Dockerfile should contain WORKDIR")
 	}
 
@@ -142,7 +142,7 @@ func TestGenerateDockerfileNoCommands(t *testing.T) {
 		t.Error("Dockerfile should start with FROM")
 	}
 
-	if !strings.Contains(dockerfile, "WORKDIR /workspace") {
+	if !strings.Contains(dockerfile, "WORKDIR /island") {
 		t.Error("Dockerfile should have default WORKDIR")
 	}
 }

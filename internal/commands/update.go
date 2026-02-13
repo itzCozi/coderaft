@@ -15,8 +15,8 @@ import (
 
 var updateCmd = &cobra.Command{
 	Use:   "update [project]",
-	Short: "Pull latest base image(s) and rebuild island(es)",
-	Long:  "Update environments by pulling the latest base images and rebuilding the project islands using current configuration.",
+	Short: "Pull latest base image(s) and rebuild island(s)",
+	Long:  "Update islands by pulling the latest base images and rebuilding the project islands using current configuration.",
 	Args:  cobra.MaximumNArgs(1),
 	RunE: func(cmd *cobra.Command, args []string) error {
 		if len(args) == 1 {
@@ -63,7 +63,7 @@ func updateSingleProject(projectName string) error {
 		}
 	}
 
-	workspaceIsland := "/workspace"
+	workspaceIsland := "/island"
 	if projectConfig != nil && projectConfig.WorkingDir != "" {
 		workspaceIsland = projectConfig.WorkingDir
 	}
@@ -91,16 +91,17 @@ func updateSingleProject(projectName string) error {
 
 	updateCommands := []string{
 		"apt update -y",
-		"apt full-upgrade -y",
+		"DEBIAN_FRONTEND=noninteractive apt full-upgrade -y",
+		"DEBIAN_FRONTEND=noninteractive apt install -y --no-install-recommends git curl wget ca-certificates build-essential openssh-client less nano",
 	}
 	if err := dockerClient.ExecuteSetupCommandsWithOutput(project.IslandName, updateCommands, false); err != nil {
 		ui.Warning("failed to update system packages: %v", err)
 	}
 
 	if project.WorkspacePath != "" {
-		lockfilePath := filepath.Join(project.WorkspacePath, "coderaft.lock")
+		lockfilePath := filepath.Join(project.WorkspacePath, "coderaft.history")
 		if _, err := os.Stat(lockfilePath); err == nil {
-			ui.Info("replaying recorded package installs from coderaft.lock...")
+			ui.Info("replaying recorded package installs from coderaft.history...")
 			if data, readErr := os.ReadFile(lockfilePath); readErr == nil {
 				lines := strings.Split(string(data), "\n")
 				var cmds []string
@@ -113,7 +114,7 @@ func updateSingleProject(projectName string) error {
 				}
 				if len(cmds) > 0 {
 					if err := dockerClient.ExecuteSetupCommandsWithOutput(project.IslandName, cmds, false); err != nil {
-						ui.Warning("failed to replay coderaft.lock commands: %v", err)
+						ui.Warning("failed to replay coderaft.history commands: %v", err)
 					}
 				}
 			}
@@ -127,7 +128,7 @@ func updateSingleProject(projectName string) error {
 	}
 
 	if err := dockerClient.SetupCoderaftOnIslandWithUpdate(project.IslandName, projectName); err != nil {
-		ui.Warning("failed to setup coderaft environment: %v", err)
+		ui.Warning("failed to setup coderaft on island: %v", err)
 	}
 
 	if project.BaseImage != baseImage {

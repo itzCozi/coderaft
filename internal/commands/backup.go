@@ -30,7 +30,7 @@ var (
 
 var backupCmd = &cobra.Command{
 	Use:   "backup <project>",
-	Short: "Backup the project's coderaft environment (island state + config)",
+	Short: "Backup the project's coderaft island (state + config)",
 	Args:  cobra.ExactArgs(1),
 	RunE: func(cmd *cobra.Command, args []string) error {
 		projectName := args[0]
@@ -95,7 +95,10 @@ var backupCmd = &cobra.Command{
 			LockFileJSON:   lockRaw,
 		}
 		manPath := filepath.Join(outDir, "metadata.json")
-		b, _ := json.MarshalIndent(manifest, "", "  ")
+		b, err := json.MarshalIndent(manifest, "", "  ")
+		if err != nil {
+			return fmt.Errorf("failed to marshal metadata: %w", err)
+		}
 		if err := os.WriteFile(manPath, b, 0644); err != nil {
 			return fmt.Errorf("failed to write metadata: %w", err)
 		}
@@ -109,6 +112,5 @@ var backupCmd = &cobra.Command{
 }
 
 func init() {
-	rootCmd.AddCommand(backupCmd)
 	backupCmd.Flags().StringVarP(&backupOutput, "output", "o", "", "Output directory for backup (default: <workspace>/.coderaft_backups/<timestamp>)")
 }

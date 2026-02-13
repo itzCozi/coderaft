@@ -123,5 +123,4 @@ func init() {
 	templatesCmd.AddCommand(templatesCreateCmd)
 	templatesCmd.AddCommand(templatesSaveCmd)
 	templatesCmd.AddCommand(templatesDeleteCmd)
-	rootCmd.AddCommand(templatesCmd)
 }

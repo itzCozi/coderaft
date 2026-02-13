@@ -13,6 +13,7 @@ import (
 )
 
 var (
+	initForce      bool
 	templateFlag   string
 	generateConfig bool
 	configOnlyFlag bool
@@ -42,7 +43,7 @@ Examples:
 			return fmt.Errorf("failed to load configuration: %w", err)
 		}
 
-		if _, exists := cfg.GetProject(projectName); exists && !forceFlag {
+		if _, exists := cfg.GetProject(projectName); exists && !initForce {
 			return fmt.Errorf("project '%s' already exists. Use --force to overwrite", projectName)
 		}
 
@@ -101,7 +102,7 @@ Examples:
 			BaseImage: "ubuntu:22.04",
 		}, projectConfig)
 
-		workspaceIsland := "/workspace"
+		workspaceIsland := "/island"
 		if projectConfig != nil && projectConfig.WorkingDir != "" {
 			workspaceIsland = projectConfig.WorkingDir
 		}
@@ -111,7 +112,7 @@ Examples:
 			return fmt.Errorf("failed to pull base image: %w", err)
 		}
 
-		if forceFlag {
+		if initForce {
 			exists, err := dockerClient.IslandExists(IslandName)
 			if err != nil {
 				return fmt.Errorf("failed to check island existence: %w", err)
@@ -154,15 +155,19 @@ Examples:
 			return fmt.Errorf("island failed to start: %w", err)
 		}
 
-		if projectConfig != nil && len(projectConfig.SetupCommands) > 0 {
-			ui.Status("updating system packages...")
-			systemUpdateCommands := []string{
-				"apt update -y",
-			}
-			if err := dockerClient.ExecuteSetupCommandsWithOutput(IslandName, systemUpdateCommands, false); err != nil {
-				ui.Warning("apt update failed: %v", err)
-			}
+		// Always update and install essentials on new islands
+		ui.Status("updating system packages and installing essentials...")
+		essentialCommands := []string{
+			"apt update -y",
+			"DEBIAN_FRONTEND=noninteractive apt upgrade -y",
+			"DEBIAN_FRONTEND=noninteractive apt install -y --no-install-recommends git curl wget ca-certificates build-essential openssh-client less nano",
+			"apt-get clean && rm -rf /var/lib/apt/lists/*",
+		}
+		if err := dockerClient.ExecuteSetupCommandsWithOutput(IslandName, essentialCommands, false); err != nil {
+			ui.Warning("system setup failed: %v", err)
+		}
 
+		if projectConfig != nil && len(projectConfig.SetupCommands) > 0 {
 			ui.Status("installing template packages (%d commands)...", len(projectConfig.SetupCommands))
 			if err := dockerClient.ExecuteSetupCommandsWithOutput(IslandName, projectConfig.SetupCommands, false); err != nil {
 				return fmt.Errorf("failed to execute setup commands: %w", err)
@@ -176,7 +181,7 @@ Examples:
 
 		project := &config.Project{
 			Name:          projectName,
-			IslandName:       IslandName,
+			IslandName:    IslandName,
 			BaseImage:     baseImage,
 			WorkspacePath: workspacePath,
 			Status:        "running",
@@ -227,7 +232,7 @@ Examples:
 }
 
 func init() {
-	initCmd.Flags().BoolVarP(&forceFlag, "force", "f", false, "Force initialization, overwriting existing project")
+	initCmd.Flags().BoolVarP(&initForce, "force", "f", false, "Force initialization, overwriting existing project")
 	initCmd.Flags().StringVarP(&templateFlag, "template", "t", "", "Initialize from template (python, nodejs, go, web)")
 	initCmd.Flags().BoolVarP(&generateConfig, "generate-config", "g", false, "Generate coderaft.json configuration file")
 	initCmd.Flags().BoolVarP(&configOnlyFlag, "config-only", "c", false, "Generate configuration file only (don't create island)")

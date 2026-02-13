@@ -7,7 +7,7 @@ import (
 )
 
 var completionCmd = &cobra.Command{
-	Use:   "completion [bash|zsh|fish]",
+	Use:   "completion [bash|zsh|fish|powershell]",
 	Short: "Generate completion script",
 	Long: `To load completions:
 
@@ -18,6 +18,8 @@ Bash:
   # To load completions for each session, execute once:
   # Linux:
   $ coderaft completion bash > /etc/bash_completion.d/coderaft
+  # macOS:
+  $ coderaft completion bash > $(brew --prefix)/etc/bash_completion.d/coderaft
 
 Zsh:
 
@@ -38,9 +40,16 @@ Fish:
   # To load completions for each session, execute once:
   $ coderaft completion fish > ~/.config/fish/completions/coderaft.fish
 
+PowerShell:
+
+  PS> coderaft completion powershell | Out-String | Invoke-Expression
+
+  # To load completions for each session, add to your profile:
+  PS> coderaft completion powershell >> $PROFILE
+
 `,
 	DisableFlagsInUseLine: true,
-	ValidArgs:             []string{"bash", "zsh", "fish"},
+	ValidArgs:             []string{"bash", "zsh", "fish", "powershell"},
 	Args:                  cobra.MatchAll(cobra.ExactArgs(1), cobra.OnlyValidArgs),
 	Run: func(cmd *cobra.Command, args []string) {
 		switch args[0] {
@@ -50,6 +59,8 @@ Fish:
 			cmd.Root().GenZshCompletion(os.Stdout)
 		case "fish":
 			cmd.Root().GenFishCompletion(os.Stdout, true)
+		case "powershell":
+			cmd.Root().GenPowerShellCompletionWithDesc(os.Stdout)
 		}
 	},
 }
@@ -88,6 +99,12 @@ func init() {
 	runCmd.ValidArgsFunction = getProjectNames
 	stopCmd.ValidArgsFunction = getProjectNames
 	destroyCmd.ValidArgsFunction = getProjectNames
+	lockCmd.ValidArgsFunction = getProjectNames
+	backupCmd.ValidArgsFunction = getProjectNames
+	restoreCmd.ValidArgsFunction = getProjectNames
+	applyCmd.ValidArgsFunction = getProjectNames
+	verifyCmd.ValidArgsFunction = getProjectNames
+	statusCmd.ValidArgsFunction = getProjectNames
 
 	templatesShowCmd.ValidArgsFunction = getTemplateNames
 	templatesDeleteCmd.ValidArgsFunction = getTemplateNames

@@ -97,6 +97,20 @@ func NewConfigManager() (*ConfigManager, error) {
 	return &ConfigManager{configPath: configPath}, nil
 }
 
+// NewConfigManagerWithPath creates a ConfigManager using the given directory
+// instead of the default ~/.coderaft path. Useful for testing.
+func NewConfigManagerWithPath(configDir string) (*ConfigManager, error) {
+	if err := os.MkdirAll(configDir, 0755); err != nil {
+		return nil, fmt.Errorf("failed to create config directory: %w", err)
+	}
+
+	templatesDir := filepath.Join(configDir, "templates")
+	_ = os.MkdirAll(templatesDir, 0755)
+
+	configPath := filepath.Join(configDir, "config.json")
+	return &ConfigManager{configPath: configPath}, nil
+}
+
 func (cm *ConfigManager) Load() (*Config, error) {
 	config := &Config{
 		Projects: make(map[string]*Project),
@@ -271,7 +285,7 @@ func (cm *ConfigManager) GetDefaultProjectConfig(projectName string) *ProjectCon
 	return &ProjectConfig{
 		Name:        projectName,
 		BaseImage:   "ubuntu:22.04",
-		WorkingDir:  "/workspace",
+		WorkingDir:  "/island",
 		Shell:       "/bin/bash",
 		User:        "root",
 		Restart:     "unless-stopped",
@@ -295,7 +309,7 @@ func (cm *ConfigManager) CreateProjectConfigFromTemplate(templateName, projectNa
 				"apt-get clean && rm -rf /var/lib/apt/lists/*",
 			},
 			Environment: map[string]string{
-				"PYTHONPATH":       "/workspace",
+				"PYTHONPATH":       "/island",
 				"PYTHONUNBUFFERED": "1",
 			},
 			Ports:   []string{"8000:8000", "5000:5000"},
@@ -314,7 +328,7 @@ func (cm *ConfigManager) CreateProjectConfigFromTemplate(templateName, projectNa
 			},
 			Environment: map[string]string{
 				"NODE_ENV": "development",
-				"PATH":     "/workspace/node_modules/.bin:$PATH",
+				"PATH":     "/island/node_modules/.bin:$PATH",
 			},
 			Ports:   []string{"3000:3000", "8080:8080"},
 			Volumes: []string{},
@@ -331,7 +345,7 @@ func (cm *ConfigManager) CreateProjectConfigFromTemplate(templateName, projectNa
 				"apt-get clean && rm -rf /var/lib/apt/lists/*",
 			},
 			Environment: map[string]string{
-				"GOPATH": "/workspace/go",
+				"GOPATH": "/island/go",
 				"PATH":   "/usr/local/go/bin:$PATH",
 			},
 			Ports:   []string{"8080:8080"},
@@ -349,7 +363,7 @@ func (cm *ConfigManager) CreateProjectConfigFromTemplate(templateName, projectNa
 				"apt-get clean && rm -rf /var/lib/apt/lists/*",
 			},
 			Environment: map[string]string{
-				"PYTHONPATH": "/workspace",
+				"PYTHONPATH": "/island",
 				"NODE_ENV":   "development",
 			},
 			Ports:   []string{"3000:3000", "5000:5000", "8000:8000", "80:80"},
