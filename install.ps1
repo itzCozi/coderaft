@@ -115,13 +115,19 @@ New-Item -ItemType Directory -Path $tempDir -Force | Out-Null
 
 try {
     Write-Info "Cloning coderaft repository..."
-    git clone --depth 1 https://github.com/itzcozi/coderaft.git (Join-Path $tempDir "coderaft-src") 2>&1 | Out-Null
-    if ($LASTEXITCODE -ne 0) {
+    $srcDir = Join-Path $tempDir "coderaft-src"
+    # Temporarily allow errors so git's stderr progress output doesn't throw
+    $prevErrorAction = $ErrorActionPreference
+    $ErrorActionPreference = 'Continue'
+    $null = git clone --depth 1 https://github.com/itzcozi/coderaft.git $srcDir 2>&1
+    $cloneExitCode = $LASTEXITCODE
+    $ErrorActionPreference = $prevErrorAction
+    if ($cloneExitCode -ne 0) {
         Write-Err "Failed to clone repository."
         exit 1
     }
 
-    Push-Location (Join-Path $tempDir "coderaft-src")
+    Push-Location $srcDir
     try {
         Write-Info "Building coderaft..."
         $env:CGO_ENABLED = "0"
