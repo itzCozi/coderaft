@@ -28,6 +28,9 @@ coderaft creates isolated development environments inside Docker islands. Each p
 - **Instant setup** — Create environments in seconds
 - **Isolated** — Each project in its own Docker island
 - **Reproducible** — Commit `coderaft.json` for consistent team environments
+- **Package tracking** — Automatically records installs from 30+ package managers (apt, pip, npm, cargo, go, brew, and more)
+- **Lock files** — Pin exact environment state with checksummed `coderaft.lock.json`
+- **Secrets management** — AES-256 encrypted vault for API keys and credentials
 - **Docker-in-Docker** — Use Docker inside your island out of the box
 - **Cross-platform** — Linux, macOS, and Windows
 - **Simple config** — One small JSON file, no frameworks

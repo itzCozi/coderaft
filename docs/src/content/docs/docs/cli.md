@@ -64,7 +64,7 @@ coderaft up [--dotfiles <path>] [--keep-running]
 - Applies ports, env, and volumes from configuration
 - Runs a system update, then `setup_commands`
 - Installs the coderaft wrapper for nice shell UX
-- Records package installations you perform inside the Island to `coderaft.history` (apt/pip/npm/yarn/pnpm). On rebuilds, these commands are replayed to reproduce the environment.
+- Records package installations you perform inside the Island to `coderaft.history`. Tracked package managers include apt, pip, npm, yarn, pnpm, cargo, go, gem, composer, brew, conda, and many more. Downloads via wget/curl and `make install` are also recorded. On rebuilds, these commands are replayed to reproduce the environment.
 - If global setting `auto_stop_on_exit` is enabled (default), `coderaft up` stops the container right away if it is idle (no exposed ports and only the init process running). Use `--keep-running` to leave it running.
 - When `auto_stop_on_exit` is enabled and your `coderaft.json` does not specify a `restart` policy, coderaft uses `--restart no` to prevent the container from auto-restarting after being stopped.
 
@@ -300,9 +300,10 @@ coderaft lock <project> [-o, --output <path>]
   - Base image: name, digest, image ID
   - Container config: working_dir, user, restart policy, network, ports, volumes, labels, environment, capabilities, resources (cpus/memory)
   - Installed package snapshots (all sorted alphabetically for determinism):
-    - apt: manually installed packages pinned as `name=version`
-    - pip: `pip freeze` output
-    - npm/yarn/pnpm: globally installed packages as `name@version`
+    - **System**: apt, apk, dnf, pacman, brew, snap
+    - **Python**: pip, pipx, conda, poetry
+    - **Node.js**: npm, yarn, pnpm, bun
+    - **Languages**: cargo (Rust), go (Go binaries), gem (Ruby), composer (PHP)
   - Registries and sources:
     - pip: `index-url` and `extra-index-url`
     - npm/yarn/pnpm: global registry URLs
@@ -351,7 +352,11 @@ coderaft lock myproject -o ./env/coderaft.lock.json
     "pip": ["flask==3.1.0", "requests==2.32.3"],
     "npm": ["typescript@5.6.2"],
     "yarn": ["eslint@9.1.0"],
-    "pnpm": []
+    "pnpm": [],
+    "cargo": ["ripgrep=14.1.0"],
+    "go": ["gopls", "golangci-lint"],
+    "gem": ["bundler=2.5.6"],
+    "bun": []
   },
   "registries": {
     "pip_index_url": "https://pypi.org/simple",
@@ -393,6 +398,8 @@ coderaft verify <project>
 - Registries: pip index/extra-index, npm/yarn/pnpm registry URLs
 - Apt sources: sources.list lines, snapshot base URL (if present), OS release codename
 - Lock checksum (v2+): recomputed from live state for a fast-path comparison
+
+> **Note:** The lock file captures packages from all supported package managers (cargo, go, gem, etc.), but verify currently checks apt/pip/npm/yarn/pnpm only.
 
 Returns non-zero on any mismatch and prints a categorized drift report.
 
@@ -436,6 +443,8 @@ coderaft apply <project> [--dry-run]
   - APT: install exact versions from lock, remove extras, autoremove
   - Pip: install missing exact versions, uninstall extras
   - npm/yarn/pnpm (global): add missing exact versions, remove extras
+
+> **Note:** Apply currently reconciles apt/pip/npm/yarn/pnpm packages. Other package managers captured in the lock file (cargo, go, gem, etc.) are recorded for reference but not auto-applied.
 
 Exits non-zero if application fails at any step.
 
@@ -919,6 +928,217 @@ coderaft hooks remove myproject
 
 ---
 
+### `coderaft secrets`
+
+Manage encrypted secrets for coderaft projects. Secrets are stored in an AES-256-GCM encrypted vault and can be injected into islands as environment variables.
+
+**Subcommands:**
+
+#### `coderaft secrets init`
+
+Initialize the secrets vault with a master password.
+
+**Syntax:**
+```bash
+coderaft secrets init
+```
+
+**Behavior:**
+- Creates an encrypted vault at `~/.coderaft/secrets.vault.json`
+- Prompts for a master password (minimum 8 characters)
+- Uses PBKDF2 key derivation with 100,000 iterations
+- This password cannot be recovered if lost
+
+**Example:**
+```bash
+coderaft secrets init
+# Enter master password: ********
+# Confirm password: ********
+# done: secrets vault initialized
+```
+
+#### `coderaft secrets set`
+
+Store an encrypted secret for a project.
+
+**Syntax:**
+```bash
+coderaft secrets set <project> <KEY>[=value]
+```
+
+**Behavior:**
+- If `=value` is provided, uses the inline value
+- Otherwise, prompts for the value (hidden input)
+- Encrypts and stores in the vault
+
+**Examples:**
+```bash
+# Prompt for value (recommended for sensitive data)
+coderaft secrets set myproject API_KEY
+
+# Inline value
+coderaft secrets set myproject DATABASE_URL=postgres://localhost/db
+```
+
+#### `coderaft secrets get`
+
+Retrieve and decrypt a secret.
+
+**Syntax:**
+```bash
+coderaft secrets get <project> <KEY>
+```
+
+**Example:**
+```bash
+coderaft secrets get myproject API_KEY
+# sk-12345...
+```
+
+#### `coderaft secrets list`
+
+List all secrets (keys only, not values).
+
+**Syntax:**
+```bash
+coderaft secrets list [project]
+```
+
+**Examples:**
+```bash
+# List all projects with secrets
+coderaft secrets list
+
+# List secrets for a specific project
+coderaft secrets list myproject
+```
+
+#### `coderaft secrets remove`
+
+Remove a secret from the vault.
+
+**Syntax:**
+```bash
+coderaft secrets remove <project> <KEY>
+```
+
+**Example:**
+```bash
+coderaft secrets remove myproject OLD_API_KEY
+```
+
+#### `coderaft secrets import`
+
+Import secrets from a `.env` file into the encrypted vault.
+
+**Syntax:**
+```bash
+coderaft secrets import <project> <envfile>
+```
+
+**Behavior:**
+- Parses standard `.env` file format (supports `export` prefix, quotes, comments)
+- Encrypts each key-value pair and stores in the vault
+- Existing keys with same name are overwritten
+
+**Examples:**
+```bash
+coderaft secrets import myproject .env
+coderaft secrets import myproject .env.production
+```
+
+#### `coderaft secrets export`
+
+Export secrets as shell-compatible environment variable declarations.
+
+**Syntax:**
+```bash
+coderaft secrets export <project>
+```
+
+**Examples:**
+```bash
+# Pipe to eval for current shell
+eval $(coderaft secrets export myproject)
+
+# Save to .env file
+coderaft secrets export myproject > .env.local
+```
+
+**Output format:**
+```bash
+export API_KEY="sk-12345..."
+export DATABASE_URL="postgres://localhost/db"
+```
+
+---
+
+### `coderaft ports`
+
+Display forwarded ports for running islands with clickable URLs and service detection.
+
+**Syntax:**
+```bash
+coderaft ports [project]
+```
+
+**Behavior:**
+- Shows all exposed ports with host→container mapping
+- Generates clickable `http://localhost:PORT` URLs for web ports
+- Auto-detects common services (PostgreSQL, Redis, MongoDB, etc.)
+- Without a project argument, shows ports for all running islands
+
+**Examples:**
+```bash
+# Show ports for all running islands
+coderaft ports
+
+# Show ports for a specific project
+coderaft ports myproject
+```
+
+**Sample Output:**
+```
+exposed ports
+
+PROJECT     PORT        URL                      SERVICE
+-------     ----        ---                      -------
+myproject   3000→3000   http://localhost:3000    Dev Server
+myproject   5432→5432                            PostgreSQL
+myproject   6379→6379                            Redis
+
+tip: click URLs to open in browser (terminal-dependent)
+```
+
+**Detected Services:**
+
+| Port | Service |
+|------|---------|
+| 22 | SSH |
+| 80, 8080 | HTTP |
+| 443, 8443 | HTTPS |
+| 3000, 3001 | Dev Server |
+| 4000 | Phoenix |
+| 5000 | Flask/Dev |
+| 5173 | Vite |
+| 5432 | PostgreSQL |
+| 6379 | Redis |
+| 8000 | Django/Uvicorn |
+| 8888 | Jupyter |
+| 9229 | Node Debug |
+| 27017 | MongoDB |
+
+#### `coderaft ports watch`
+
+Monitor ports in real-time (displays current state and provides refresh instructions).
+
+**Syntax:**
+```bash
+coderaft ports watch [project]
+```
+
+---
+
 ## Exit Codes
 
 ---
@@ -970,18 +1190,22 @@ When you create a project, coderaft sets up:
 ```
 ~/coderaft/<project>/          # Project workspace (host)
 ├── coderaft.json             # Configuration file (optional)
-├── your-files...           # Your project files
+├── coderaft.lock.json        # Environment lock file (optional)
+├── your-files...             # Your project files
 └── ...
 
 ~/.coderaft/                  # Global configuration
-├── config.json            # Global settings and project registry
-└── ...
+├── config.json               # Global settings and project registry
+├── secrets.vault.json        # Encrypted secrets vault (AES-256-GCM)
+└── templates/                # User-defined templates
+    └── *.json
 ```
 
 **Inside Island:**
 ```
 /island/                 # Mounted from ~/coderaft/<project>/
 ├── coderaft.json            # Same files as host
+├── coderaft.history         # Package install history (auto-generated)
 ├── your-files...
 └── ...
 ```

@@ -59,7 +59,8 @@ case "$1" in
             cat "$HISTORY_FILE"
         else
             echo "No package history recorded yet."
-            echo "hint: Install packages with apt, pip, npm, etc. and they'll be tracked automatically"
+            echo "hint: Package managers (apt, pip, npm, cargo, go, gem, brew, conda, etc.) are tracked automatically"
+            echo "hint: Downloads (wget, curl) and make install are also recorded"
         fi
         ;;
     "files"|"ls")

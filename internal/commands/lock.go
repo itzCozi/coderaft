@@ -53,11 +53,31 @@ type lockContainer struct {
 }
 
 type lockPackages struct {
-	Apt  []string `json:"apt,omitempty"`
-	Pip  []string `json:"pip,omitempty"`
+	// System package managers
+	Apt    []string `json:"apt,omitempty"`
+	Apk    []string `json:"apk,omitempty"`
+	Dnf    []string `json:"dnf,omitempty"`
+	Pacman []string `json:"pacman,omitempty"`
+	Brew   []string `json:"brew,omitempty"`
+	Snap   []string `json:"snap,omitempty"`
+
+	// Python
+	Pip    []string `json:"pip,omitempty"`
+	Pipx   []string `json:"pipx,omitempty"`
+	Conda  []string `json:"conda,omitempty"`
+	Poetry []string `json:"poetry,omitempty"`
+
+	// Node.js
 	Npm  []string `json:"npm,omitempty"`
 	Yarn []string `json:"yarn,omitempty"`
 	Pnpm []string `json:"pnpm,omitempty"`
+	Bun  []string `json:"bun,omitempty"`
+
+	// Language-specific
+	Cargo    []string `json:"cargo,omitempty"`
+	Go       []string `json:"go,omitempty"`
+	Gem      []string `json:"gem,omitempty"`
+	Composer []string `json:"composer,omitempty"`
 }
 
 type lockRegistries struct {
@@ -161,13 +181,27 @@ func WriteLockFileForIsland(IslandName, projectName, workspacePath, baseImage, o
 	filteredEnvMap := security.FilterSensitiveEnvVars(envMap)
 
 	ui.Status("gathering package information...")
-	aptList, pipList, npmList, yarnList, pnpmList := dockerClient.QueryPackagesParallel(IslandName)
+	pkgs := dockerClient.QueryAllPackages(IslandName)
 
-	sort.Strings(aptList)
-	sort.Strings(pipList)
-	sort.Strings(npmList)
-	sort.Strings(yarnList)
-	sort.Strings(pnpmList)
+	// Sort all package lists for deterministic output
+	sort.Strings(pkgs.Apt)
+	sort.Strings(pkgs.Apk)
+	sort.Strings(pkgs.Dnf)
+	sort.Strings(pkgs.Pacman)
+	sort.Strings(pkgs.Brew)
+	sort.Strings(pkgs.Snap)
+	sort.Strings(pkgs.Pip)
+	sort.Strings(pkgs.Pipx)
+	sort.Strings(pkgs.Conda)
+	sort.Strings(pkgs.Poetry)
+	sort.Strings(pkgs.Npm)
+	sort.Strings(pkgs.Yarn)
+	sort.Strings(pkgs.Pnpm)
+	sort.Strings(pkgs.Bun)
+	sort.Strings(pkgs.Cargo)
+	sort.Strings(pkgs.Go)
+	sort.Strings(pkgs.Gem)
+	sort.Strings(pkgs.Composer)
 
 	aptSnapshot, aptSources, aptRelease := dockerClient.GetAptSources(IslandName)
 	pipIndex, pipExtras := dockerClient.GetPipRegistries(IslandName)
@@ -198,11 +232,28 @@ func WriteLockFileForIsland(IslandName, projectName, workspacePath, baseImage, o
 			Gpus:         gpuConfig,
 		},
 		Packages: lockPackages{
-			Apt:  aptList,
-			Pip:  pipList,
-			Npm:  npmList,
-			Yarn: yarnList,
-			Pnpm: pnpmList,
+			// System
+			Apt:    pkgs.Apt,
+			Apk:    pkgs.Apk,
+			Dnf:    pkgs.Dnf,
+			Pacman: pkgs.Pacman,
+			Brew:   pkgs.Brew,
+			Snap:   pkgs.Snap,
+			// Python
+			Pip:    pkgs.Pip,
+			Pipx:   pkgs.Pipx,
+			Conda:  pkgs.Conda,
+			Poetry: pkgs.Poetry,
+			// Node.js
+			Npm:  pkgs.Npm,
+			Yarn: pkgs.Yarn,
+			Pnpm: pkgs.Pnpm,
+			Bun:  pkgs.Bun,
+			// Language-specific
+			Cargo:    pkgs.Cargo,
+			Go:       pkgs.Go,
+			Gem:      pkgs.Gem,
+			Composer: pkgs.Composer,
 		},
 		Registries: lockRegistries{
 			PipIndexURL:   pipIndex,
@@ -285,11 +336,31 @@ func computeLockChecksum(lf *lockFile) string {
 
 	writeList("setup:", lf.SetupScript)
 
+	// System package managers
 	writeList("apt:", lf.Packages.Apt)
+	writeList("apk:", lf.Packages.Apk)
+	writeList("dnf:", lf.Packages.Dnf)
+	writeList("pacman:", lf.Packages.Pacman)
+	writeList("brew:", lf.Packages.Brew)
+	writeList("snap:", lf.Packages.Snap)
+
+	// Python
 	writeList("pip:", lf.Packages.Pip)
+	writeList("pipx:", lf.Packages.Pipx)
+	writeList("conda:", lf.Packages.Conda)
+	writeList("poetry:", lf.Packages.Poetry)
+
+	// Node.js
 	writeList("npm:", lf.Packages.Npm)
 	writeList("yarn:", lf.Packages.Yarn)
 	writeList("pnpm:", lf.Packages.Pnpm)
+	writeList("bun:", lf.Packages.Bun)
+
+	// Language-specific
+	writeList("cargo:", lf.Packages.Cargo)
+	writeList("go:", lf.Packages.Go)
+	writeList("gem:", lf.Packages.Gem)
+	writeList("composer:", lf.Packages.Composer)
 
 	h.Write([]byte(lf.Registries.PipIndexURL))
 	for _, u := range lf.Registries.PipExtraIndex {

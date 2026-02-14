@@ -22,6 +22,7 @@ No, but Docker requires membership in the `docker` group. Inside islands, comman
 ##### Where is configuration stored?
 - Global: `~/.coderaft/config.json`
 - Project: `coderaft.json` in your workspace
+- Secrets: `~/.coderaft/secrets.vault.json` (encrypted)
 
 ## Usage
 
@@ -45,6 +46,20 @@ Add to `coderaft.json`:
 ```json
 { "ports": ["3000:3000", "8000:8000"] }
 ```
+
+##### How do I see what ports are exposed?
+```bash
+coderaft ports [project]
+```
+Shows all exposed ports with clickable URLs and auto-detected service names.
+
+##### How do I store secrets/API keys?
+```bash
+coderaft secrets init           # One-time setup
+coderaft secrets set <project> API_KEY
+coderaft secrets import <project> .env
+```
+Secrets are stored encrypted (AES-256) and can be exported for use.
 
 ##### How do I share with teammates?
 Commit `coderaft.json`. Teammates run `coderaft up`.
@@ -71,7 +86,7 @@ coderaft update [project]
 ```
 
 ##### Are package installs recorded?
-Yes. Commands are logged to `/island/coderaft.history` and replayed on rebuild.
+Yes. Installs from 30+ package managers (apt, pip, npm, cargo, go, gem, brew, conda, etc.) are logged to `/island/coderaft.history`. Downloads via wget/curl and `make install` are also tracked. These commands are replayed on rebuild.
 
 ## Advanced
 

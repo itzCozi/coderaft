@@ -111,6 +111,9 @@ func init() {
 	rootCmd.AddCommand(updateCmd)
 	rootCmd.AddCommand(versionCmd)
 	rootCmd.AddCommand(completionCmd)
+
+	rootCmd.AddCommand(secretsCmd)
+	rootCmd.AddCommand(portsCmd)
 }
 
 func validateProjectName(name string) error {

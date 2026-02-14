@@ -41,6 +41,7 @@ type DockerEngine interface {
 	GetPipRegistries(islandName string) (indexURL string, extra []string)
 	GetNodeRegistries(islandName string) (npmReg, yarnReg, pnpmReg string)
 	QueryPackagesParallel(islandName string) (aptList, pipList, npmList, yarnList, pnpmList []string)
+	QueryAllPackages(islandName string) *docker.PackageLists
 
 	SetupCoderaftOnIsland(islandName, projectName string) error
 	SetupCoderaftOnIslandWithUpdate(islandName, projectName string) error

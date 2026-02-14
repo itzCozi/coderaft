@@ -29,7 +29,7 @@ This project adheres to a code of conduct that we expect all contributors to fol
 1. **Fork the repository** on GitHub
 2. **Clone your fork** locally:
    ```bash
-   git clone https://github.com/itzcozi/coderaft.git
+   git clone https://github.com/YOUR_USERNAME/coderaft.git
    cd coderaft
    ```
 3. **Add the upstream repository**:
@@ -66,7 +66,7 @@ Look for issues labeled with:
 **Cross-Platform Support**: coderaft works on **Linux**, **macOS**, and **Windows** wherever Docker is available.
 
 **Required Software**:
-- Go 1.21 or later
+- Go 1.24 or later
 - Docker (Docker Desktop on macOS/Windows)
 - Git
 

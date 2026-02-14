@@ -8,6 +8,10 @@ Welcome to the coderaft documentation! This guide provides an overview of what c
 #### Key Features of coderaft
 - **Isolation**: Each project gets its own isolated environment, preventing dependency conflicts.
 - **Reproducibility**: Environments can be easily recreated on any machine, ensuring consistent behavior.
+- **Automatic Package Tracking**: Installs from 30+ package managers are recorded automatically—apt, pip, npm, cargo, go, brew, conda, and more.
+- **Lock Files**: Pin exact environment state with checksummed `coderaft.lock.json` for team consistency.
+- **Secrets Management**: Store API keys and credentials in an AES-256 encrypted vault with `.env` import/export.
+- **Port Forwarding UI**: View exposed ports with clickable URLs and auto-detected service names.
 - **Simplicity**: Easy to set up and manage environments with simple commands.
 - **Flexibility**: Supports a wide range of programming languages and frameworks.
 - **Portability**: Environments can be shared and versioned alongside your code.
