@@ -2,7 +2,7 @@
 
 
 export async function onRequest(context) {
-  const upstreamUrl = 'https://raw.githubusercontent.com/itzcozi/coderaft/main/install.sh';
+  const upstreamUrl = 'https://raw.githubusercontent.com/itzcozi/coderaft/main/scripts/install.sh';
   const headers = new Headers();
   const ifNoneMatch = context.request.headers.get('If-None-Match');
   const ifModifiedSince = context.request.headers.get('If-Modified-Since');
@@ -31,10 +31,10 @@ export async function onRequest(context) {
       return new Response(upstream.body, { status: 200, headers: respHeaders });
     }
 
-    
+
     return Response.redirect(upstreamUrl, 302);
   } catch (err) {
-    
+
     return Response.redirect(upstreamUrl, 302);
   }
 }

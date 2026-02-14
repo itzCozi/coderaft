@@ -37,21 +37,21 @@ coderaft creates isolated development environments inside Docker islands. Each p
 ### Linux
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/itzcozi/coderaft/main/install.sh | bash
+curl -fsSL https://raw.githubusercontent.com/itzcozi/coderaft/main/scripts/install.sh | bash
 # or mirror: curl -fsSL https://coderaft.ar0.eu/install.sh | bash
 ```
 
 ### macOS
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/itzcozi/coderaft/main/install-macos.sh | bash
+curl -fsSL https://raw.githubusercontent.com/itzcozi/coderaft/main/scripts/install-macos.sh | bash
 # or mirror: curl -fsSL https://coderaft.ar0.eu/install-macos.sh | bash
 ```
 
 ### Windows (PowerShell)
 
 ```powershell
-irm https://raw.githubusercontent.com/itzcozi/coderaft/main/install.ps1 | iex
+irm https://raw.githubusercontent.com/itzcozi/coderaft/main/scripts/install.ps1 | iex
 # or mirror: irm https://coderaft.ar0.eu/install.ps1 | iex
 ```
 

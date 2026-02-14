@@ -1,5 +1,5 @@
 export async function onRequest(context) {
-  const upstreamUrl = 'https://raw.githubusercontent.com/itzcozi/coderaft/main/scripts/install-macos.sh';
+  const upstreamUrl = 'https://raw.githubusercontent.com/itzcozi/coderaft/main/scripts/uninstall.sh';
   const headers = new Headers();
   const ifNoneMatch = context.request.headers.get('If-None-Match');
   const ifModifiedSince = context.request.headers.get('If-Modified-Since');

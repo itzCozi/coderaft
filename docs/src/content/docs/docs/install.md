@@ -10,7 +10,7 @@ coderaft runs on **Linux**, **macOS**, and **Windows**. All platforms require Do
 ## Linux
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/itzcozi/coderaft/main/install.sh | bash
+curl -fsSL https://raw.githubusercontent.com/itzcozi/coderaft/main/scripts/install.sh | bash
 # or mirror: curl -fsSL https://coderaft.ar0.eu/install.sh | bash
 ```
 
@@ -19,7 +19,7 @@ Supports Debian, Ubuntu, Fedora, CentOS, RHEL, Arch, openSUSE, Alpine, and deriv
 ## macOS
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/itzcozi/coderaft/main/install-macos.sh | bash
+curl -fsSL https://raw.githubusercontent.com/itzcozi/coderaft/main/scripts/install-macos.sh | bash
 # or mirror: curl -fsSL https://coderaft.ar0.eu/install-macos.sh | bash
 ```
 
@@ -32,7 +32,7 @@ Apple Silicon (M1/M2/M3/M4) works natively — no extra setup.
 ## Windows
 
 ```powershell
-irm https://raw.githubusercontent.com/itzcozi/coderaft/main/install.ps1 | iex
+irm https://raw.githubusercontent.com/itzcozi/coderaft/main/scripts/install.ps1 | iex
 # or mirror: irm https://coderaft.ar0.eu/install.ps1 | iex
 ```
 
@@ -73,6 +73,33 @@ coderaft completion fish > ~/.config/fish/completions/coderaft.fish
 # PowerShell
 coderaft completion powershell >> $PROFILE
 ```
+
+## Uninstall
+
+### Linux
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/itzcozi/coderaft/main/scripts/uninstall.sh | bash
+# or mirror: curl -fsSL https://coderaft.ar0.eu/uninstall.sh | bash
+```
+
+### macOS
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/itzcozi/coderaft/main/scripts/uninstall-macos.sh | bash
+# or mirror: curl -fsSL https://coderaft.ar0.eu/uninstall-macos.sh | bash
+```
+
+### Windows (PowerShell)
+
+```powershell
+irm https://raw.githubusercontent.com/itzcozi/coderaft/main/scripts/uninstall.ps1 | iex
+# or mirror: irm https://coderaft.ar0.eu/uninstall.ps1 | iex
+```
+
+:::tip
+The uninstall scripts only remove the coderaft binary and shell completions. They do not remove Docker, Go, or any projects you created.
+:::
 
 ## File Locations
 

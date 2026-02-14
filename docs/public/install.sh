@@ -262,7 +262,7 @@ main() {
 
   if [ "$(uname)" = "Darwin" ]; then
     print_error "This script is for Linux. On macOS, use install-macos.sh instead."
-    print_info "  curl -fsSL https://raw.githubusercontent.com/itzcozi/coderaft/main/install-macos.sh | bash"
+    print_info "  curl -fsSL https://raw.githubusercontent.com/itzcozi/coderaft/main/scripts/install-macos.sh | bash"
     print_info "  # Short link (optional)"
     print_info "  curl -fsSL https://coderaft.ar0.eu/install-macos.sh | bash"
     exit 1

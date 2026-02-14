@@ -1,5 +1,5 @@
 export async function onRequest(context) {
-  const upstreamUrl = 'https://raw.githubusercontent.com/itzcozi/coderaft/main/install.ps1';
+  const upstreamUrl = 'https://raw.githubusercontent.com/itzcozi/coderaft/main/scripts/install.ps1';
   const headers = new Headers();
   const ifNoneMatch = context.request.headers.get('If-None-Match');
   const ifModifiedSince = context.request.headers.get('If-Modified-Since');

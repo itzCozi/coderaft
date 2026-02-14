@@ -19,7 +19,7 @@
     .\install.ps1 -InstallDir "C:\tools\coderaft"
 
     # One-liner from GitHub (run in PowerShell as Administrator):
-    irm https://raw.githubusercontent.com/itzcozi/coderaft/main/install.ps1 | iex
+    irm https://raw.githubusercontent.com/itzcozi/coderaft/main/scripts/install.ps1 | iex
     # or mirror: irm https://coderaft.ar0.eu/install.ps1 | iex
 #>
 
