@@ -11,7 +11,7 @@ description: Built-in and custom project templates
 coderaft init myapp --template python
 ```
 
-Includes: Python 3, pip, venv, flask, django, fastapi, pytest, black, flake8
+Includes: Python 3, pip, venv, build tools
 
 Ports: 5000, 8000
 
@@ -21,7 +21,7 @@ Ports: 5000, 8000
 coderaft init myapp --template nodejs
 ```
 
-Includes: Node.js 18, npm, typescript, ts-node, nodemon, vue-cli, create-react-app
+Includes: Node.js 22, npm, build tools
 
 Ports: 3000, 8080
 
@@ -31,7 +31,7 @@ Ports: 3000, 8080
 coderaft init myapp --template go
 ```
 
-Includes: Go 1.21, git, build tools
+Includes: Go 1.24, git, build tools
 
 Ports: 8080
 
@@ -41,9 +41,9 @@ Ports: 8080
 coderaft init myapp --template web
 ```
 
-Includes: Python + Node.js + nginx + postgresql-client + redis-tools
+Includes: Python 3 + Node.js 22 + nginx + flask + django + fastapi + TypeScript + Vue CLI + Next.js
 
-Ports: 80, 3000, 5000, 8000, 8080
+Ports: 80, 3000, 5000, 8000
 
 ## Custom Templates
 

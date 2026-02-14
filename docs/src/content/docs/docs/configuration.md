@@ -36,6 +36,11 @@ description: Project and global configuration
 | `user` | Container user |
 | `restart` | Restart policy |
 | `resources` | `{"cpus": "2", "memory": "4g"}` |
+| `capabilities` | Linux capabilities (e.g., `["SYS_PTRACE"]`) |
+| `labels` | Docker labels (key-value pairs) |
+| `network` | Docker network mode (e.g., `bridge`, `host`) |
+| `health_check` | Container health check config |
+| `gpus` | GPU access (e.g., `all` or device IDs) |
 
 ## Global Config (~/.coderaft/config.json)
 
@@ -59,12 +64,14 @@ coderaft config global
 Package installs are recorded to `coderaft.history`:
 
 ```bash
-# View history
+# Inside the island shell (after running coderaft shell)
 coderaft history
 
-# Location
-~/coderaft/<project>/coderaft.history
+# Or view directly on the host
+cat ~/coderaft/<project>/coderaft.history
 ```
+
+Location: `~/coderaft/<project>/coderaft.history`
 
 Tracked: apt, pip, npm, yarn, pnpm
 

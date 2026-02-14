@@ -404,7 +404,7 @@ func applyProjectConfigSDK(
 
 				parts := strings.SplitN(volumeStr, ":", 3)
 				var source, target string
-				if len(parts) == 3 && len(parts[0]) == 1 && parts[0][0] >= 'A' && parts[0][0] <= 'Z' || (len(parts) == 3 && len(parts[0]) == 1 && parts[0][0] >= 'a' && parts[0][0] <= 'z') {
+				if (len(parts) == 3 && len(parts[0]) == 1 && parts[0][0] >= 'A' && parts[0][0] <= 'Z') || (len(parts) == 3 && len(parts[0]) == 1 && parts[0][0] >= 'a' && parts[0][0] <= 'z') {
 
 					source = parts[0] + ":" + parts[1]
 					target = parts[2]

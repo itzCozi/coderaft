@@ -48,6 +48,10 @@ var upCmd = &cobra.Command{
 			projectName = filepath.Base(cwd)
 		}
 
+		if err := validateProjectName(projectName); err != nil {
+			return fmt.Errorf("invalid project name %q (derived from coderaft.json or directory): %w", projectName, err)
+		}
+
 		cfg, err := configManager.Load()
 		if err != nil {
 			return fmt.Errorf("failed to load global config: %w", err)
@@ -287,13 +291,13 @@ func applyLockInline(projectName, lockPath string) error {
 		cmds = append(cmds, b.String())
 	}
 	if lf.Registries.NpmRegistry != "" {
-		cmds = append(cmds, fmt.Sprintf("npm config set registry %s -g", escapeBash(lf.Registries.NpmRegistry)))
+		cmds = append(cmds, fmt.Sprintf("npm config set registry %s -g", shellQuote(lf.Registries.NpmRegistry)))
 	}
 	if lf.Registries.YarnRegistry != "" {
-		cmds = append(cmds, fmt.Sprintf("yarn config set npmRegistryServer %s -g", escapeBash(lf.Registries.YarnRegistry)))
+		cmds = append(cmds, fmt.Sprintf("yarn config set npmRegistryServer %s -g", shellQuote(lf.Registries.YarnRegistry)))
 	}
 	if lf.Registries.PnpmRegistry != "" {
-		cmds = append(cmds, fmt.Sprintf("pnpm config set registry %s -g", escapeBash(lf.Registries.PnpmRegistry)))
+		cmds = append(cmds, fmt.Sprintf("pnpm config set registry %s -g", shellQuote(lf.Registries.PnpmRegistry)))
 	}
 
 	if err := dockerClient.ExecuteSetupCommandsWithOutput(proj.IslandName, cmds, false); err != nil {

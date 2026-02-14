@@ -38,11 +38,11 @@ coderaft destroy <project>
 # Backup current state
 coderaft backup <project>
 
-# List backups
-coderaft backup list
+# Backup to custom directory
+coderaft backup <project> --output /path/to/backup
 
-# Restore from backup
-coderaft restore <project> <backup-name>
+# Restore from backup directory
+coderaft restore <project> <backup-dir>
 ```
 
 ## Updates

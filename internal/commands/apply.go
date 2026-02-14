@@ -213,13 +213,13 @@ func runApply(ctx context.Context, projectName string) error {
 	}
 
 	if lf.Registries.NpmRegistry != "" {
-		applyCmds = append(applyCmds, fmt.Sprintf("npm config set registry %s -g", escapeBash(lf.Registries.NpmRegistry)))
+		applyCmds = append(applyCmds, fmt.Sprintf("npm config set registry %s -g", shellQuote(lf.Registries.NpmRegistry)))
 	}
 	if lf.Registries.YarnRegistry != "" {
-		applyCmds = append(applyCmds, fmt.Sprintf("yarn config set npmRegistryServer %s -g", escapeBash(lf.Registries.YarnRegistry)))
+		applyCmds = append(applyCmds, fmt.Sprintf("yarn config set npmRegistryServer %s -g", shellQuote(lf.Registries.YarnRegistry)))
 	}
 	if lf.Registries.PnpmRegistry != "" {
-		applyCmds = append(applyCmds, fmt.Sprintf("pnpm config set registry %s -g", escapeBash(lf.Registries.PnpmRegistry)))
+		applyCmds = append(applyCmds, fmt.Sprintf("pnpm config set registry %s -g", shellQuote(lf.Registries.PnpmRegistry)))
 	}
 
 	curApt, curPip, curNpm, curYarn, curPnpm := dockerClient.QueryPackagesParallel(proj.IslandName)
@@ -288,6 +288,15 @@ func escapeBash(s string) string {
 	s = strings.ReplaceAll(s, "\n", `\n`)
 	s = strings.ReplaceAll(s, "\r", ``)
 	return s
+}
+
+// shellQuote returns a single-quoted shell string safe for use in bash commands.
+// The result includes the surrounding single quotes.
+func shellQuote(s string) string {
+	// In single-quoted strings, only single quotes need escaping.
+	// The standard trick: end the single-quote, add an escaped single-quote, re-open single-quote.
+	escaped := strings.ReplaceAll(s, "'", "'\\''")
+	return "'" + escaped + "'"
 }
 
 func parseMap(list []string, sep string) map[string]string {

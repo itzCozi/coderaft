@@ -114,6 +114,10 @@ func updateSingleProject(projectName string) error {
 					if cmd == "" || strings.HasPrefix(cmd, "#") {
 						continue
 					}
+					if !isAllowedHistoryCommand(cmd) {
+						ui.Warning("skipping disallowed history command: %s", cmd)
+						continue
+					}
 					cmds = append(cmds, cmd)
 				}
 				if len(cmds) > 0 {

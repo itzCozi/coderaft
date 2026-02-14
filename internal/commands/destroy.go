@@ -111,7 +111,7 @@ Special usage:
 				if runtime.GOOS == "windows" {
 					ui.Info("  rmdir /s /q \"%s\"", project.WorkspacePath)
 				} else {
-					ui.Info("  rm -rf %s", project.WorkspacePath)
+					ui.Info("  rm -rf '%s'", project.WorkspacePath)
 				}
 			}
 		}

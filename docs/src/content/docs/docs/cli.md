@@ -113,10 +113,10 @@ coderaft init webapp --generate-config
 ```
 
 **Templates:**
-- `python`: Python 3, pip, venv, development tools
-- `nodejs`: Node.js 18, npm, build tools
-- `go`: Go 1.21, git, build tools
-- `web`: Python + Node.js + nginx for full-stack development
+- `python`: Python 3, pip, venv, build tools
+- `nodejs`: Node.js 22, npm, build tools
+- `go`: Go 1.24, git, build tools
+- `web`: Python + Node.js + nginx + flask + django + TypeScript for full-stack development
 
 ---
 
@@ -750,7 +750,7 @@ coderaft version
 
 **Output Format:**
 ```
-coderaft (v1.0)
+coderaft (v1.0, linux/amd64)
 ```
 
 ---
@@ -996,13 +996,14 @@ Generate completion scripts for your shell to enable tab autocompletion for code
 
 **Syntax:**
 ```bash
-coderaft completion [bash|zsh|fish]
+coderaft completion [bash|zsh|fish|powershell]
 ```
 
 **Supported Shells:**
-- **Bash**: Autocompletion for commands, flags, project names, and templates (Linux)
-- **Zsh**: Full autocompletion with descriptions (Linux)
-- **Fish**: Intelligent completion with suggestions (Linux)
+- **Bash**: Autocompletion for commands, flags, project names, and templates (Linux/macOS)
+- **Zsh**: Full autocompletion with descriptions (Linux/macOS)
+- **Fish**: Intelligent completion with suggestions (Linux/macOS)
+- **PowerShell**: Tab completion with descriptions (Windows)
 
 **Setup Instructions:**
 
@@ -1035,7 +1036,14 @@ coderaft completion fish | source
 coderaft completion fish > ~/.config/fish/completions/coderaft.fish
 ```
 
+**PowerShell:**
+```powershell
+# Load completion for current session
+coderaft completion powershell | Out-String | Invoke-Expression
 
+# Install for all sessions (add to your profile)
+coderaft completion powershell >> $PROFILE
+```
 
 **What Gets Completed:**
 - Command names (`init`, `shell`, `run`, `list`, etc.)

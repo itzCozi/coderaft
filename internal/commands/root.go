@@ -17,6 +17,9 @@ import (
 var (
 	configManager *config.ConfigManager
 	dockerClient  DockerEngine
+
+	// projectNameRe is precompiled for validateProjectName to avoid recompiling on every call.
+	projectNameRe = regexp.MustCompile(`^[a-zA-Z0-9_-]+$`)
 )
 
 var rootCmd = &cobra.Command{
@@ -119,12 +122,7 @@ func validateProjectName(name string) error {
 		return fmt.Errorf("project name cannot exceed 64 characters")
 	}
 
-	matched, err := regexp.MatchString("^[a-zA-Z0-9_-]+$", name)
-	if err != nil {
-		return fmt.Errorf("error validating project name: %w", err)
-	}
-
-	if !matched {
+	if !projectNameRe.MatchString(name) {
 		return fmt.Errorf("project name can only contain alphanumeric characters, hyphens, and underscores")
 	}
 
