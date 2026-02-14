@@ -4,22 +4,21 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
-	"regexp"
 	"runtime"
+	"sync"
 
 	"github.com/spf13/cobra"
 
 	"coderaft/internal/config"
 	"coderaft/internal/docker"
+	"coderaft/internal/security"
 	"coderaft/internal/ui"
 )
 
 var (
+	clientMu      sync.Mutex
 	configManager *config.ConfigManager
 	dockerClient  DockerEngine
-
-	// projectNameRe is precompiled for validateProjectName to avoid recompiling on every call.
-	projectNameRe = regexp.MustCompile(`^[a-zA-Z0-9_-]+$`)
 )
 
 var rootCmd = &cobra.Command{
@@ -40,14 +39,16 @@ var rootCmd = &cobra.Command{
 			return nil
 		}
 
+		clientMu.Lock()
+		defer clientMu.Unlock()
+
 		var err error
 		configManager, err = config.NewConfigManager()
 		if err != nil {
 			return fmt.Errorf("failed to initialize config: %w", err)
 		}
 
-		dockerClient, err = docker.NewClient()
-		if err != nil {
+		if err := docker.EnsureDockerRunning(security.Timeouts.DockerStartup); err != nil {
 			hint := ""
 			switch runtime.GOOS {
 			case "windows":
@@ -60,10 +61,9 @@ var rootCmd = &cobra.Command{
 			return fmt.Errorf("docker is not available.%s\n  %w", hint, err)
 		}
 
-		if err := dockerClient.IsDockerAvailableWith(); err != nil {
-			dockerClient.Close()
-			dockerClient = nil
-			return fmt.Errorf("docker availability check failed: %w", err)
+		dockerClient, err = docker.NewClient()
+		if err != nil {
+			return fmt.Errorf("failed to create Docker client: %w", err)
 		}
 
 		return nil
@@ -114,19 +114,7 @@ func init() {
 }
 
 func validateProjectName(name string) error {
-	if name == "" {
-		return fmt.Errorf("project name cannot be empty")
-	}
-
-	if len(name) > 64 {
-		return fmt.Errorf("project name cannot exceed 64 characters")
-	}
-
-	if !projectNameRe.MatchString(name) {
-		return fmt.Errorf("project name can only contain alphanumeric characters, hyphens, and underscores")
-	}
-
-	return nil
+	return security.ValidateProjectName(name)
 }
 
 func getWorkspacePath(projectName string) (string, error) {

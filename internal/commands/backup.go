@@ -11,6 +11,7 @@ import (
 	"github.com/spf13/cobra"
 
 	"coderaft/internal/config"
+	"coderaft/internal/security"
 	"coderaft/internal/ui"
 )
 
@@ -58,20 +59,25 @@ var backupCmd = &cobra.Command{
 		if strings.TrimSpace(outDir) == "" {
 			outDir = defaultDir
 		}
+
+		sanitizedOutDir, err := security.SanitizePath(outDir, "")
+		if err != nil {
+			return fmt.Errorf("invalid backup directory: %w", err)
+		}
+		outDir = sanitizedOutDir
+
 		if err := os.MkdirAll(outDir, 0755); err != nil {
 			return fmt.Errorf("failed to create backup directory: %w", err)
 		}
 
 		imageTag := fmt.Sprintf("coderaft/%s:backup-%s", projectName, ts)
 		ui.Status("creating image from island '%s'...", proj.IslandName)
-		imgID, err := dockerClient.CommitContainer(proj.IslandName, imageTag)
-		if err != nil {
+		if _, err := dockerClient.CommitContainer(proj.IslandName, imageTag); err != nil {
 			return fmt.Errorf("failed to commit island: %w", err)
 		}
-		_ = imgID
 
 		imageTar := filepath.Join(outDir, "image.tar")
-		ui.Status("saving image '%s' to %s...", imageTag, imageTar)
+		ui.Status("saving image '%s' to %s...", imageTag, security.SanitizePathForError(imageTar))
 		if err := dockerClient.SaveImage(imageTag, imageTar); err != nil {
 			return fmt.Errorf("failed to save image: %w", err)
 		}

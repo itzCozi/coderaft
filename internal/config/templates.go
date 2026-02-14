@@ -8,6 +8,25 @@ import (
 	"strings"
 )
 
+const (
+	DefaultNodeVersion = "22"
+	DefaultGoVersion   = "1.24.0"
+)
+
+func getNodeVersion() string {
+	if v := os.Getenv("CODERAFT_NODE_VERSION"); v != "" {
+		return strings.TrimPrefix(v, "v")
+	}
+	return DefaultNodeVersion
+}
+
+func getGoVersion() string {
+	if v := os.Getenv("CODERAFT_GO_VERSION"); v != "" {
+		return strings.TrimPrefix(v, "go")
+	}
+	return DefaultGoVersion
+}
+
 func (cm *ConfigManager) templatesDir() (string, error) {
 	home, err := os.UserHomeDir()
 	if err != nil {
@@ -17,6 +36,9 @@ func (cm *ConfigManager) templatesDir() (string, error) {
 }
 
 func (cm *ConfigManager) CreateProjectConfigFromTemplate(templateName, projectName string) (*ProjectConfig, error) {
+	nodeVersion := getNodeVersion()
+	goVersion := getGoVersion()
+
 	templates := map[string]*ProjectConfig{
 		"python": {
 			Name:      projectName,
@@ -40,7 +62,7 @@ func (cm *ConfigManager) CreateProjectConfigFromTemplate(templateName, projectNa
 			SetupCommands: []string{
 				"apt update -y",
 				"DEBIAN_FRONTEND=noninteractive apt install -y --no-install-recommends curl ca-certificates gnupg build-essential",
-				"curl -fsSL https://deb.nodesource.com/setup_22.x | bash -",
+				fmt.Sprintf("curl -fsSL https://deb.nodesource.com/setup_%s.x | bash -", nodeVersion),
 				"DEBIAN_FRONTEND=noninteractive apt install -y --no-install-recommends nodejs",
 				"npm install -g npm@latest",
 				"apt-get clean && rm -rf /var/lib/apt/lists/*",
@@ -58,7 +80,7 @@ func (cm *ConfigManager) CreateProjectConfigFromTemplate(templateName, projectNa
 			SetupCommands: []string{
 				"apt update -y",
 				"DEBIAN_FRONTEND=noninteractive apt install -y --no-install-recommends wget git build-essential ca-certificates",
-				"wget -q -O /tmp/go.tar.gz https://go.dev/dl/go1.24.0.linux-amd64.tar.gz",
+				fmt.Sprintf("wget -q -O /tmp/go.tar.gz https://go.dev/dl/go%s.linux-amd64.tar.gz", goVersion),
 				"tar -C /usr/local -xzf /tmp/go.tar.gz && rm /tmp/go.tar.gz",
 				"echo 'export PATH=$PATH:/usr/local/go/bin' >> /root/.bashrc",
 				"apt-get clean && rm -rf /var/lib/apt/lists/*",
@@ -76,7 +98,7 @@ func (cm *ConfigManager) CreateProjectConfigFromTemplate(templateName, projectNa
 			SetupCommands: []string{
 				"apt update -y",
 				"DEBIAN_FRONTEND=noninteractive apt install -y --no-install-recommends python3 python3-pip nodejs npm nginx git curl wget ca-certificates gnupg",
-				"curl -fsSL https://deb.nodesource.com/setup_22.x | bash -",
+				fmt.Sprintf("curl -fsSL https://deb.nodesource.com/setup_%s.x | bash -", nodeVersion),
 				"pip3 install flask django fastapi",
 				"npm install -g typescript @vue/cli create-next-app",
 				"apt-get clean && rm -rf /var/lib/apt/lists/*",

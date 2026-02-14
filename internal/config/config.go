@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"runtime"
 )
 
 type ConfigManager struct {
@@ -54,6 +55,17 @@ func (cm *ConfigManager) Load() (*Config, error) {
 
 	if _, err := os.Stat(cm.configPath); os.IsNotExist(err) {
 		return config, nil
+	}
+
+	if runtime.GOOS != "windows" {
+		if info, err := os.Stat(cm.configPath); err == nil {
+			mode := info.Mode().Perm()
+
+			if mode&0044 != 0 {
+				fmt.Fprintf(os.Stderr, "warning: config file %s has insecure permissions %o (recommended: 0600)\n",
+					filepath.Base(cm.configPath), mode)
+			}
+		}
 	}
 
 	data, err := os.ReadFile(cm.configPath)

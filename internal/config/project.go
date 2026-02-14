@@ -6,11 +6,56 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"regexp"
 	"strings"
 	"time"
 
 	"github.com/xeipuuv/gojsonschema"
 )
+
+var validLinuxCapabilities = map[string]bool{
+	"ALL":              true,
+	"AUDIT_CONTROL":    true,
+	"AUDIT_READ":       true,
+	"AUDIT_WRITE":      true,
+	"BLOCK_SUSPEND":    true,
+	"CHOWN":            true,
+	"DAC_OVERRIDE":     true,
+	"DAC_READ_SEARCH":  true,
+	"FOWNER":           true,
+	"FSETID":           true,
+	"IPC_LOCK":         true,
+	"IPC_OWNER":        true,
+	"KILL":             true,
+	"LEASE":            true,
+	"LINUX_IMMUTABLE":  true,
+	"MAC_ADMIN":        true,
+	"MAC_OVERRIDE":     true,
+	"MKNOD":            true,
+	"NET_ADMIN":        true,
+	"NET_BIND_SERVICE": true,
+	"NET_BROADCAST":    true,
+	"NET_RAW":          true,
+	"SETFCAP":          true,
+	"SETGID":           true,
+	"SETPCAP":          true,
+	"SETUID":           true,
+	"SYS_ADMIN":        true,
+	"SYS_BOOT":         true,
+	"SYS_CHROOT":       true,
+	"SYS_MODULE":       true,
+	"SYS_NICE":         true,
+	"SYS_PACCT":        true,
+	"SYS_PTRACE":       true,
+	"SYS_RAWIO":        true,
+	"SYS_RESOURCE":     true,
+	"SYS_TIME":         true,
+	"SYS_TTY_CONFIG":   true,
+	"SYSLOG":           true,
+	"WAKE_ALARM":       true,
+}
+
+var imageRefPattern = regexp.MustCompile(`^([a-z0-9]+([._-][a-z0-9]+)*(:[0-9]+)?/)?([a-z0-9]+([._-][a-z0-9]+)*(/[a-z0-9]+([._-][a-z0-9]+)*)*)(:([\w][\w.-]{0,127}))?(@sha256:[a-f0-9]{64})?$`)
 
 func (cm *ConfigManager) LoadProjectConfig(projectPath string) (*ProjectConfig, error) {
 
@@ -92,6 +137,46 @@ func (cm *ConfigManager) ValidateProjectConfig(cfg *ProjectConfig) error {
 			b.WriteString("\n")
 		}
 		return errors.New(strings.TrimSpace(b.String()))
+	}
+
+	if cfg.BaseImage != "" {
+
+		if !imageRefPattern.MatchString(strings.ToLower(cfg.BaseImage)) {
+
+			if !strings.Contains(cfg.BaseImage, "/") && !strings.Contains(cfg.BaseImage, ":") {
+
+			} else if strings.HasPrefix(cfg.BaseImage, "sha256:") {
+				return fmt.Errorf("invalid base_image '%s': use image:tag@sha256:... format instead of bare digest", cfg.BaseImage)
+			}
+		}
+	}
+
+	if cfg.User != "" {
+
+		userPattern := regexp.MustCompile(`^[a-zA-Z0-9_][a-zA-Z0-9_-]{0,31}(:[a-zA-Z0-9_][a-zA-Z0-9_-]{0,31})?$|^[0-9]+(:[0-9]+)?$`)
+		if !userPattern.MatchString(cfg.User) {
+			return fmt.Errorf("invalid user '%s': expected 'username', 'uid', 'uid:gid', or 'username:group'", cfg.User)
+		}
+	}
+
+	for _, cap := range cfg.Capabilities {
+		capUpper := strings.ToUpper(cap)
+		if !validLinuxCapabilities[capUpper] {
+			return fmt.Errorf("invalid capability '%s': not a recognized Linux capability", cap)
+		}
+	}
+
+	if cfg.Network != "" {
+		validNetworks := map[string]bool{
+			"bridge": true, "host": true, "none": true, "container": true,
+		}
+		netMode := strings.ToLower(cfg.Network)
+		if !validNetworks[netMode] && !strings.HasPrefix(netMode, "container:") {
+
+			if strings.ContainsAny(cfg.Network, " \t\n") {
+				return fmt.Errorf("invalid network '%s': network name cannot contain whitespace", cfg.Network)
+			}
+		}
 	}
 
 	for _, port := range cfg.Ports {

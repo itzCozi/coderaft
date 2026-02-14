@@ -8,6 +8,7 @@ import (
 	"strings"
 
 	"coderaft/internal/engine"
+	"coderaft/internal/security"
 )
 
 func escapeShellVar(s string) string {
@@ -51,9 +52,21 @@ func AttachShell(islandName string, projectName string) error {
 	return nil
 }
 
+// RunCommand executes a command inside the specified island container.
+// Commands are validated for safety before execution.
 func RunCommand(islandName string, command []string) error {
-	cmdStr := strings.Join(command, " ")
-	wrapped := ". /root/.bashrc >/dev/null 2>&1 || true; " + cmdStr
+	if err := security.ValidateShellCommand(command); err != nil {
+		return fmt.Errorf("invalid command: %w", err)
+	}
+
+	// Sanitize each argument
+	sanitizedParts := make([]string, len(command))
+	for i, part := range command {
+		sanitizedParts[i] = security.SanitizeShellArg(part)
+	}
+
+	cmdStr := strings.Join(sanitizedParts, " ")
+	wrapped := security.WrapShellCommand(cmdStr)
 	args := []string{"exec", "-it", islandName, "bash", "-lc", wrapped}
 	cmd := exec.Command(dockerCmd(), args...)
 	cmd.Stdin = os.Stdin
@@ -77,9 +90,13 @@ func (c *Client) RunDockerCommand(args []string) error {
 	return nil
 }
 
+// ExecCapture executes a command inside a container and captures its output.
+// The command is wrapped with bashrc sourcing and pipefail for proper error handling.
 func (c *Client) ExecCapture(islandName, command string) (string, string, error) {
 	wrapped := ". /root/.bashrc >/dev/null 2>&1 || true; set -o pipefail; " + command
-	ctx := context.Background()
+	ctx, cancel := context.WithTimeout(context.Background(), security.Timeouts.ContainerExec)
+	defer cancel()
+
 	result, err := c.sdk.containerExec(ctx, islandName, []string{"bash", "-lc", wrapped}, false)
 	if err != nil {
 		return "", "", fmt.Errorf("exec failed: %w", err)

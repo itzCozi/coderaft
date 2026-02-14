@@ -12,6 +12,7 @@ import (
 
 	"github.com/spf13/cobra"
 
+	"coderaft/internal/security"
 	"coderaft/internal/ui"
 )
 
@@ -82,13 +83,27 @@ func runExport(projectName string) error {
 	if err != nil {
 		return fmt.Errorf("failed to create output file: %w", err)
 	}
-	defer outFile.Close()
+
+	var writeErr error
+	defer func() {
+		if err := outFile.Close(); err != nil && writeErr == nil {
+			ui.Warning("failed to close output file: %v", err)
+		}
+	}()
 
 	gw := gzip.NewWriter(outFile)
-	defer gw.Close()
+	defer func() {
+		if err := gw.Close(); err != nil && writeErr == nil {
+			ui.Warning("failed to close gzip writer: %v", err)
+		}
+	}()
 
 	tw := tar.NewWriter(gw)
-	defer tw.Close()
+	defer func() {
+		if err := tw.Close(); err != nil && writeErr == nil {
+			ui.Warning("failed to close tar writer: %v", err)
+		}
+	}()
 
 	if err := addFileToTar(tw, imageTar, "image.tar"); err != nil {
 		return fmt.Errorf("failed to add image to archive: %w", err)
@@ -122,7 +137,7 @@ func runExport(projectName string) error {
 
 	_ = dockerClient.RunDockerCommand([]string{"rmi", imageTag})
 
-	ui.Success("exported to %s", outPath)
+	ui.Success("exported to %s", security.SanitizePathForError(outPath))
 	return nil
 }
 

@@ -13,6 +13,7 @@ import (
 
 	"github.com/spf13/cobra"
 
+	"coderaft/internal/security"
 	"coderaft/internal/ui"
 )
 
@@ -157,6 +158,8 @@ func WriteLockFileForIsland(IslandName, projectName, workspacePath, baseImage, o
 
 	envMap, workdir, user, restart, labels, capabilities, resources, network := dockerClient.GetContainerMeta(IslandName)
 
+	filteredEnvMap := security.FilterSensitiveEnvVars(envMap)
+
 	ui.Status("gathering package information...")
 	aptList, pipList, npmList, yarnList, pnpmList := dockerClient.QueryPackagesParallel(IslandName)
 
@@ -189,7 +192,7 @@ func WriteLockFileForIsland(IslandName, projectName, workspacePath, baseImage, o
 			Ports:        ports,
 			Volumes:      mounts,
 			Labels:       labels,
-			Environment:  envMap,
+			Environment:  filteredEnvMap,
 			Capabilities: capabilities,
 			Resources:    resources,
 			Gpus:         gpuConfig,

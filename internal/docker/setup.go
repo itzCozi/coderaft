@@ -6,6 +6,7 @@ import (
 	"strings"
 
 	"coderaft/internal/parallel"
+	"coderaft/internal/security"
 	"coderaft/internal/ui"
 )
 
@@ -51,7 +52,7 @@ func (c *Client) ExecuteSetupCommandsSequential(islandName string, commands []st
 		ui.Status("executing setup commands on island '%s'...", islandName)
 	}
 
-	batchSize := 10
+	batchSize := security.Limits.MaxSetupBatchSize
 	for i := 0; i < len(commands); i += batchSize {
 		end := i + batchSize
 		if end > len(commands) {
@@ -74,8 +75,10 @@ func (c *Client) ExecuteSetupCommandsSequential(islandName string, commands []st
 		}
 
 		cmd := []string{"bash", "-lc", scriptBuilder.String()}
-		ctx := context.Background()
+		ctx, cancel := context.WithTimeout(context.Background(), security.Timeouts.Apply)
 		result, err := c.sdk.containerExec(ctx, islandName, cmd, showOutput)
+		cancel()
+
 		if err != nil {
 			return fmt.Errorf("setup command batch failed (steps %d-%d): %w", i+1, end, err)
 		}

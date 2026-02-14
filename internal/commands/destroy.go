@@ -2,6 +2,7 @@ package commands
 
 import (
 	"bufio"
+	"context"
 	"fmt"
 	"io"
 	"os"
@@ -10,6 +11,7 @@ import (
 
 	"github.com/spf13/cobra"
 
+	"coderaft/internal/security"
 	"coderaft/internal/ui"
 )
 
@@ -55,10 +57,31 @@ Special usage:
 			ui.Info("empty project directories will be automatically removed.")
 			ui.Prompt("Are you sure? (y/N): ")
 
-			reader := bufio.NewReader(os.Stdin)
-			response, err := reader.ReadString('\n')
-			if err != nil {
+			ctx, cancel := context.WithTimeout(context.Background(), security.Timeouts.UserConfirmation)
+			defer cancel()
+
+			responseCh := make(chan string, 1)
+			errorCh := make(chan error, 1)
+
+			go func() {
+				reader := bufio.NewReader(os.Stdin)
+				response, err := reader.ReadString('\n')
+				if err != nil {
+					errorCh <- err
+					return
+				}
+				responseCh <- response
+			}()
+
+			var response string
+			select {
+			case <-ctx.Done():
+				fmt.Println()
+				ui.Info("confirmation timed out, destruction cancelled.")
+				return nil
+			case err := <-errorCh:
 				return fmt.Errorf("failed to read confirmation: %w", err)
+			case response = <-responseCh:
 			}
 
 			response = strings.ToLower(strings.TrimSpace(response))

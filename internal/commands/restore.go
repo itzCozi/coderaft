@@ -9,6 +9,7 @@ import (
 
 	"github.com/spf13/cobra"
 
+	"coderaft/internal/security"
 	"coderaft/internal/ui"
 )
 
@@ -22,6 +23,12 @@ var restoreCmd = &cobra.Command{
 		projectName := args[0]
 		backupDir := args[1]
 
+		sanitizedBackupDir, err := security.SanitizePath(backupDir, "")
+		if err != nil {
+			return fmt.Errorf("invalid backup directory: %w", err)
+		}
+		backupDir = sanitizedBackupDir
+
 		cfg, err := configManager.Load()
 		if err != nil {
 			return fmt.Errorf("failed to load configuration: %w", err)
@@ -34,7 +41,7 @@ var restoreCmd = &cobra.Command{
 		imageTar := filepath.Join(backupDir, "image.tar")
 		metaPath := filepath.Join(backupDir, "metadata.json")
 		if _, err := os.Stat(imageTar); err != nil {
-			return fmt.Errorf("missing image tar at %s", imageTar)
+			return fmt.Errorf("missing image tar at %s", security.SanitizePathForError(imageTar))
 		}
 		metaBytes, err := os.ReadFile(metaPath)
 		if err != nil {

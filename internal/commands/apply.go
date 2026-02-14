@@ -12,6 +12,7 @@ import (
 
 	"github.com/spf13/cobra"
 
+	"coderaft/internal/security"
 	"coderaft/internal/ui"
 )
 
@@ -46,7 +47,7 @@ Use --dry-run to preview the changes without modifying the island.`,
 	RunE: func(cmd *cobra.Command, args []string) error {
 		projectName := args[0]
 
-		timeout := time.Duration(applyTimeout) * time.Second
+		timeout := security.Timeouts.Apply
 		ctx, cancel := context.WithTimeout(context.Background(), timeout)
 		defer cancel()
 
@@ -62,7 +63,7 @@ Use --dry-run to preview the changes without modifying the island.`,
 		case res := <-resultCh:
 			return res.err
 		case <-ctx.Done():
-			return fmt.Errorf("apply timed out after %d seconds", applyTimeout)
+			return fmt.Errorf("apply timed out after %v", timeout)
 		}
 	},
 }
@@ -94,7 +95,7 @@ func runApply(ctx context.Context, projectName string) error {
 	lockPath := filepath.Join(proj.WorkspacePath, "coderaft.lock.json")
 	data, err := os.ReadFile(lockPath)
 	if err != nil {
-		return fmt.Errorf("failed to read %s: %w", lockPath, err)
+		return fmt.Errorf("failed to read %s: %w", security.SanitizePathForError(lockPath), err)
 	}
 
 	var lf applyLockFile

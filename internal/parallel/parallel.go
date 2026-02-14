@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"sync"
 	"time"
+
+	"coderaft/internal/security"
 )
 
 type WorkerPool struct {
@@ -14,7 +16,7 @@ type WorkerPool struct {
 
 func NewWorkerPool(maxWorkers int, timeout time.Duration) *WorkerPool {
 	if maxWorkers <= 0 {
-		maxWorkers = 4
+		maxWorkers = security.Limits.DefaultWorkerCount
 	}
 	if timeout <= 0 {
 		timeout = 5 * time.Minute

@@ -20,6 +20,9 @@ import (
 	"github.com/docker/docker/pkg/stdcopy"
 	"github.com/docker/go-connections/nat"
 	"github.com/docker/go-units"
+
+	"coderaft/internal/security"
+	"coderaft/internal/ui"
 )
 
 type sdkClient struct {
@@ -400,6 +403,11 @@ func applyProjectConfigSDK(
 					if home, err := os.UserHomeDir(); err == nil {
 						volumeStr = home + volumeStr[1:]
 					}
+				}
+
+				if err := security.ValidateVolumePath(volumeStr); err != nil {
+					ui.Warning("skipping volume mount: %v", err)
+					continue
 				}
 
 				parts := strings.SplitN(volumeStr, ":", 3)
