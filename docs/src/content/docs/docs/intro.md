@@ -6,6 +6,7 @@ description: Learn about coderaft and its principles
 Welcome to the coderaft documentation! This guide provides an overview of what coderaft is, its core principles, and how it can help you manage your development environments effectively. coderaft is a tool designed to create isolated, reproducible development environments using Islands (Docker containers). It simplifies the process of setting up and managing dependencies, ensuring that your projects run consistently across different machines.
 
 #### Key Features of coderaft
+- **One-Command Clone**: `coderaft clone <repo>` auto-detects your stack and sets up a ready-to-code environment instantly.
 - **Isolation**: Each project gets its own isolated environment, preventing dependency conflicts.
 - **Reproducibility**: Environments can be easily recreated on any machine, ensuring consistent behavior.
 - **Automatic Package Tracking**: Installs from 30+ package managers are recorded automatically—apt, pip, npm, cargo, go, brew, conda, and more.

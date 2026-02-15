@@ -5,7 +5,35 @@ description: Get up and running with coderaft in minutes
 
 Get started in minutes. Make sure you have [coderaft installed](/docs/install/) first.
 
-## Create a Project
+## Clone an Existing Project
+
+The fastest way to start working on any project:
+
+```bash
+coderaft clone https://github.com/user/repo
+```
+
+That's it! coderaft will:
+1. Clone the repository
+2. Auto-detect the tech stack (Python, Node.js, Go, etc.)
+3. Create an isolated island with the right tools
+4. Install dependencies
+
+Ready to code in ~30 seconds.
+
+```bash
+# Enter the environment
+coderaft shell repo
+
+# Your code is at /island
+cd /island
+```
+
+:::tip
+Use `--depth 1` for faster cloning of large repositories.
+:::
+
+## Create a New Project
 
 ```bash
 coderaft init my-app --template python

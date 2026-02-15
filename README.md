@@ -25,6 +25,7 @@ coderaft creates isolated development environments inside Docker islands. Each p
 
 ## Features
 
+- **One-command clone** — `coderaft clone <repo>` auto-detects stack and sets up instantly
 - **Instant setup** — Create environments in seconds
 - **Isolated** — Each project in its own Docker island
 - **Reproducible** — Commit `coderaft.json` for consistent team environments
@@ -63,6 +64,17 @@ irm https://raw.githubusercontent.com/itzcozi/coderaft/main/scripts/install.ps1 
 > **Requires Docker.** On Windows/macOS, use Docker Desktop.
 
 ## Quick Start
+
+### One-Command Project Setup
+
+Clone any repo and start coding in seconds:
+
+```bash
+coderaft clone https://github.com/user/repo
+# Auto-detects stack, creates island, runs setup → ready to code in 30 seconds
+```
+
+### Manual Setup
 
 ```bash
 # Create a project

@@ -110,6 +110,129 @@ func (cm *ConfigManager) CreateProjectConfigFromTemplate(templateName, projectNa
 			Ports:   []string{"3000:3000", "5000:5000", "8000:8000", "80:80"},
 			Volumes: []string{},
 		},
+		"rust": {
+			Name:      projectName,
+			BaseImage: "buildpack-deps:bookworm",
+			SetupCommands: []string{
+				"apt update -y",
+				"DEBIAN_FRONTEND=noninteractive apt install -y --no-install-recommends curl build-essential ca-certificates pkg-config libssl-dev",
+				"curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y",
+				". $HOME/.cargo/env && rustup default stable",
+				"apt-get clean && rm -rf /var/lib/apt/lists/*",
+			},
+			Environment: map[string]string{
+				"PATH":              "/root/.cargo/bin:$PATH",
+				"CARGO_HOME":        "/root/.cargo",
+				"RUSTUP_HOME":       "/root/.rustup",
+				"CARGO_TARGET_DIR":  "/island/target",
+				"CARGO_INCREMENTAL": "1",
+			},
+			Ports:   []string{"8080:8080"},
+			Volumes: []string{},
+		},
+		"java": {
+			Name:      projectName,
+			BaseImage: "buildpack-deps:bookworm",
+			SetupCommands: []string{
+				"apt update -y",
+				"DEBIAN_FRONTEND=noninteractive apt install -y --no-install-recommends openjdk-17-jdk maven gradle ca-certificates",
+				"apt-get clean && rm -rf /var/lib/apt/lists/*",
+			},
+			Environment: map[string]string{
+				"JAVA_HOME":  "/usr/lib/jvm/java-17-openjdk-amd64",
+				"PATH":       "/usr/lib/jvm/java-17-openjdk-amd64/bin:$PATH",
+				"MAVEN_OPTS": "-Xmx512m",
+			},
+			Ports:   []string{"8080:8080", "8443:8443"},
+			Volumes: []string{},
+		},
+		"ruby": {
+			Name:      projectName,
+			BaseImage: "buildpack-deps:bookworm",
+			SetupCommands: []string{
+				"apt update -y",
+				"DEBIAN_FRONTEND=noninteractive apt install -y --no-install-recommends ruby-full ruby-bundler build-essential libsqlite3-dev libpq-dev libmysqlclient-dev ca-certificates",
+				"gem install bundler rake",
+				"apt-get clean && rm -rf /var/lib/apt/lists/*",
+			},
+			Environment: map[string]string{
+				"GEM_HOME":    "/island/vendor/bundle",
+				"BUNDLE_PATH": "/island/vendor/bundle",
+				"PATH":        "/island/vendor/bundle/bin:$PATH",
+				"RAILS_ENV":   "development",
+			},
+			Ports:   []string{"3000:3000"},
+			Volumes: []string{},
+		},
+		"php": {
+			Name:      projectName,
+			BaseImage: "buildpack-deps:bookworm",
+			SetupCommands: []string{
+				"apt update -y",
+				"DEBIAN_FRONTEND=noninteractive apt install -y --no-install-recommends php php-cli php-fpm php-json php-common php-mysql php-zip php-gd php-mbstring php-curl php-xml php-pear php-bcmath ca-certificates unzip",
+				"curl -sS https://getcomposer.org/installer | php -- --install-dir=/usr/local/bin --filename=composer",
+				"apt-get clean && rm -rf /var/lib/apt/lists/*",
+			},
+			Environment: map[string]string{
+				"COMPOSER_HOME":            "/root/.composer",
+				"PATH":                     "/root/.composer/vendor/bin:$PATH",
+				"COMPOSER_ALLOW_SUPERUSER": "1",
+			},
+			Ports:   []string{"8000:8000", "80:80"},
+			Volumes: []string{},
+		},
+		"dotnet": {
+			Name:      projectName,
+			BaseImage: "buildpack-deps:bookworm",
+			SetupCommands: []string{
+				"apt update -y",
+				"DEBIAN_FRONTEND=noninteractive apt install -y --no-install-recommends wget ca-certificates",
+				"wget https://dot.net/v1/dotnet-install.sh -O /tmp/dotnet-install.sh",
+				"chmod +x /tmp/dotnet-install.sh && /tmp/dotnet-install.sh --channel 8.0",
+				"rm /tmp/dotnet-install.sh",
+				"apt-get clean && rm -rf /var/lib/apt/lists/*",
+			},
+			Environment: map[string]string{
+				"DOTNET_ROOT":                 "/root/.dotnet",
+				"PATH":                        "/root/.dotnet:/root/.dotnet/tools:$PATH",
+				"DOTNET_CLI_TELEMETRY_OPTOUT": "1",
+				"ASPNETCORE_ENVIRONMENT":      "Development",
+			},
+			Ports:   []string{"5000:5000", "5001:5001"},
+			Volumes: []string{},
+		},
+		"elixir": {
+			Name:      projectName,
+			BaseImage: "buildpack-deps:bookworm",
+			SetupCommands: []string{
+				"apt update -y",
+				"DEBIAN_FRONTEND=noninteractive apt install -y --no-install-recommends wget gnupg ca-certificates",
+				"wget https://packages.erlang-solutions.com/erlang-solutions_2.0_all.deb && dpkg -i erlang-solutions_2.0_all.deb && rm erlang-solutions_2.0_all.deb",
+				"apt update -y && DEBIAN_FRONTEND=noninteractive apt install -y --no-install-recommends erlang elixir",
+				"mix local.hex --force && mix local.rebar --force",
+				"apt-get clean && rm -rf /var/lib/apt/lists/*",
+			},
+			Environment: map[string]string{
+				"MIX_ENV": "dev",
+			},
+			Ports:   []string{"4000:4000"},
+			Volumes: []string{},
+		},
+		"cpp": {
+			Name:      projectName,
+			BaseImage: "buildpack-deps:bookworm",
+			SetupCommands: []string{
+				"apt update -y",
+				"DEBIAN_FRONTEND=noninteractive apt install -y --no-install-recommends build-essential cmake ninja-build gdb valgrind clang clang-format clang-tidy lldb ca-certificates pkg-config",
+				"apt-get clean && rm -rf /var/lib/apt/lists/*",
+			},
+			Environment: map[string]string{
+				"CC":  "gcc",
+				"CXX": "g++",
+			},
+			Ports:   []string{"8080:8080"},
+			Volumes: []string{},
+		},
 	}
 
 	template, exists := templates[templateName]
@@ -133,7 +256,7 @@ func (cm *ConfigManager) CreateProjectConfigFromTemplate(templateName, projectNa
 }
 
 func (cm *ConfigManager) GetAvailableTemplates() []string {
-	builtins := []string{"python", "nodejs", "go", "web"}
+	builtins := []string{"python", "nodejs", "go", "rust", "java", "ruby", "php", "dotnet", "elixir", "cpp", "web"}
 
 	user := cm.ListUserTemplates()
 	if len(user) == 0 {

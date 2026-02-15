@@ -88,6 +88,7 @@ func init() {
 	rootCmd.PersistentFlags().BoolVar(&ui.Verbose, "verbose", false, "Show detailed progress messages")
 
 	rootCmd.AddCommand(initCmd)
+	rootCmd.AddCommand(cloneCmd)
 	rootCmd.AddCommand(upCmd)
 	rootCmd.AddCommand(shellCmd)
 	rootCmd.AddCommand(runCmd)

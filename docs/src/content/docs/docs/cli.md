@@ -79,6 +79,75 @@ coderaft up --dotfiles ~/.dotfiles
 
 ---
 
+### `coderaft clone`
+
+Clone a Git repository and automatically set up a ready-to-code coderaft island. This is the fastest way to start working on an existing project.
+
+**Syntax:**
+```bash
+coderaft clone <repo-url> [flags]
+```
+
+**What it does:**
+1. Clones the repository to your coderaft workspace (`~/coderaft/<repo-name>/`)
+2. Auto-detects the project's tech stack (Python, Node.js, Go, Rust, etc.)
+3. Creates an isolated Docker island with the right tools
+4. Runs setup commands (installs dependencies)
+5. Ready to code in seconds
+
+**Options:**
+- `--force, -f`: Force clone, overwriting existing project and island
+- `--template, -t <template>`: Use specific template instead of auto-detection (python, nodejs, go, web)
+- `--name, -n <name>`: Override the project name (defaults to repository name)
+- `--branch, -b <branch>`: Clone a specific branch
+- `--depth <n>`: Create a shallow clone with specified depth
+- `--no-setup`: Clone only, don't create the island
+
+**Stack Detection:**
+The command automatically detects your project's stack by looking for:
+- **Python**: `requirements.txt`, `setup.py`, `pyproject.toml`, `Pipfile`, `poetry.lock`
+- **Node.js**: `package.json`, `yarn.lock`, `pnpm-lock.yaml`
+- **Go**: `go.mod`, `go.sum`
+- **Rust**: `Cargo.toml`
+- **Web**: `index.html` + `package.json`
+
+**Automatic Dependency Installation:**
+Based on detected files, coderaft runs the appropriate install commands:
+- Python: `pip3 install -r requirements.txt`, `poetry install`, etc.
+- Node.js: `npm ci`, `yarn install --frozen-lockfile`, `pnpm install`
+- Go: `go mod download`
+
+**Examples:**
+```bash
+# Clone and auto-setup (most common)
+coderaft clone https://github.com/user/repo
+
+# Clone SSH URL
+coderaft clone git@github.com:user/repo.git
+
+# Override auto-detection with specific template
+coderaft clone https://github.com/user/repo --template nodejs
+
+# Clone specific branch
+coderaft clone https://github.com/user/repo --branch develop
+
+# Fast shallow clone
+coderaft clone https://github.com/user/repo --depth 1
+
+# Custom project name
+coderaft clone https://github.com/user/repo --name my-custom-name
+
+# Clone only, set up later with 'coderaft up'
+coderaft clone https://github.com/user/repo --no-setup
+```
+
+**Notes:**
+- Requires Git to be installed on the host
+- If the repository contains a `coderaft.json`, it will be used instead of auto-detection
+- The project is saved to `~/coderaft/<project-name>/`
+
+---
+
 ### `coderaft init`
 
 Create a new coderaft project with its own Docker island.
