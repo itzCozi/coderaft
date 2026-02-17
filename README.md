@@ -8,21 +8,6 @@
 
 coderaft creates isolated development environments inside Docker islands. Each project lives in its own disposable container while your code stays organized on the host.
 
-> **Source of Truth:** The `main` branch is the most up-to-date stable code. Always pull from [itzcozi/coderaft](https://github.com/itzcozi/coderaft) and build for your system, or use the install script for your platform.
-
-## Why coderaft?
-
-| Problem | coderaft Solution |
-|---------|-------------------|
-| "Works on my machine" | Every project runs in an identical, isolated island |
-| Dependency conflicts | Each island has its own dependencies, no host pollution |
-| Complex setup scripts | One JSON config, one command to start |
-| Heavy VMs or slow tools | Lightweight Docker containers, instant startup |
-| Cluttered host system | Your host stays clean; everything runs in islands |
-| Team onboarding friction | Commit `coderaft.json`, teammates run `coderaft up` |
-
-**In short:** Fast, disposable, Docker-native dev environments with minimal config.
-
 ## Features
 
 - **One-command clone** — `coderaft clone <repo>` auto-detects stack and sets up instantly
@@ -35,6 +20,17 @@ coderaft creates isolated development environments inside Docker islands. Each p
 - **Docker-in-Docker** — Use Docker inside your island out of the box
 - **Cross-platform** — Linux, macOS, and Windows
 - **Simple config** — One small JSON file, no frameworks
+
+## Why coderaft?
+
+| Problem | Solution |
+|---------|-------------------|
+| "Works on my machine" | Every project runs in an identical, isolated island |
+| Dependency conflicts | Each island has its own dependencies, no host pollution |
+| Complex setup scripts | One JSON config, one command to start |
+| Heavy VMs or slow tools | Lightweight Docker containers, instant startup |
+| Cluttered host system | Your host stays clean; everything runs in islands |
+| Team onboarding friction | Commit `coderaft.json`, teammates run `coderaft up` |
 
 ## Install
 
